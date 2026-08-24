@@ -1,0 +1,44 @@
+# Unreal Engine 4/5 - Generated / Cache
+Binaries/
+DerivedDataCache/
+Intermediate/
+Saved/
+Build/
+.vs/
+.vscode/
+*.VC.db
+*.opensdf
+*.opendb
+*.sdf
+*.sln
+*.suo
+*.user
+*.suo
+*.sln
+
+# UE 5 auto-generated build files
+*.target.cs
+*.Target.cs
+*.uprojectdirs
+
+# Crash / logs
+Logs/
+*.log
+
+# macOS
+.DS_Store
+
+# IDE
+*.swp
+.idea/
+
+# Local only
+*.p4ignore
+
+# ------------------------------------------------------------------
+# Inner standalone repo: Python dataset code (already its own git repo)
+# Do not track the inner git repo with the outer UE project.
+Content/FutsalMOT/code/
+
+# Large / asset-store content that should be re-downloaded, not committed
+Content/Fab/
