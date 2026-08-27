@@ -42,3 +42,7 @@ Content/FutsalMOT/code/
 
 # Large / asset-store content that should be re-downloaded, not committed
 Content/Fab/
+
+# Python bytecode / cache
+__pycache__/
+*.pyc

@@ -35,3 +35,99 @@
 - **绝不自动 commit/push**：每次提交前先询问用户并等待明确确认。
 - **commit message 使用简体中文**。
 - 外层仓库当前分支 `master`，内层为 `main`。
+
+## Unreal Engine MCP Automation Workflow
+
+**目标**：后续所有 Agent 在处理本项目 UE5.8 相关任务时，**优先通过已配置好的 Unreal MCP 自动操作 Unreal Editor**，而不是要求用户手动回 UE 执行 Python、查日志或读取 Actor 状态。
+
+### 已验证事实
+
+- 当前项目使用 **Unreal Engine 5.8**（见 `.uproject`）。
+- 官方 **Unreal MCP** 已启用并运行在本机 UE Editor 中；OpenCode 已通过项目级 MCP 配置（`.mcp.json`）成功连接。
+- 已验证可通过 Unreal MCP：
+  - 列出 toolsets；
+  - 查询当前 Level；
+  - 查找 Actor；
+  - 读取 Actor Transform；
+  - 读取 Actor Components；
+  - 读取 UE Output Log。
+- 项目已新增自定义 MCP Toolset：**`futsalmot_tools.FutsalMOTTools`**，已验证提供：
+  - `run_python_code`
+  - `run_python_file`
+- 这两个工具运行在**真实 Unreal Python 环境**，可正常 `import unreal`，**不是** `ProgrammaticToolset.execute_tool_script` 的受限 Python sandbox。
+- 已验证：
+  - `run_python_code` 能执行真实 UE Python（`unreal.log` 正常写日志）；
+  - `run_python_file` 能执行项目内 Python 文件，例如 `Content/FutsalMOT/code/ue/*.py`。
+- UE 日志可通过 Unreal MCP 的 **Logs Toolset** 查询，重点类别：`LogPython`、`LogBlueprint`、`LogMovieRenderPipeline`、`LogModelContextProtocol`。
+
+### Agent 行为规范
+
+**UE 任务默认执行顺序**：对任何 Unreal Engine 相关开发、调试、验证任务，默认按以下闭环执行：
+
+```
+修改代码 → 通过 FutsalMOTTools.run_python_file 在当前 UE Editor 执行
+→ 读取返回结果 → 通过 Unreal MCP 读取相关 UE Logs
+→ 自动分析错误 → 修改代码 → 重新执行
+```
+
+**不要默认让用户**（只要 Unreal MCP 已提供对应能力，就应由 Agent 自己调用）：
+
+- 手动打开 Python 控制台；
+- 手动执行 `.py`；
+- 手动复制 Output Log；
+- 手动查询 Actor / 查看 Transform / 确认组件。
+
+**什么时候使用 `run_python_file`**：已有或新建的是完整 UE Python 文件（如 `Content/FutsalMOT/code/ue/build_*.py`、`read_*.py`、`export_*.py`、`render_*.py`），默认使用 `FutsalMOTTools.run_python_file`，**不要让用户复制代码到 UE Python Console**。
+
+**什么时候使用 `run_python_code`**：仅用于小型诊断和快速状态查询，例如 `import unreal`、查询一个对象、打印一个属性、验证某个 API 是否存在、输出一条 UE log。**不要把大型多步骤逻辑塞进 `run_python_code`**。
+
+**什么时候使用 Unreal MCP 原生工具**：如果只是查询 Editor 状态，优先使用 Unreal MCP 原生 Toolset（Level 查询、Actor 查找、Transform、Components、Asset 查询、Logs、Sequencer / AutomationTest 等），而不是写 Python。
+
+**原则**：
+- 已有 MCP 原生 Tool → **优先原生 Tool**；
+- 需要真实 Unreal Python → **`FutsalMOTTools`**；
+- **禁止误用 `ProgrammaticToolset`**。
+
+### 禁止误用 ProgrammaticToolset
+
+`ProgrammaticToolset.execute_tool_script` 是**受限 sandbox**，不能替代真实 Unreal Python。它适合组合 MCP Tools，但**不要**用它执行依赖 `import unreal` 的项目 UE Python 脚本。
+
+### 自动诊断要求
+
+当 `run_python_file` 或 `run_python_code` 失败时：
+
+1. 先读取工具返回的 `success/result/log`；
+2. 再读取相关 UE Output Log；
+3. 优先自行定位：Python exception、Blueprint compile error、Movie Render Pipeline error、MCP error；
+4. 自动修复并重试。
+
+**不要在第一次报错后立即把问题转交给用户。**
+
+### 只有这些情况才要求用户手动操作 UE
+
+- 新插件 / 新 Python Toolset 必须**完整重启 Unreal Editor**；
+- API 没有 Blueprint / Python / MCP 暴露；
+- 必须进行视觉人工验收（例如最终 RGB / Pose overlay 是否美观、是否肉眼对齐）；
+- 必须点击某个无法自动化的 Editor UI；
+- 操作存在较高破坏风险，需要用户确认。
+
+如果只是普通脚本执行或读取日志，**不属于人工操作范围**。
+
+### 当前 MCP 基础设施位置
+
+记录：`Plugins/FutsalMOTMCP/`，其中至少包括：
+
+- `Content/Python/init_unreal.py`
+- `Content/Python/futsalmot_tools.py`
+
+**不要随意删除或重构该插件。** 若修改 `futsalmot_tools.py` 后新代码没有生效，要意识到 Unreal Python 模块可能已经缓存；必要时明确要求**完整重启 UE**，而不是反复调用 `RefreshTools` 假设模块已热重载。
+
+### Git 注意事项
+
+- **不要提交** `__pycache__/`、`*.pyc`（已在根 `.gitignore` 补充忽略）。
+- 保持本项目原有「双 Git 仓库」规则：
+  - UE 资产 / `Plugins/` / `.uproject` 等属于**外层 UE 仓库**；
+  - `Content/FutsalMOT/code/` 属于**内层 Python 数据集仓库**；
+  - **不要把两个仓库的 commit 混淆**。
+
+> For Unreal Engine tasks in this project, do not ask the user to manually run UE Python unless MCP automation has been attempted and an actual API/tooling limitation has been confirmed.
