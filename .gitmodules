@@ -1,0 +1,4 @@
+[submodule "Content/FutsalMOT/code"]
+	path = Content/FutsalMOT/code
+	url = git@github.com:HHhydrogen/FutsalMOT_Dataset.git
+	branch = main

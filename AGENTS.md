@@ -1,17 +1,54 @@
 # AGENTS.md
 
-## 仓库结构：两个互相独立的 git 仓库
+## 仓库结构：两个独立 Git 仓库，外层通过 submodule 链接内层
 
-本项目是**两个嵌套的独立 git 仓库**，版本控制完全分离：
+本项目包含两个独立 Git 仓库，版本历史和提交边界完全分离。外层通过 Git submodule 记录内层仓库的 commit，不把内层 Python 文件复制进外层索引：
 
 1. **外层 UE 项目**（本目录 `D:\projects\FustalMOT_UEDataset`）— git 远程 `git@github.com:HHhydrogen/FutsalMOT_UE.git`，分支 `master`。
-2. **内层 Python 数据集代码** `Content/FutsalMOT/code/` — **它是自己的 git 仓库**，有自己的远程 `git@github.com:HHhydrogen/FutsalMOT_Dataset.git`，分支 `main`。
+2. **内层 Python 数据集代码** `Content/FutsalMOT/code/` — submodule 指向自己的仓库 `git@github.com:HHhydrogen/FutsalMOT_Dataset.git`，分支 `main`。
 
-`.gitignore` 已把 `Content/FutsalMOT/code/` 整目录忽略——**在外层仓库 `git add -A` 永远不会包含 Python 代码**。改 Python 代码必须 `cd` 进 `Content/FutsalMOT/code/` 单独提交/推送。
+外层索引只记录 `Content/FutsalMOT/code/` 的 gitlink 和 `.gitmodules` 配置；外层 `git add -A` 不会把内层 Python 文件逐个加入外层。改 Python 代码必须进入 `Content/FutsalMOT/code/` 在内层仓库单独提交；内层 commit 完成后，再在外层更新 submodule 指针。
 
-## 内层 Python 仓库：先读它的 CLAUDE.md
+首次克隆外层仓库后初始化内层仓库：
 
-`Content/FutsalMOT/code/CLAUDE.md` 是 Python 代码库的权威指南（架构、命令、约定），**在该目录工作前必读**。要点：
+```powershell
+git submodule update --init --recursive
+```
+
+检查两个仓库时必须分别执行 `git status`。外层显示的是 submodule 指针状态，内层显示的是 Python 文件状态。
+
+### Submodule 提交与推送顺序
+
+修改内层代码、配置或文档时，必须先完成并推送内层仓库，再提交外层 gitlink：
+
+```powershell
+# 1. 在内层仓库检查、测试、提交并推送
+git -C Content/FutsalMOT/code status --short --branch
+git -C Content/FutsalMOT/code add <仅限本次内层改动>
+git -C Content/FutsalMOT/code diff --cached --stat
+git -C Content/FutsalMOT/code commit -m "<简体中文提交说明>"
+git -C Content/FutsalMOT/code push origin main
+
+# 2. 回到外层仓库记录已经在远程存在的子仓库 commit
+git add Content/FutsalMOT/code
+git diff --cached --submodule=short -- Content/FutsalMOT/code
+git commit -m "<简体中文提交说明>"
+git push origin master
+```
+
+必须遵守以下顺序：
+
+- 子仓库 push 失败时停止，不得让外层提交或推送一个远程不可取得的 gitlink。
+- 外层只提交 mode `160000` 的 `Content/FutsalMOT/code` gitlink，不要把内层文件复制到外层，也不要从外层使用 `git add -f` 强行加入内层文件。
+- 外层更新指针前确认内层 `git rev-parse HEAD` 是刚刚推送成功的 commit；用 `git diff --cached --submodule=short` 检查指针变化。
+- 两个仓库都可能有未提交改动。不要使用无选择的 `git add -A`；分别检查 `git status --short`，只暂存本次目标文件。
+- 外层 clone 后使用 `git submodule update --init --recursive`；也可以使用 `git clone --recurse-submodules <外层仓库地址>`。拉取外层新指针后再次执行该命令。
+- `git submodule status` 前缀为 `-` 表示未初始化，`+` 表示工作区 commit 与外层记录不一致；外层提交前应消除意外的 `+`，或明确确认要更新指针。
+- 禁止 force-push、跳过 hooks 或把外层 commit 与内层 commit 混写。推送被拒绝时先 fetch 并按实际分支历史处理，不得用强制推送覆盖远程历史。
+
+## 内层 Python 仓库：先读当前技术文档
+
+`Content/FutsalMOT/code/README.md` 是 Python 数据集代码仓库的入口说明；`Content/FutsalMOT/code/docs/DATA_CONTRACT.md` 记录数据格式，`Content/FutsalMOT/code/docs/VALIDATION_AND_LIMITATIONS.md` 记录验证入口和当前限制。进入该目录工作前应先阅读这些文档。要点：
 
 - 推荐入口是 dataset task 单 config（`configs/*.json` 含机器路径并直接入库）：
   ```powershell
@@ -21,18 +58,20 @@
   uv run pytest -m grf_integration -q   # 真实 GRF 集成测试
   ```
 - **环境隔离**：P1 导出在 Python `.venv`（Python 3.9 固定，勿升级）；P2 导入/渲染脚本在 Unreal Editor Python 内运行，**绝不在 .venv 中运行**，且绝不 import numpy 依赖的模块。JSONL 是两环境唯一接口。
-- 提交规范（内层）：绝不自动提交、commit/注释/文档用简体中文。
+- 当前权威技术文档：`README.md`、`docs/DATA_CONTRACT.md`、`docs/VALIDATION_AND_LIMITATIONS.md`；不再使用 `CLAUDE.md`、`configs/README.md`、`ue/README.md` 或 `docs/` 下的历史设计子目录。
+- 提交规范（内层）：未经用户明确确认，不得自动提交或推送；commit message、代码注释、文档字符串和技术文档使用简体中文。
 
 ## 外层 UE 项目（本层工作）
 
 - **纯蓝图项目**：无 `Source/`（无 C++），引擎 `5.8`（见 `.uproject`）。改动基本是 `.uasset`/`.umap` 二进制资产，git diff 无法阅读内容。
-- 启用的插件：ModelingToolsEditorMode、GameplayStateTree、MovieRenderPipeline、MoviePipelineMaskRenderPass（MRQ 渲染管线相关）。
+- 启用的插件：ModelingToolsEditorMode、GameplayStateTree、MovieRenderPipeline、MoviePipelineMaskRenderPass、ModelContextProtocol、AllToolsets、FutsalMOTMCP。
+- 当前资产地图为 `/Game/FutsalMOT/Maps/L_FutsalCourt`；`Config/DefaultEngine.ini` 仍将 Editor/Game 默认地图指向不存在的 `L_Futsal_Demo`，执行 UE 任务前必须显式核验当前 Level 和地图配置。
 - **Fab 资产目录 `Content/Fab/` 被 gitignore 忽略**——不要在仓库里提交下载的资产；要把资产真正纳入项目，应在 UE 内容浏览器中移动到 Fab 之外（如 `Content/FutsalMOT/`），UE 会自动修引用。不要用文件资源管理器剪切（会断引用）。
 - `Saved/`、`Intermediate/`、`DerivedDataCache/` 均为本地生成物，被忽略，不要提交。
 
 ## git 约定（整个仓库都遵循）
 
-- **绝不自动 commit/push**：每次提交前先询问用户并等待明确确认。
+- **未经用户明确确认，不得自动 commit/push**：每次提交或推送前先询问用户并等待明确确认。
 - **commit message 使用简体中文**。
 - 外层仓库当前分支 `master`，内层为 `main`。
 
@@ -126,8 +165,8 @@
 
 - **不要提交** `__pycache__/`、`*.pyc`（已在根 `.gitignore` 补充忽略）。
 - 保持本项目原有「双 Git 仓库」规则：
-  - UE 资产 / `Plugins/` / `.uproject` 等属于**外层 UE 仓库**；
-  - `Content/FutsalMOT/code/` 属于**内层 Python 数据集仓库**；
-  - **不要把两个仓库的 commit 混淆**。
+  - UE 资产 / `Plugins/` / `.uproject` / `.gitmodules` 等属于**外层 UE 仓库**；
+  - `Content/FutsalMOT/code/` 的 Python 文件和内层 commit 属于**内层 Python 数据集仓库**；
+  - 外层只更新 submodule gitlink，不要把两个仓库的 commit 混淆。
 
 > For Unreal Engine tasks in this project, do not ask the user to manually run UE Python unless MCP automation has been attempted and an actual API/tooling limitation has been confirmed.
