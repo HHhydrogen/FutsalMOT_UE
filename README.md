@@ -8,7 +8,7 @@
 
 | 仓库 | 根目录 | 负责内容 | 当前 Git 边界 |
 | --- | --- | --- | --- |
-| UE 仓库 | `D:/projects/FustalMOT_UEDataset` | `.uproject`、`Config/`、插件、UE 内容资产和内层 submodule 指针 | 只记录 gitlink，不逐文件跟踪内层内容 |
+| UE 仓库 | `D:/projects/FutsalMOT_UEDataset` | `.uproject`、`Config/`、插件、UE 内容资产和内层 submodule 指针 | 只记录 gitlink，不逐文件跟踪内层内容 |
 | Python 仓库 | `Content/FutsalMOT/code/` | GRF 导出、任务配置、UE Python、标注后处理和测试 | 独立仓库，需进入该目录单独操作 |
 
 外层仓库当前没有 `Source/`、C++、`Build.cs` 或 `Target.cs` 文件，项目实现边界是 Blueprint 和内容资产。`Saved/`、`Intermediate/`、`DerivedDataCache/`、`Content/Fab/` 等目录不属于提交内容；Fab 资产若要纳入项目，应在 UE 内容浏览器中移到 `Content/Fab/` 之外，不能直接用文件管理器移动。
