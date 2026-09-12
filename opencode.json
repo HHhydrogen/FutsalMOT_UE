@@ -4,9 +4,7 @@
     "unreal": {
       "type": "remote",
       "url": "http://127.0.0.1:8000/mcp",
-      "enabled": true,
-      "oauth": false,
-      "timeout": 600000
+      "enabled": true
     }
   },
   "experimental": {

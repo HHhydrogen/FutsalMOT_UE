@@ -101,6 +101,21 @@ git push origin master
 
 ### Agent 行为规范
 
+### Unreal MCP 调用规范（已验证）
+
+以下规则用于避免 MCP 工具路由和 Unreal Python API 兼容性错误：
+
+- **工具名必须使用注册后的短名称**。`unreal_describe_toolset` 返回的 schema 中可能显示带模块前缀的描述名，但 `unreal_call_tool` 的 `tool_name` 使用短名称。例如：`IsPIERunning`、`get_current_level`、`find_actors`、`get_actor_transform`、`get_components`、`find_assets`、`load_asset`、`get_properties`、`run_python_code`、`run_python_file`。不要把 `EditorToolset.EditorAppToolset.IsPIERunning`、`editor_toolset.toolsets.scene.SceneTools.get_current_level` 或 `futsalmot_tools.FutsalMOTTools.run_python_code` 作为 `tool_name` 传入。
+- `toolset_name` 仍使用 `unreal_list_toolsets` / `unreal_describe_toolset` 返回的完整名称，例如 `EditorToolset.EditorAppToolset`、`editor_toolset.toolsets.scene.SceneTools`、`editor_toolset.toolsets.asset.AssetTools`、`editor_toolset.toolsets.object.ObjectTools`、`futsalmot_tools.FutsalMOTTools`。
+- 调用新工具前，先用 `unreal_describe_toolset` 确认该 toolset 的 schema；实际调用时区分 `toolset_name`（完整名）和 `tool_name`（短名）。
+- **资产路径不是 UObject 引用**。`/Game/FutsalMOT/Sequences/LS_Cam_01` 这样的字符串可用于 `AssetTools.exists`、`find_assets`、`get_asset_class` 和 `load_asset`，但不能直接作为需要对象引用的参数（例如 Sequencer 的 `sequence`）。先调用 `load_asset`，再把返回的 `{ "refPath": "..." }` 对象原样传给后续工具；不要手工把普通资产路径包装成 `refPath` 来冒充已解析对象。
+- **Sequencer 查询流程**：先用 `find_assets` 查找序列，再用 `load_asset` 取得 `LevelSequence` 对象引用，最后将该引用传给 Sequencer 工具。若只需确认绑定名称，也可在真实 Unreal Python 中加载序列并读取 `seq.get_bindings()`；绑定显示名可通过 `binding.get_display_name()` 读取。
+- **Actor 查询流程**：使用 `SceneTools.find_actors` 按名称/标签查找，返回的 Actor `{ "refPath": "..." }` 可直接传给 `ActorTools.get_actor_transform`、`get_components` 和 `ObjectTools.get_class`。`find_actors.name` 对应 Actor label 的包含匹配；如果需要精确核对规范对象名，应使用真实 Unreal Python 对 `get_name()` 和 `get_actor_label()` 分别比较。
+- **CineCamera 属性读取**：当前 UE 5.8 MCP 原生 `ObjectTools.get_properties` 可能无法序列化 `CineCameraComponent` 的 `current_focal_length`、`field_of_view` 和 `aspect_ratio`，即使属性存在。需要这些字段时，优先使用 `FutsalMOTTools.run_python_code` 的小型诊断，通过 `component.get_editor_property("current_focal_length")`、`component.get_editor_property("filmback")` 和 `component.get_editor_property("field_of_view")` 读取；传感器尺寸从 `filmback.sensor_width` / `sensor_height` 读取。
+- **UE 5.8 Python API 兼容性**：本项目已验证 `unreal.EditorLevelLibrary.get_editor_world()` 和 `get_all_level_actors()` 可用但会产生弃用警告。不要未经验证地假设 `unreal.UnrealEditorSubsystem` 等 Subsystem 类型名在当前环境可用；切换 API 前先用 `run_python_code` 做最小存在性检查。失败时优先回退到已验证 API，不要把 API 名称猜测混入大型脚本。
+- Python 诊断脚本应保持小而单一用途，并对单个属性/绑定查询使用 `try/except`，避免一个兼容性问题导致整段验证结果丢失。输出结构化 JSON，便于读取 `returnValue.log`。
+- 只读验证不得调用 `add_to_scene_from_*`、`remove_from_scene`、`set_actor_transform`、`set_properties`、`save_assets`、`delete`、`move`、`duplicate` 或其他写操作工具。
+
 **UE 任务默认执行顺序**：对任何 Unreal Engine 相关开发、调试、验证任务，默认按以下闭环执行：
 
 ```
