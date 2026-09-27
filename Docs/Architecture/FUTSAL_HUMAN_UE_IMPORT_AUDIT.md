@@ -22,6 +22,8 @@
 因此本阶段所有依赖 Skeleton 的检查项（STEP 5–11）**无法执行**，最终分类为：
 
 ```
+
+
 IMPORT_COMPATIBILITY = BLOCKED
 FUTSAL_HUMAN_SKELETON_STANDARD_V1 = NOT_FROZEN
 ```
@@ -2561,6 +2563,348 @@ The repaired sequence library is valid and retained transactionally. The exact b
 ```text
 PHASE_BASE_1O_PROMOTION = COMPLETE
 
+## BASE-2G — LOCAL PIPELINE BOOTSTRAP AND CANONICAL ANIMATION INTEGRATION
+
+- 日期：2026-09-25
+- Added machine-local `.futsalmot/local.json` inside the inner repository; it is ignored by Git. Dataset root resolves to `D:/projects/FutsalMOT`; UE project root resolves to `D:/projects/FutsalMOT_UEDataset`.
+- `pose_smoke_3frames_1cam.json` passed `task validate` and `task resolve`; resolved task is `.futsalmot/runtime/pose_smoke_3frames_1cam/resolved-task.json`. The task exported `episode_pose_smoke` with `meta.json`, 3-line `frames.jsonl`, and provenance.
+- First official `run_task.py --mode sequence` ran while the Editor world context was null. It completed with only 7 player bindings because the label finder accepts substring matches before considering later exact labels. The Court was subsequently explicitly loaded and mapping checked: all 11 expected labels resolved exactly once. The same official command was rerun with the Court world active and generated `LS_Cam_01` with all ten players and the ball; transform channel map passed and 129 transform keys were written for the smoke episode.
+- After the sequence script returned, the Editor World again read null and the inspected regenerated sequence contained 7 players. Explicitly reopening `L_FutsalCourt` restored the live world and all ten canonical actors. This indicates the official script/tool invocation does not preserve or reliably retain the active World context across execution calls; generated sequence persistence should be revalidated in one continuously active Editor session.
+- All ten Court actors use `BP_FutsalPlayerBase_C`, `SKM_FutsalPlayerBase`, Animation Mode `ANIMATION_BLUEPRINT`, and `ABP_FutsalPlayerBase_C`. The official label mapping resolved 11/11 with zero missing or ambiguous actors.
+- Live Sequence evaluation moved `Player_R0` from X≈2022.059 cm at frame 0 to X≈2016.433 cm at frame 9 (about 5.625 cm displacement). Actor Velocity remained zero and the AnimInstance's exposed Velocity remained zero; Direction remained 0.0. GroundSpeed, ShouldMove, IsFalling, and active state-machine state were not exposed by the current UE wrapper. This confirms Sequencer transform motion is not reflected in CharacterMovement velocity, but the animation result cannot be called a visual PASS without GroundSpeed/ShouldMove/state or visual evidence. No AnimBP change was made.
+- Active sequence-generation code is label-based. Pose mapping source documents Quinn/Mannequin calibration; the canonical skeleton asset resolves, but the UE Python bone tree is opaque, so 12/12 bone resolution was not established. Head-offset visual calibration remains required.
+- P1 `uv run pytest` was attempted via the environment's Python 3.9 venv because `uv run` trampoline failed. Result: 961 passed, 7 failed, 7 deselected. All seven failures were in `tests/test_portable_config.py`; the newly configured machine-local runtime paths take precedence over test-set environment variables, changing expected resolver values. No inner source/tests were changed.
+- The official smoke task validates/resolves/exports, but `task ue-command` only prints the UE invocation; MCP argument forwarding was provided with `C5_RESOLVED_TASK` and `C5_RUN_MODE=sequence` to execute the official `run_task.py`, not a parallel sequence generator. No full render, annotation, or Runtime Pose smoke was run because the task requests MRQ/Pose follow-up and animation semantics remain unresolved.
+- Retired runtime assets remain untouched. `UNREAL_RIG` remains at its pre-existing unstaged state. Both repositories remain unstaged; no commit/tag/push occurred.
+
+```text
+PHASE_BASE_2G = PARTIAL
+LOCAL_RUNTIME_CONFIG = .futsalmot/local.json (ignored)
+DATASET_ROOT = D:/projects/FutsalMOT
+UE_PROJECT_ROOT = D:/projects/FutsalMOT_UEDataset
+INNER_TEST_BASELINE = 961 passed, 7 failed, 7 deselected (portable_config tests affected by machine-local override)
+SMOKE_TASK_VALIDATE = PASS
+SMOKE_TASK_RESOLVE = PASS
+SMOKE_TASK_EXPORT = PASS
+RESOLVED_TASK_PATH = Content/FutsalMOT/code/.futsalmot/runtime/pose_smoke_3frames_1cam/resolved-task.json
+SMOKE_EPISODE_PATH = D:/projects/FutsalMOT/episode_pose_smoke
+SMOKE_EPISODE_FRAME_COUNT = 3
+UE_SEQUENCE_COMMAND = run_task.py --resolved-task <resolved-task.json> --mode sequence (executed in UE via C5 environment variables)
+SEQUENCE_GENERATION_RESULT = PASS on rerun with Court loaded; generated 10 players + ball, 129 transform keys
+GENERATED_SEQUENCE_PLAYER_COUNT = 10
+GENERATED_PLAYER_CLASS = BP_FutsalPlayerBase_C
+ANIMATION_INTEGRATION_CLASSIFICATION = B (trajectory transforms move actor; reported Actor/AnimInstance velocity stays zero; locomotion booleans/state inaccessible)
+MOVING_PLAYER = Player_R0
+MOVING_PLAYER_WORLD_DELTA = X 2022.059 cm -> 2016.433 cm (~5.625 cm)
+MOVING_PLAYER_CHARACTER_VELOCITY = (0,0,0) observed
+MOVING_PLAYER_ABP_GROUND_SPEED = API_UNRESOLVED
+MOVING_PLAYER_ABP_DIRECTION = 0.0 observed
+MOVING_PLAYER_ABP_SHOULD_MOVE = API_UNRESOLVED
+MOVING_PLAYER_LOCOMOTION_STATE = API_UNRESOLVED
+STATIONARY_PLAYER = Not reliably classified in 3-frame sample
+STATIONARY_PLAYER_ABP_GROUND_SPEED = API_UNRESOLVED
+STATIONARY_PLAYER_ABP_SHOULD_MOVE = API_UNRESOLVED
+SEQUENCE_DRIVEN_ANIMATION_RESULT = FAIL/UNVERIFIED (actor slides by transform while velocity/direction remain zero; no visual check)
+DIRECTION_ORIENTATION_RESULT = NOT VERIFIED
+POSE_REQUIRED_LIMB_COUNT = 12
+POSE_RESOLVED_LIMB_COUNT = NOT RUN
+POSE_MISSING_BONES = UNKNOWN (bone tree API opaque)
+POSE_HEAD_BONE_PRESENT = UNKNOWN live; pose_bones constant is `head`
+POSE_HEAD_OFFSET_VISUAL_CALIBRATION_REQUIRED = YES
+ANNOTATION_SMOKE = NOT RUN
+RUNTIME_POSE_DISCOVERY = NOT RUN
+ACTIVE_RETIRED_ARCHITECTURE_CODE_REFERENCES = 0 observed in active sequence path; Quinn references remain in pose documentation/diagnostics
+CANONICAL_CHARACTER_COMPILE = PASS
+CANONICAL_ABP_COMPILE = PASS (last verified)
+READY_FOR_RETIRED_RUNTIME_HARD_DELETE = NO
+OUTER_GIT_STAGED_FILES = 0
+INNER_GIT_STAGED_FILES = 0
+UNREAL_RIG_STATUS = UNCHANGED_FROM_BASELINE
+```
+
+### Animation integration diagnostic
+
+The smoke exposed a concrete contract gap: Sequencer writes Actor transform tracks, but this does not update CharacterMovement or the AnimInstance Velocity observed by the canonical AnimBP. The player moved approximately 5.625 cm across the sample while observed velocity and Direction stayed zero. Do not delete the retired runtime architecture until a canonical solution supports both gameplay movement and externally driven trajectory playback and is verified with a generated task.
+
+### Remaining blockers before retirement
+
+1. Resolve the seven `test_portable_config.py` failures without leaking `.futsalmot/local.json` values into monkeypatched test environments; preserve the documented resolver precedence.
+2. Stabilize UE task execution so the Court Editor World remains available to the official sequence creator and after it returns.
+3. Inspect canonical AnimBP locomotion input flow and implement the smallest verified trajectory-motion fallback in the canonical Character/AnimBP layer if needed; do not restore retired MotionSpeed/interface names.
+4. Validate forward/lateral yaw and BlendSpace direction with representative trajectory frames.
+5. Expose/dump `SK_FutsalPlayerBase` bone names; verify 12 limb mappings, `head`, annotation bounds, and pose capture; visually calibrate head offsets.
+6. Run annotation/pose smoke and, after animation compatibility passes, a small official full pipeline smoke.
+
+## BASE-2F — COURT ACTOR CUTOVER AND DATA PIPELINE COMPATIBILITY
+
+- 日期：2026-09-25
+- The ten live Court `BP_FutsalCharacterBase_C` players were destructively converted to `BP_FutsalPlayerBase_C`. Final labels and Pose tags remain exact (`Player_L0..L4`, `Player_R0..R4`; `PoseL*`, `PoseR*`), and live mapping resolves all 11 entities including `Ball_01` with zero missing or ambiguous results.
+- The conversion API did not carry the inherited Mesh/AnimClass component state. A follow-up explicit binding pass set all ten `CharacterMesh0` components to `SKM_FutsalPlayerBase`, Animation Mode `ANIMATION_BLUEPRINT`, and `ABP_FutsalPlayerBase_C`; affected actor packages were saved. Live inspection then reported canonical mesh and AnimInstance for all ten players.
+- The official active sequence path is label-based: `run_task.py -> import_grf_episode.create_sequence -> scene_apply.find_all_actors`. No active sequence-generation code reference requires the retired Character class. Historical Quinn/Mannequin hits are documentation or diagnostic/recorder code, not proven active blockers.
+- The smallest official P1 task `configs/pose_smoke_3frames_1cam.json` could not pass validation because `FUTSALMOT_DATASET_ROOT` is unset. No resolved task or episode frames exist in this checkout, so official `run_task.py --mode sequence` and full/pose/annotation smoke tests were not run. No alternate pipeline was invented.
+- Canonical AnimInstance classes are live on all ten players. GroundSpeed/ShouldMove/state-machine fields were not available through the current non-PIE wrapper; trajectory-driven animation behavior requires a valid resolved task and sequence/PIE evaluation.
+- Retired runtime assets were not deleted, per phase policy. `UNREAL_RIG` was not touched. No inner or outer Git staging, commit, tag, or push occurred.
+
+```text
+PHASE_BASE_2F = PARTIAL
+COURT_ACTOR_CUTOVER = PASS
+SEQUENCE_REGENERATION = BLOCKED (FUTSALMOT_DATASET_ROOT unset; no resolved task/episode)
+FUTSALPLAYERBASE_ANIMATION_SMOKE = BLOCKED (no generated sequence/PIE evaluation)
+PIPELINE_CODE_COMPATIBILITY = PASS for active label-based sequence path
+POSE_COMPATIBILITY = NEEDS_VISUAL_CALIBRATION
+ANNOTATION_COMPATIBILITY = BLOCKED (official task unavailable)
+READY_FOR_RETIRED_RUNTIME_HARD_DELETE = NO
+COURT_OLD_PLAYER_COUNT = 0
+COURT_CANONICAL_PLAYER_COUNT = 10
+ACTOR_MAPPING_RESOLVED_COUNT = 11
+ACTOR_MAPPING_MISSING = 0
+ACTOR_MAPPING_AMBIGUOUS = 0
+SEQUENCE_GENERATION_RESULT = BLOCKED
+GENERATED_SEQUENCE_PLAYER_COUNT = NOT RUN
+SEQUENCE_PLAYER_CLASS = NOT RUN
+SEQUENCE_TRANSFORM_TRACK_RESULT = NOT RUN
+MOVING_PLAYER_WORLD_MOTION = NOT TESTED
+MOVING_PLAYER_CHARACTER_VELOCITY = NOT TESTED
+ANIMBP_GROUND_SPEED = API_UNRESOLVED
+ANIMBP_DIRECTION = 0.0 on inspected stationary actor
+ANIMBP_SHOULD_MOVE = API_UNRESOLVED
+ANIMBP_ACTIVE_LOCOMOTION_STATE = API_UNRESOLVED
+SEQUENCE_DRIVEN_ANIMATION_RESULT = NOT TESTED
+YAW_DIRECTION_COMPATIBILITY = NOT TESTED
+POSE_BONE_NAME_COMPATIBILITY = NOT FULLY RESOLVED
+POSE_LIMB_KEYPOINTS_RESOLVED_COUNT = NOT RUN
+POSE_HEAD_BONE_PRESENT = API-UNRESOLVED
+POSE_HEAD_OFFSETS_REQUIRE_RECALIBRATION = YES
+RUNTIME_POSE_RECORDER_COMPATIBILITY = NOT RUN
+ANNOTATION_COMPATIBILITY = NOT RUN
+FULL_PIPELINE_SMOKE_RESULT = BLOCKED
+INNER_REPO_TEST_RESULT = NOT RUN (no inner code modifications)
+CANONICAL_CHARACTER_COMPILE = PASS
+CANONICAL_ABP_COMPILE = PASS (last verified)
+FUTSALPLAYERBASE_MANNEQUIN_DEPENDENCIES = 0
+FUTSALPLAYERBASE_THIRDPERSON_DEPENDENCIES = 0
+FUTSALPLAYERBASE_OLD_RUNTIME_DEPENDENCIES = 0
+UNREAL_RIG_STATUS = UNCHANGED_FROM_BASELINE
+OUTER_GIT_STAGED_FILES = 0
+INNER_GIT_STAGED_FILES = 0
+```
+
+### Court player table
+
+| Player group | Live class | Mesh | AnimClass | Mapping |
+|---|---|---|---|---|
+| `Player_L0..Player_L4` | `BP_FutsalPlayerBase_C` | `SKM_FutsalPlayerBase` | `ABP_FutsalPlayerBase_C` | L0..L4 resolved uniquely |
+| `Player_R0..Player_R4` | `BP_FutsalPlayerBase_C` | `SKM_FutsalPlayerBase` | `ABP_FutsalPlayerBase_C` | R0..R4 resolved uniquely |
+| `Ball_01` | `BP_FutsalBall_C` | N/A | N/A | BALL resolved uniquely |
+
+### Active code compatibility findings
+
+| Finding | Classification | Result |
+|---|---|---|
+| Label-based Actor mapping | ACTIVE_PIPELINE | PASS: 11/11, no ambiguity |
+| `create_sequence()` actor lookup | ACTIVE_PIPELINE | Compatible with canonical labels/classes |
+| `SKM_Quinn_Simple` / old Character in official sequence path | ACTIVE_PIPELINE | Not observed |
+| Quinn/Mannequin references in `pose_bones.py` documentation | COMMENT/DOC | Requires canonical skeleton/visual validation |
+| Historical recorder/build scripts | DIAGNOSTIC/RETIRED | Not invoked |
+
+### Sequence generation table
+
+| Workflow | Result | Reason |
+|---|---|---|
+| `task validate configs/pose_smoke_3frames_1cam.json` | FAIL | `FUTSALMOT_DATASET_ROOT` missing |
+| `task resolve` | Not run | Validation blocked |
+| `run_task.py --mode sequence` | Not run | No resolved task or episode frames |
+| Generated Player bindings | Not available | Official sequence generation not executed |
+
+### Animation runtime diagnostic table
+
+| Signal | Result |
+|---|---|
+| Live AnimInstance class | `ABP_FutsalPlayerBase_C` on all ten players |
+| Mesh | `SKM_FutsalPlayerBase` on all ten players |
+| Animation Mode | `ANIMATION_BLUEPRINT` on all ten players |
+| Current inspected velocity | Zero on stationary actor |
+| Direction | `0.0` on inspected actor |
+| GroundSpeed | API-unresolved |
+| ShouldMove | API-unresolved |
+| Locomotion state | API-unresolved |
+| Trajectory animation reaction | Not tested |
+
+### Pose compatibility table
+
+| Check | Result |
+|---|---|
+| Canonical skeleton asset | Present |
+| Bone list | UE wrapper returned opaque bone tree |
+| `pose_bones.py` mapping | Quinn/Mannequin calibration documentation remains |
+| 12/12 limb resolution | Not run |
+| Head bone | Not live-verified |
+| Head offsets | Require visual calibration |
+
+### Code changes table
+
+| Repository | Changes |
+|---|---|
+| Outer UE assets | Ten Court player actors converted and their canonical Mesh/AnimClass bindings restored/saved |
+| Inner Python repository | None |
+| Official pipeline source | None |
+| Retired runtime assets | Retained |
+
+### Test results table
+
+| Test | Result |
+|---|---|
+| Court actor cutover | PASS: 0 old, 10 canonical |
+| Actor mapping | PASS: 11 resolved, 0 missing, 0 ambiguous |
+| P1 smoke validation | BLOCKED: missing `FUTSALMOT_DATASET_ROOT` |
+| Official sequence generation | Not run |
+| Animation smoke | Not run |
+| Pose/annotation smoke | Not run |
+| Full pipeline smoke | Not run |
+
+### Remaining blockers before retired-runtime hard delete
+
+1. Configure a valid local `FUTSALMOT_DATASET_ROOT` and run P1 `task validate`, `task resolve`, and the smallest official export task.
+2. Run official UE `run_task.py --mode sequence` against the resolved task.
+3. Evaluate one moving and one stationary player in generated sequence/PIE, including GroundSpeed, Direction, ShouldMove, and active state.
+4. Validate canonical skeleton bone names and runtime pose mapping; visually calibrate head offsets.
+5. Keep retired runtime assets until the generated sequence, animation, pose, and annotation smoke tests pass.
+
+## BASE-2F — COURT ACTOR CUTOVER AND DATA PIPELINE COMPATIBILITY
+
+- 日期：2026-09-25
+- The ten live Court players were destructively converted from `BP_FutsalCharacterBase_C` to `BP_FutsalPlayerBase_C` in the active `L_FutsalCourt` editor world. Labels, Pose tags, world transforms, scale, and `DynamicObjects` folder state were preserved. Actor GUID changes were accepted.
+- All ten new actors were then explicitly bound to `SKM_FutsalPlayerBase` and `ABP_FutsalPlayerBase_C` using the component APIs. Each live player now reports Animation Mode `ANIMATION_BLUEPRINT`, canonical mesh, canonical Anim Class, and canonical AnimInstance class.
+- Official mapping contract was checked live using the `Player_L0..Player_L4`, `Player_R0..Player_R4`, `Ball_01` labels. Resolution was 11/11 with zero missing and zero ambiguous labels.
+- The official P1 smoke task `configs/pose_smoke_3frames_1cam.json` could not pass `task validate` because `FUTSALMOT_DATASET_ROOT` is unset. No resolved task or episode frames were present locally, so `run_task.py --mode sequence` was not run and no alternate pipeline was invented.
+- Active pipeline code review found the official sequence path is label-based (`scene_apply.find_all_actors` -> `import_grf_episode.create_sequence`) and does not require the retired Character class. Quinn/Mannequin references are concentrated in pose documentation and historical recorder scripts; no active sequence-generation code reference was changed.
+- Live AnimInstance class is canonical. Runtime `GroundSpeed`, `ShouldMove`, `IsFalling`, and current state fields were not exposed by the current non-PIE AnimInstance wrapper; only Direction and zero current velocity were readable. A trajectory-driven animation smoke test requires a valid resolved task/episode and PIE/sequence evaluation.
+- No retired runtime asset was deleted in this phase. `UNREAL_RIG` remains at its pre-existing unstaged state. No Git staging, commit, tag, or push occurred.
+
+```text
+PHASE_BASE_2F = PARTIAL
+COURT_ACTOR_CUTOVER = PASS
+SEQUENCE_REGENERATION = BLOCKED (FUTSALMOT_DATASET_ROOT missing; no resolved task/frames)
+FUTSALPLAYERBASE_ANIMATION_SMOKE = BLOCKED (no generated sequence/PIE task)
+PIPELINE_CODE_COMPATIBILITY = PASS for active label-based sequence path; legacy diagnostic references remain
+POSE_COMPATIBILITY = NEEDS_VISUAL_CALIBRATION
+ANNOTATION_COMPATIBILITY = BLOCKED (official task not runnable)
+READY_FOR_RETIRED_RUNTIME_HARD_DELETE = NO
+COURT_OLD_PLAYER_COUNT = 0
+COURT_CANONICAL_PLAYER_COUNT = 10
+ACTOR_MAPPING_RESOLVED_COUNT = 11
+ACTOR_MAPPING_MISSING = 0
+ACTOR_MAPPING_AMBIGUOUS = 0
+ACTIVE_OLD_ARCHITECTURE_CODE_REFERENCE_COUNT = 0 observed in official active sequence path
+SEQUENCE_GENERATION_RESULT = BLOCKED
+GENERATED_SEQUENCE_PLAYER_COUNT = NOT RUN
+SEQUENCE_PLAYER_CLASS = NOT RUN
+SEQUENCE_TRANSFORM_TRACK_RESULT = NOT RUN
+MOVING_PLAYER_WORLD_MOTION = NOT TESTED
+MOVING_PLAYER_CHARACTER_VELOCITY = NOT TESTED
+ANIMBP_GROUND_SPEED = API_UNRESOLVED
+ANIMBP_DIRECTION = 0.0 observed on stationary live actor
+ANIMBP_SHOULD_MOVE = API_UNRESOLVED
+ANIMBP_ACTIVE_LOCOMOTION_STATE = API_UNRESOLVED
+SEQUENCE_DRIVEN_ANIMATION_RESULT = NOT TESTED
+YAW_DIRECTION_COMPATIBILITY = NOT TESTED
+POSE_BONE_NAME_COMPATIBILITY = NOT FULLY RESOLVED; canonical skeleton asset present, bone wrapper returned opaque tree
+POSE_LIMB_KEYPOINTS_RESOLVED_COUNT = NOT RUN
+POSE_HEAD_BONE_PRESENT = API-UNRESOLVED; mapping constant remains head
+POSE_HEAD_OFFSETS_REQUIRE_RECALIBRATION = YES for visual validation
+RUNTIME_POSE_RECORDER_COMPATIBILITY = NOT RUN
+ANNOTATION_COMPATIBILITY = NOT RUN
+FULL_PIPELINE_SMOKE_RESULT = BLOCKED
+INNER_REPO_TEST_RESULT = NOT RUN (no inner code changes)
+CANONICAL_CHARACTER_COMPILE = PASS
+CANONICAL_ABP_COMPILE = PASS (last verified)
+FUTSALPLAYERBASE_MANNEQUIN_DEPENDENCIES = 0
+FUTSALPLAYERBASE_THIRDPERSON_DEPENDENCIES = 0
+FUTSALPLAYERBASE_OLD_RUNTIME_DEPENDENCIES = 0
+UNREAL_RIG_STATUS = UNCHANGED_FROM_BASELINE
+OUTER_GIT_STAGED_FILES = 0
+INNER_GIT_STAGED_FILES = 0
+```
+
+### Court player table
+
+| Player identity | Live class | Mesh | AnimClass | Tag | Mapping |
+|---|---|---|---|---|---|
+| `Player_L0`..`Player_L4` | `BP_FutsalPlayerBase_C` | `SKM_FutsalPlayerBase` | `ABP_FutsalPlayerBase_C` | `PoseL0`..`PoseL4` | L0..L4 resolved |
+| `Player_R0`..`Player_R4` | `BP_FutsalPlayerBase_C` | `SKM_FutsalPlayerBase` | `ABP_FutsalPlayerBase_C` | `PoseR0`..`PoseR4` | R0..R4 resolved |
+| `Ball_01` | `BP_FutsalBall_C` | N/A | N/A | N/A | BALL resolved |
+
+### Active code compatibility findings
+
+| Finding | Classification | Result |
+|---|---|---|
+| `scene_apply.find_all_actors` label mapping | ACTIVE_PIPELINE | Compatible; 11/11 unique |
+| `import_grf_episode.create_sequence` actor binding | ACTIVE_PIPELINE | Canonical actors are suitable; task not run |
+| `pose_bones.py` Quinn/Mannequin documentation | COMMENT/DOC | Requires canonical skeleton visual validation |
+| Historical recorder/build scripts | DIAGNOSTIC/RETIRED | Not invoked by this smoke attempt |
+| Retired Character/AnimBP names in active runtime path | ACTIVE_PIPELINE | None observed |
+
+### Sequence generation table
+
+| Task | Result | Blocker |
+|---|---|---|
+| `pose_smoke_3frames_1cam.json` validate | FAIL | `FUTSALMOT_DATASET_ROOT` unset |
+| Resolved task | Not present | No local runtime resolved-task.json |
+| Episode frames | Not present | No local meta.json/frames.jsonl |
+| `run_task.py --mode sequence` | Not run | Official input contract unavailable |
+
+### Animation runtime diagnostic table
+
+| Signal | Result |
+|---|---|
+| Live AnimInstance class | `ABP_FutsalPlayerBase_C` |
+| Live current velocity | Zero on inspected stationary actor |
+| Direction | `0.0` on inspected actor |
+| GroundSpeed | API unresolved |
+| ShouldMove | API unresolved |
+| IsFalling | API unresolved |
+| Active state-machine state | API unresolved |
+| Trajectory-driven locomotion | Not tested; no generated sequence/PIE run |
+
+### Pose compatibility table
+
+| Check | Result |
+|---|---|
+| Canonical skeleton asset | Present: `SK_FutsalPlayerBase` |
+| Bone-name dump | Wrapper returned opaque bone tree |
+| `pose_bones` mapping | Still names Quinn/Mannequin as calibration source |
+| 12/12 limb resolution | Not run |
+| `head` bone | Mapping constant present; live resolution not run |
+| Head offsets | Require visual/pose calibration |
+
+### Code changes table
+
+| Repository/file | Change |
+|---|---|
+| Inner Python repository | None |
+| Outer UE assets | Court actor cutover performed in live Editor; affected actor packages saved by the cutover operation |
+| Official pipeline source | None |
+| Retired runtime assets | Retained |
+
+### Test results table
+
+| Test | Result |
+|---|---|
+| Actor mapping | PASS: 11 resolved, 0 missing, 0 ambiguous |
+| P1 `task validate` | BLOCKED: `FUTSALMOT_DATASET_ROOT` missing |
+| Official sequence generation | Not run |
+| Animation smoke | Not run |
+| Pose/annotation smoke | Not run |
+| Full pipeline smoke | Not run |
+
+### Next blockers
+
+1. Provide a valid `FUTSALMOT_DATASET_ROOT` and run the existing `pose_smoke_3frames_1cam` task validate/resolve/export workflow.
+2. Execute the official UE `run_task.py --mode sequence` against the resolved task.
+3. Evaluate canonical AnimBP locomotion during generated trajectory playback/PIE, including GroundSpeed, ShouldMove, Direction, and state-machine state.
+4. Validate canonical skeleton bone names against `pose_bones.py` and perform head-offset visual calibration.
+5. Keep retired runtime assets until sequence, animation, pose, and annotation smoke tests pass.
+
 ## BASE-2C — DESTRUCTIVE COURT MIGRATION AND PROGRAMMATIC SEQUENCER REBUILD
 
 - 日期：2026-09-25
@@ -3554,3 +3898,65 @@ UNREAL_RIG_STATUS = UNCHANGED_FROM_BASELINE
 GIT_STAGED_FILES = 0
 GIT_COMMIT_CREATED = NO
 ```
+
+## BASE-2I — AUTHORITATIVE SEQUENCE MOTION SPEED CONTRACT
+
+- 日期：2026-09-27
+- `PlayerMotionTracker.update()` is the authoritative speed source. The official sequence writer now uses the same tracker result used for yaw to write `ExternalMotionSpeedMps`.
+- `BP_FutsalPlayerBase` now contains `ExternalMotionActive` (Boolean, default `false`) and `ExternalMotionSpeedMps` (Float, default `0.0`). Both are in `Animation | External Motion` and exposed to Cinematics. Character compile passed.
+- `import_grf_episode.py` writes Bool and Float property tracks for every canonical player. `Ball_01` receives no player motion property tracks.
+- Focused writer tests cover tracker-speed reuse, canonical property names, ten-player coverage, ball exclusion, transform/yaw preservation, and property-key generation.
+- Isolated inner result: `972 passed, 7 deselected`; local runtime config was restored.
+- Official smoke sequence regenerated with 10 canonical players and ball. Player_R0 property paths are `ExternalMotionActive` and `ExternalMotionSpeedMps`; speed keys are `0.0, 0.0, 0.7907080054` m/s, matching tracker values `[0.0, 0.0, 0.790708]` within `<1e-7` m/s.
+- The ABP EventGraph contains no `ExternalMotion*` nodes. Graph DSL is empty and safe K2 graph editing is unavailable; explicit tracks are therefore not yet consumed by `Effective Motion Speed Mps`.
+
+```text
+PHASE_BASE_2I = PARTIAL
+USE_AUTO_MOTION_SPEED_DEFAULT = TRUE
+EXTERNAL_MOTION_ACTIVE_PROPERTY = PRESENT; default false; Cinematics exposed
+EXTERNAL_MOTION_SPEED_PROPERTY = PRESENT; default 0.0; Cinematics exposed
+MANUAL_CHARACTER_VARIABLE_GATE_REQUIRED = NO
+MANUAL_ABP_EXTERNAL_SPEED_GATE_REQUIRED = YES
+PLAYERMOTIONTRACKER_SOURCE_SPEED_RESULT = R0 [0.0, 0.0, 0.790708] m/s; norm equality PASS
+SEQUENCE_WRITER_MODIFIED = YES
+SEQUENCE_EXTERNAL_ACTIVE_TRACKS = 10/10
+SEQUENCE_EXTERNAL_SPEED_TRACKS = 10/10
+INNER_TEST_RESULT = 972 passed, 7 deselected
+SEQUENCE_GENERATION_RESULT = PASS
+GENERATED_PLAYER_COUNT = 10
+PLAYER_R0_SOURCE_SPEED_VALUES = [0.0, 0.0, 0.790708]
+PLAYER_R0_SEQUENCE_SPEED_VALUES = [0.0, 0.0, 0.7907080054]
+PLAYER_R0_MAX_SPEED_VALUE_DELTA = <1e-7 m/s
+LIVE_EXTERNAL_MOTION_ACTIVE = TRACKED TRUE; ABP consumption unverified
+LIVE_EXTERNAL_MOTION_SPEED_MPS = TRACKED 0.7907080054; ABP consumption unverified
+LIVE_EFFECTIVE_MOTION_SPEED_MPS = NOT VERIFIED
+LIVE_GROUND_SPEED = NOT VERIFIED after explicit track input
+VISUAL_SPEED_MATCH_RESULT = NOT TESTED after ABP consumer gate
+LONG_SMOKE_RESULT = NOT RUN
+SPEED_TRANSITION_RESULT = source/Sequence numeric contract PASS; ABP mapping pending
+CANONICAL_CHARACTER_COMPILE = PASS
+CANONICAL_ABP_COMPILE = PASS; no graph change
+READY_FOR_RETIRED_RUNTIME_HARD_DELETE = NO
+OUTER_GIT_STAGED_FILES = 0
+INNER_GIT_STAGED_FILES = 0
+GIT_COMMIT_CREATED = NO
+UNREAL_RIG_STATUS = UNCHANGED_FROM_BASELINE
+```
+
+| Source | Property / path | Result |
+|---|---|---|
+| `PlayerMotionTracker.update()` | `params["speed_mps"]` | Authoritative source |
+| Character | `ExternalMotionActive` | New Boolean, Cinematics exposed, default false |
+| Character | `ExternalMotionSpeedMps` | New Float, Cinematics exposed, default 0.0 |
+| Sequence writer | Bool property track | 10/10 canonical players |
+| Sequence writer | Float property track | 10/10 canonical players, exact tracker keys |
+| Ball | Player motion properties | None |
+
+| ABP speed source | Status |
+|---|---|
+| CharacterMovement velocity | Existing path preserved |
+| Explicit external motion | Track producer complete; ABP consumer pending |
+| Auto Motion fallback | Existing path remains default true |
+| Existing canonical fallback | Preserved; no retired names restored |
+
+**Remaining manual gate:** In `ABP_FutsalPlayerBase` EventGraph, cache/read the canonical owning `BP_FutsalPlayerBase`, select `ExternalMotionSpeedMps` when CharacterMovement is inactive and `ExternalMotionActive` is true, then retain CharacterMovement priority, Auto Motion fallback, GroundSpeed `* 100`, Direction, ShouldMove, IsFalling, and all state-machine/BlendSpace wiring.
