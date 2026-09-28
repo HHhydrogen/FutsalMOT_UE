@@ -3901,6 +3901,78 @@ GIT_COMMIT_CREATED = NO
 
 ## BASE-2I — AUTHORITATIVE SEQUENCE MOTION SPEED CONTRACT
 
+### C++ Character Migration Continuation — 2026-09-28
+
+- Outer migration recovery commit before implementation: `9b24cd94fb199f5a69cf0d3961df47d5ca3b6476`; BASE-2I outer baseline: `6b35696fb82220074bc13bf4d82be1edbc77b135`; inner baseline: `9fe6a7c0dd84b0fccb613b5736d5d3f746e927d3`.
+- Installed VS 2022 Build Tools, MSVC 14.44, Windows SDK 10.0.22621, and UE-bundled .NET 10. UBT Editor build succeeded after setting the new Editor target to BuildSettingsVersion V7. Native automation tests passed 2/2: `ExternalMotionDefaultsAreInactiveAndZero`, `HorizontalSpeedUsesXYAndMetersPerSecond`.
+- Created and verified local recovery duplicate `/Game/FutsalMOT/Intermediate/CppMigrationBackup/BP_FutsalPlayerBase_BASE2I` before touching the canonical Blueprint. Backup retains the original Character parent, both motion variables, their category and false/zero defaults.
+- Removed the BP-owned declarations of `ExternalMotionActive` and `ExternalMotionSpeedMps` before reparenting, preventing reflected-name suffixing. Reparented canonical `BP_FutsalPlayerBase` to `/Script/FutsalMOT.FutsalPlayerBase`; Blueprint compile and `save_assets` returned successfully. Pre-save reads confirmed only `AnimationClassId` remained in the BP's own member-variable list, while inherited CDO reads returned exact properties and false/zero defaults.
+- Court readback after migration: ten `BP_FutsalPlayerBase_C` actors remain; labels, sampled transforms and `SKM_FutsalPlayerBase` mesh paths are preserved. `LS_Cam_01` reads 10 canonical player possessables, `Ball_01`, and `CineCam_01`. Official `run_task.py --mode sequence` passed after reparent. Every player has Transform, Bool `ExternalMotionActive`, and Float `ExternalMotionSpeedMps` tracks; ball/camera have Transform only.
+- Final post-restart MCP readback disconnected while querying parent/CDO. Earlier successful parent readback returned `/Script/FutsalMOT.FutsalPlayerBase`; current process still has Editor running. No claim is made that the final post-restart read succeeded.
+- **Functional gate remains:** `ABP_FutsalPlayerBase` has not been rewired to consume the explicit properties. Effective Motion Speed/GroundSpeed selection and sequential visual cadence remain unverified. Preserve all ABP state/ShouldMove/Direction/IsFalling/BlendSpace logic; next step is a local AnimBP speed-selector edit, followed by compile and sequential long-smoke validation.
+- UBT build succeeds, but its log still warns `Could not find NetFxSDK install dir` for SwarmInterface. VS Installer contains the .NET Framework reference assemblies but did not register/install the legacy `Microsoft SDKs\Windows\v10.0A\NetFxSDK` path. This does not block the C++ target build or native tests, but remains an environment issue.
+
+```text
+CPP_MIGRATION_PHASE = PARTIAL
+CPP_EDITOR_BUILD = PASS
+CPP_NATIVE_AUTOMATION_TESTS = 2/2 PASS
+CANONICAL_BP_VARIABLE_TRANSACTION = PASS; local backup retained
+CANONICAL_BP_PARENT = /Script/FutsalMOT.FutsalPlayerBase (pre-save readback PASS)
+CANONICAL_BP_COMPILE_AND_SAVE = PASS (UE API returned success)
+COURT_CANONICAL_PLAYERS = 10
+COURT_LABEL_TRANSFORM_MESH_PRESERVATION = PASS (readback before final MCP loss)
+OFFICIAL_SHORT_SEQUENCE = PASS after reparent
+SEQUENCE_EXTERNAL_ACTIVE_AND_SPEED_TRACKS = 10/10 players
+ABP_EXTERNAL_SPEED_CONSUMER = NOT CONNECTED
+LIVE_EFFECTIVE_SPEED_GROUND_SPEED = NOT VERIFIED
+VISUAL_SPEED_MATCH = NOT VERIFIED
+NETFXSDK_LEGACY_REGISTRATION = WARNING/BLOCKED; Editor C++ build unaffected
+OUTER_BASELINE = 6b35696fb82220074bc13bf4d82be1edbc77b135
+OUTER_MIGRATION_CHECKPOINT = 9b24cd94fb199f5a69cf0d3961df47d5ca3b6476
+INNER_BASELINE = 9fe6a7c0dd84b0fccb613b5736d5d3f746e927d3
+OUTER_GIT_STAGED_FILES = 0
+INNER_GIT_STAGED_FILES = 0
+GIT_COMMIT_CREATED = NO
+READY_FOR_RETIRED_RUNTIME_HARD_DELETE = NO
+UNREAL_RIG_SHA256 = DF49F074715CF3C5791FE37DA63ACF96A1C0E1060CC6A2D27CCB09442246436D (unchanged)
+```
+
+- C++ migration continuation — 2026-09-28: outer rollback checkpoint `6b35696fb82220074bc13bf4d82be1edbc77b135`, plan checkpoint `9b24cd94fb199f5a69cf0d3961df47d5ca3b6476`, and inner rollback checkpoint `9fe6a7c0dd84b0fccb613b5736d5d3f746e927d3` were verified before the native migration work. The protected `UNREAL_RIG.uasset` SHA-256 remains `DF49F074715CF3C5791FE37DA63ACF96A1C0E1060CC6A2D27CCB09442246436D`.
+- Installed Visual Studio Build Tools 2022, MSVC 14.44, and Windows SDK 10.0.22621. UBT target receipt initially caused Editor startup to exit because the Editor target used V5 shared settings; setting the new `FutsalMOTEditor.Target.cs` to V7 generated a compatible target receipt.
+- C++ Editor build: PASS (`FutsalMOTEditor Win64 Development`, UBT Result Succeeded). Native automation tests: PASS, 2/2 (`ExternalMotionDefaultsAreInactiveAndZero`, `HorizontalSpeedUsesXYAndMetersPerSecond`). Editor CDO reads exact native properties `ExternalMotionActive=false`, `ExternalMotionSpeedMps=0.0`.
+- A verified local UE backup package was created at `/Game/FutsalMOT/Intermediate/CppMigrationBackup/BP_FutsalPlayerBase_BASE2I`. Before changing the canonical Blueprint, its original parent, colliding variable names/defaults/categories were inspected. The Editor reflection API did not expose every raw Blueprint variable flag; the asset backup was retained as the transactional recovery source.
+- `BP_FutsalPlayerBase` was transactionally changed to parent `/Script/FutsalMOT.FutsalPlayerBase`. Its Blueprint-owned declarations of `ExternalMotionActive` and `ExternalMotionSpeedMps` were removed before reparenting, preventing suffix renaming. The BP compiled and saved; inherited properties retain exact names and defaults false/zero.
+- Court remains ten `BP_FutsalPlayerBase_C` actors. Read-only checks confirmed canonical `SKM_FutsalPlayerBase` meshes and unchanged transforms/labels. `LS_Cam_01` possessables still resolve ten canonical player classes, `Ball_01`, and `CineCam_01`.
+- The official short smoke sequence was regenerated with the updated inner writer. Each of the ten player bindings has Transform, Bool `ExternalMotionActive`, and Float `ExternalMotionSpeedMps` tracks; Ball and camera have Transform only. Player_R0 sequence speed keys remain `[0.0, 0.0, 0.7907080054]` m/s.
+- **Remaining functional gate:** `ABP_FutsalPlayerBase` has not yet been connected to read `ExternalMotionActive` / `ExternalMotionSpeedMps`; therefore the new Sequence speed is produced and bound but not yet established as the ABP-selected GroundSpeed magnitude. Existing Auto Motion and the repaired ShouldMove graph remain unchanged. Do not claim authoritative-speed visual matching or hard-delete readiness until ABP selection, effective GroundSpeed, active locomotion, stationary Idle, and visual cadence are verified.
+- Unreal Editor is currently open on the Court. Source-control state is recorded below; no migration commit or push was made. Existing unrelated workspace deletions/untracked actors and prior `UNREAL_RIG` modification remain preserved.
+
+```text
+CPP_MIGRATION_PHASE = PARTIAL
+RECOVERY_OUTER_BASELINE = 6b35696fb82220074bc13bf4d82be1edbc77b135
+RECOVERY_PLAN_CHECKPOINT = 9b24cd94fb199f5a69cf0d3961df47d5ca3b6476
+RECOVERY_INNER_BASELINE = 9fe6a7c0dd84b0fccb613b5736d5d3f746e927d3
+VS2022_MSVC_SDK_CONFIG = PASS
+NETFXSDK_UBT_REGISTRATION = BLOCKED (VS installer did not install/register legacy NetFxSDK path on Windows 11 25H2)
+CPP_EDITOR_BUILD = PASS
+CPP_NATIVE_AUTOMATION_TESTS = 2/2 PASS
+NATIVE_CLASS_CDO_PROPERTIES = exact names; defaults false/0 verified
+BLUEPRINT_VARIABLE_COLLISION_TRANSACTION = PASS (local backup retained)
+CANONICAL_BP_PARENT = /Script/FutsalMOT.FutsalPlayerBase
+CANONICAL_BP_COMPILE = PASS
+CANONICAL_ABP_COMPILE = PASS (no ABP graph changes in this continuation)
+COURT_CANONICAL_PLAYER_COUNT = 10
+COURT_MESH_AND_TRANSFORM_PRESERVATION = PASS
+SEQUENCE_PROPERTY_TRACKS = 10/10 players; Ball excluded
+ABP_EXTERNAL_SPEED_CONSUMER = NOT CONNECTED
+AUTHORITATIVE_SPEED_ANIMATION_VALIDATION = NOT COMPLETE
+READY_FOR_RETIRED_RUNTIME_HARD_DELETE = NO
+GIT_COMMIT_CREATED = NO
+UNREAL_RIG_STATUS = UNCHANGED_FROM_BASELINE_HASH
+```
+
+- Remaining ABP graph task: use a GUI/manual local EventGraph edit (the graph DSL is empty and K2 graph automation is not reliable in this environment). Cache the owning `AFutsalPlayerBase`; preserve CharacterMovement speed priority; when CharacterMovement is below its existing threshold and `ExternalMotionActive` is true, select `ExternalMotionSpeedMps`; otherwise retain existing Auto Motion and canonical fallback selection. Keep Direction, ShouldMove, IsFalling, Jump/Fall/Land, BlendSpace, and ControlRig unchanged. Compile/save ABP, regenerate the smoke Sequence, verify GroundSpeed equals selected m/s × 100, then evaluate moving/stationary sequential playback and visual cadence.
+
 - 日期：2026-09-27
 - `PlayerMotionTracker.update()` is the authoritative speed source. The official sequence writer now uses the same tracker result used for yaw to write `ExternalMotionSpeedMps`.
 - `BP_FutsalPlayerBase` now contains `ExternalMotionActive` (Boolean, default `false`) and `ExternalMotionSpeedMps` (Float, default `0.0`). Both are in `Animation | External Motion` and exposed to Cinematics. Character compile passed.
