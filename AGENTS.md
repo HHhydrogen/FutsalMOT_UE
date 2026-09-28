@@ -63,7 +63,7 @@ git push origin master
 
 ## 外层 UE 项目（本层工作）
 
-- **纯蓝图项目**：无 `Source/`（无 C++），引擎 `5.8`（见 `.uproject`）。改动基本是 `.uasset`/`.umap` 二进制资产，git diff 无法阅读内容。
+- **C++ 优先项目**：项目使用 Unreal Engine 5.8，已有 `Source/` runtime module、`AFutsalPlayerBase` 和 `UFutsalPlayerAnimInstance`。后续新增运行时逻辑、稳定的数据契约、跨 Blueprint 复用的行为和需要自动化测试的功能，优先使用 C++ 实现；只有在 C++、Python 或 MCP 无法覆盖，或功能明确属于资产编排/视觉配置时，才使用 Blueprint。AnimGraph、BlendSpace、状态机、Control Rig、材质参数和一次性资产配置仍可保留在资产侧。
 - 启用的插件：ModelingToolsEditorMode、GameplayStateTree、MovieRenderPipeline、MoviePipelineMaskRenderPass、ModelContextProtocol、AllToolsets、FutsalMOTMCP。
 - 当前资产地图为 `/Game/FutsalMOT/Maps/L_FutsalCourt`；`Config/DefaultEngine.ini` 仍将 Editor/Game 默认地图指向不存在的 `L_Futsal_Demo`，执行 UE 任务前必须显式核验当前 Level 和地图配置。
 - **Fab 资产目录 `Content/Fab/` 被 gitignore 忽略**——不要在仓库里提交下载的资产；要把资产真正纳入项目，应在 UE 内容浏览器中移动到 Fab 之外（如 `Content/FutsalMOT/`），UE 会自动修引用。不要用文件资源管理器剪切（会断引用）。
@@ -101,6 +101,15 @@ git push origin master
 
 ### Agent 行为规范
 
+### C++ 优先决策规则
+
+- 新增运行时系统、Actor/Component 行为、动画数据采集、轨迹播放适配、状态同步、输入契约和可复用工具时，先设计 C++ API 和自动化测试边界，再决定是否需要 Blueprint 暴露属性或事件。
+- 现有 Blueprint 只有在满足以下条件之一时才继续扩展：UE API 只通过 Blueprint 暴露；功能是 AnimGraph、BlendSpace、状态机、Control Rig、材质/镜头/Sequence 配置；或必须由设计资产直接编辑才能完成。
+- 不要为了“纯 C++”重写已经稳定且适合资产表达的 Pose 组装图、状态机、动画资源引用、FootIK Control Rig 或相机关键帧。
+- 当 C++ 与 Blueprint 都可实现时，优先 C++，并把 Blueprint 限制为数据配置、资产引用和必要的编辑器暴露层。
+- C++ 改动必须先验证 module/build、反射属性名称、Blueprint parent/接口兼容性和现有资产引用；未经验证不得直接重设 canonical Blueprint parent 或删除旧变量。
+- C++ 编译、UE Editor reload、Blueprint compile 和运行时验证是不同门槛；一个通过不代表其它门槛自动通过。
+
 ### Unreal MCP 调用规范（已验证）
 
 以下规则用于避免 MCP 工具路由和 Unreal Python API 兼容性错误：
@@ -115,6 +124,23 @@ git push origin master
 - **UE 5.8 Python API 兼容性**：本项目已验证 `unreal.EditorLevelLibrary.get_editor_world()` 和 `get_all_level_actors()` 可用但会产生弃用警告。不要未经验证地假设 `unreal.UnrealEditorSubsystem` 等 Subsystem 类型名在当前环境可用；切换 API 前先用 `run_python_code` 做最小存在性检查。失败时优先回退到已验证 API，不要把 API 名称猜测混入大型脚本。
 - Python 诊断脚本应保持小而单一用途，并对单个属性/绑定查询使用 `try/except`，避免一个兼容性问题导致整段验证结果丢失。输出结构化 JSON，便于读取 `returnValue.log`。
 - 只读验证不得调用 `add_to_scene_from_*`、`remove_from_scene`、`set_actor_transform`、`set_properties`、`save_assets`、`delete`、`move`、`duplicate` 或其他写操作工具。
+
+### UE MCP 使用细节与已验证限制
+
+- **先描述再调用**：新工具必须先调用 `unreal_describe_toolset` 确认 schema。`toolset_name` 使用完整注册名，`tool_name` 使用 schema 中的短名；不要把显示名称中的模块前缀直接传给 `unreal_call_tool`。
+- **资产路径和 UObject 引用分离**：`AssetTools.exists/find_assets/get_asset_class/get_asset_tags/get_dependencies/get_referencers` 接收字符串路径；需要对象引用的参数必须先 `load_asset`，再把返回的 `{ "refPath": ... }` 原样传递。不要手工构造 `refPath`。
+- **地图状态先核验**：`SceneTools.get_current_level` 是只读首选。如果 `SceneTools.load_level` 报地图不存在，但磁盘 `.umap` 存在且 `unreal.load_asset` 能加载 `World`，这是当前 UE 5.8 AssetTools/AssetData 兼容性表现；可用 `FutsalMOTTools.run_python_code` 通过已验证的 `unreal.EditorLoadingAndSavingUtils.load_map` 回退加载，再重新调用 `get_current_level` 和读取 Actor。地图未加载成功前不得移动、删除或保存关卡资产。
+- **地图/Actor 外部包**：关卡中的 External Actors 会作为 `/Game/__ExternalActors__/...` 反向引用出现。角色 Blueprint、AnimBP、Mesh 或 Sequence 的 referencer 不能只看主 `.umap` 路径，必须同时检查 External Actors。
+- **Sequencer 查询**：先 `find_assets` 查找 `LevelSequence`，再 `load_asset`。真实 UE Python 可读取 `seq.get_bindings()`、`binding.get_display_name()`、`binding.get_possessed_object_class()`、`binding.get_tracks()` 和播放范围。验证正式序列时，要求球员绑定数量、名称、class、相机绑定、Camera Cut、播放帧率/范围和关键轨道都通过。
+- **Sequencer 重绑限制**：当前 UE 5.8 Python `SequencerBindingProxy` 暴露读取、添加轨道、移动绑定内容和删除绑定等能力，但没有可靠的“原位重绑现有 possessable 并保留 GUID/全部轨道”的通用接口。若需要更换绑定 class，优先复制新 Sequence、迁移轨道到当前 Actor、逐项对比相机/轨道后再替换旧资产；不得未经验证删除并重建绑定。
+- **相机属性读取**：CineCamera 的 `current_focal_length`、`field_of_view`、`aspect_ratio` 可能无法由原生 ObjectTools 正确序列化。使用真实 UE Python 的 `get_editor_property` 读取；Filmback 通过 `filmback.sensor_width/sensor_height` 核对。相机位置/旋转、焦距、Filmback、分辨率和关键帧应分别记录。
+- **AssetTools 删除限制**：`AssetTools.delete`、`EditorAssetLibrary.delete_asset` 或 `EditorAssetSubsystem.delete_loaded_asset` 返回 `false` 时，不得改用文件系统删除 `.uasset`。先检查 `can_edit_asset/is_checked_out/is_dirty/get_referencers`、打开的资产编辑器和 UE 日志；如果仍无法删除，保留资产并报告 Editor API 限制。
+- **移动/重命名闭包**：项目自有资产必须通过 AssetTools move/rename，让 UE 更新引用；移动后重新查询新路径的 referencers、Blueprint/AnimBP 加载状态和代码/配置软路径。不要用文件管理器剪切 `.uasset`。
+- **模板和共享资产保护**：`/Game/Characters/Mannequins/**`、贴图、材质、网格、骨架、物理资产和共享 Pose/MRQ 依赖不能因零引用统计而自动删除。全项目减重必须结合硬引用、软引用、管理引用、搜索名称和文本配置扫描。
+- **真实 UE Python 与 sandbox 隔离**：`FutsalMOTTools.run_python_code/run_python_file` 才能执行 `import unreal`；`ProgrammaticToolset.execute_tool_script` 只用于组合 MCP 工具，禁止在其中运行项目 UE Python。
+- **诊断脚本保持单一用途**：小型诊断输出结构化 JSON，并对单个属性/绑定使用 `try/except`。完整流程写入项目内 `.py` 文件后使用 `run_python_file`，不要把多步骤资产迁移塞进 `run_python_code`。
+- **失败闭环**：任何 UE Python/MCP 调用失败，先读 `success/result/log`，再查询 `LogPython`、`LogBlueprint`、`LogMovieRenderPipeline`、`LogModelContextProtocol`；修复后重试。不要把第一次异常直接转交用户。
+- **验证结果新鲜性**：声称编译、测试、资产存在、绑定正确或删除成功前，必须在当前状态重新执行对应命令/查询，并记录实际返回结果。历史日志只能作为背景，不能替代当前验证。
 
 **UE 任务默认执行顺序**：对任何 Unreal Engine 相关开发、调试、验证任务，默认按以下闭环执行：
 
