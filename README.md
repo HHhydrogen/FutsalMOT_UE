@@ -10,6 +10,12 @@
 - 动画蓝图继续负责 AnimGraph、Locomotion/Main States 状态机、动画资源和 FootIK ControlRig；C++ AnimInstance 负责初始化及逐帧动画数据更新。
 - 已完成人工 FootIK Alpha=0 对照验收，确认 FootIK 地面追踪/PBIK 是 Sequencer 驱动位移下下肢异常的主要来源；当前结果作为本阶段验收状态保留。
 
+## MPFB Player_N 生产流程
+
+后续 MPFB Player_N 角色的 Blender、FBX、UE Skeleton、材质、纹理和 Runtime Smoke Test 应遵循 [MPFB Player Production SOP](Docs/MPFB_PLAYER_PRODUCTION_SOP.md)。该 SOP 以 Player_002 成功生产提交 `1ceadab` 为参考，固定共享 MPFB Core v1 Skeleton/Retarget/AnimBP，允许每个角色独立选择身高、体型、皮肤、发型、衣服和鞋子。
+
+关键约束：源人物使用 `METRIC / METERS / 1.0`，仅临时 Export Copy 做 meter-to-centimeter 数据转换；UE 角色共享 `/Game/FutsalMOT/Characters/MPFB/Core/Skeleton/SKEL_MPFB_Base` 和 `/Game/FutsalMOT/Characters/MPFB/Core/Retarget/ABP_MPFB_RuntimeRetarget`，不为单个 Player 创建独立 Skeleton、IK Rig、Retargeter 或 Runtime AnimBP。
+
 动画相关资产路径：
 
 ```text

@@ -63,6 +63,14 @@ git push origin master
 
 ## 外层 UE 项目（本层工作）
 
+### MPFB Player_N 生产 SOP
+
+新增或维护 MPFB Player_N 时，必须先阅读并遵循 [MPFB Player Production SOP](Docs/MPFB_PLAYER_PRODUCTION_SOP.md)。该文档固化了已通过验收的 Player_002 流程：每个角色可独立使用身高、体型和外观设计，但所有角色共享 MPFB Core v1 的 `SKEL_MPFB_Base`、`IKR_MPFB_Base`、`RTG_FutsalPlayerBase_To_MPFB` 和 `ABP_MPFB_RuntimeRetarget`。
+
+生产流程的固定边界是：源 Blender 使用 `METRIC / METERS / 1.0`；原始 Human/Rig 保持 `1,1,1`；只在临时 Export Copy 对 Mesh、Armature Data 和 Shape Keys 做厘米坐标转换；FBX wrapper 必须为 `Human_rig`；实际使用纹理必须显式复制到 `export/Textures/` 并在 UE 中单独导入。不要把 Player_002 的 Average 体型或固定身高当作后续角色的兼容性标准。
+
+SOP 中标记为 `NOT VERIFIED` 的 UE Import Data 或 Blender Axis/Apply Transform 参数不得凭经验猜测；使用最后一次人工验证的导入预设。UE 5.8 同一类 Python/MCP API 连续失败两次后停止并转为 `MANUAL_REQUIRED`，不要继续尝试反射 API。
+
 - **C++ 优先项目**：项目使用 Unreal Engine 5.8，已有 `Source/` runtime module、`AFutsalPlayerBase` 和 `UFutsalPlayerAnimInstance`。后续新增运行时逻辑、稳定的数据契约、跨 Blueprint 复用的行为和需要自动化测试的功能，优先使用 C++ 实现；只有在 C++、Python 或 MCP 无法覆盖，或功能明确属于资产编排/视觉配置时，才使用 Blueprint。AnimGraph、BlendSpace、状态机、Control Rig、材质参数和一次性资产配置仍可保留在资产侧。
 - 启用的插件：ModelingToolsEditorMode、GameplayStateTree、MovieRenderPipeline、MoviePipelineMaskRenderPass、ModelContextProtocol、AllToolsets、FutsalMOTMCP。
 - 当前资产地图为 `/Game/FutsalMOT/Maps/L_FutsalCourt`；`Config/DefaultEngine.ini` 仍将 Editor/Game 默认地图指向不存在的 `L_Futsal_Demo`，执行 UE 任务前必须显式核验当前 Level 和地图配置。
