@@ -5,6 +5,18 @@
       "type": "remote",
       "url": "http://127.0.0.1:8000/mcp",
       "enabled": true
+    },
+    "blender": {
+      "type": "local",
+      "command": [
+        "uv",
+        "run",
+        "--directory",
+        "C:\\Users\\20113\\.config\\opencode\\vendor\\blender_mcp\\mcp",
+        "blender-mcp"
+      ],
+      "enabled": true,
+      "timeout": 600000
     }
   },
   "experimental": {

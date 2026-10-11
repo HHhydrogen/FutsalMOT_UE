@@ -8,11 +8,6 @@
 			"Name": "FutsalMOT",
 			"Type": "Runtime",
 			"LoadingPhase": "Default"
-		},
-		{
-			"Name": "FutsalMOTEditor",
-			"Type": "Editor",
-			"LoadingPhase": "Default"
 		}
 	],
 	"Plugins": [
