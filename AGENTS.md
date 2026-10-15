@@ -74,6 +74,8 @@ SOP 中标记为 `NOT VERIFIED` 的 UE Import Data 或 Blender Axis/Apply Transf
 - **C++ 优先项目**：项目使用 Unreal Engine 5.8，已有 `Source/` runtime module、`AFutsalPlayerBase` 和 `UFutsalPlayerAnimInstance`。后续新增运行时逻辑、稳定的数据契约、跨 Blueprint 复用的行为和需要自动化测试的功能，优先使用 C++ 实现；只有在 C++、Python 或 MCP 无法覆盖，或功能明确属于资产编排/视觉配置时，才使用 Blueprint。AnimGraph、BlendSpace、状态机、Control Rig、材质参数和一次性资产配置仍可保留在资产侧。
 - 启用的插件：ModelingToolsEditorMode、GameplayStateTree、MovieRenderPipeline、MoviePipelineMaskRenderPass、ModelContextProtocol、AllToolsets、FutsalMOTMCP。
 - 当前资产地图为 `/Game/FutsalMOT/Maps/L_FutsalCourt`；`Config/DefaultEngine.ini` 仍将 Editor/Game 默认地图指向不存在的 `L_Futsal_Demo`，执行 UE 任务前必须显式核验当前 Level 和地图配置。
+- **地图切换与 UWorld 生命周期**：地图切换必须通过 Unreal MCP 原生 `SceneTools.load_level`。切勿在切图期间通过 `unreal.load_asset()` 或 `unreal.load_object()` 取得或保留 `UWorld`；UE 5.8 在该 World 引用仍存活时调用 `EditorLoadingAndSavingUtils.load_map()` 可能触发 `World Memory Leaks` 断言并崩溃。`load_level` 返回后，另发一个独立的只读调用核验当前 Level 和所需 Actor。若原生 `load_level` 不可用，停止并报告 `MANUAL_REQUIRED`，不得猜测 Python 切图回退方案。
+- **episode appearance 前置门禁**：执行 apply 或 restore 前，必须先运行只读 appearance 诊断，并确认当前 Level 精确为 `/Game/FutsalMOT/Maps/L_FutsalCourt`、十名映射球员各自唯一且存在、Actor/资产 package clean、关键资产存在且 class 符合。诊断未通过或信息不完整时，不得开始外观 apply/restore、Task 7 mutation 或 MRQ。
 - **Fab 资产目录 `Content/Fab/` 被 gitignore 忽略**——不要在仓库里提交下载的资产；要把资产真正纳入项目，应在 UE 内容浏览器中移动到 Fab 之外（如 `Content/FutsalMOT/`），UE 会自动修引用。不要用文件资源管理器剪切（会断引用）。
 - `Saved/`、`Intermediate/`、`DerivedDataCache/` 均为本地生成物，被忽略，不要提交。
 
@@ -137,7 +139,7 @@ SOP 中标记为 `NOT VERIFIED` 的 UE Import Data 或 Blender Axis/Apply Transf
 
 - **先描述再调用**：新工具必须先调用 `unreal_describe_toolset` 确认 schema。`toolset_name` 使用完整注册名，`tool_name` 使用 schema 中的短名；不要把显示名称中的模块前缀直接传给 `unreal_call_tool`。
 - **资产路径和 UObject 引用分离**：`AssetTools.exists/find_assets/get_asset_class/get_asset_tags/get_dependencies/get_referencers` 接收字符串路径；需要对象引用的参数必须先 `load_asset`，再把返回的 `{ "refPath": ... }` 原样传递。不要手工构造 `refPath`。
-- **地图状态先核验**：`SceneTools.get_current_level` 是只读首选。如果 `SceneTools.load_level` 报地图不存在，但磁盘 `.umap` 存在且 `unreal.load_asset` 能加载 `World`，这是当前 UE 5.8 AssetTools/AssetData 兼容性表现；可用 `FutsalMOTTools.run_python_code` 通过已验证的 `unreal.EditorLoadingAndSavingUtils.load_map` 回退加载，再重新调用 `get_current_level` 和读取 Actor。地图未加载成功前不得移动、删除或保存关卡资产。
+- **地图状态先核验**：`SceneTools.get_current_level` 是只读首选。地图切换只使用原生 `SceneTools.load_level`；切换调用返回后，在独立调用中重新核验 `get_current_level` 和 Actor。禁止在切图过程中持有由 `unreal.load_asset()` / `unreal.load_object()` 获得的 `UWorld`，禁止用 `EditorLoadingAndSavingUtils.load_map()` 猜测回退。若原生加载不可用，停止并报告 `MANUAL_REQUIRED`。地图未加载并独立核验成功前不得修改关卡资产。
 - **地图/Actor 外部包**：关卡中的 External Actors 会作为 `/Game/__ExternalActors__/...` 反向引用出现。角色 Blueprint、AnimBP、Mesh 或 Sequence 的 referencer 不能只看主 `.umap` 路径，必须同时检查 External Actors。
 - **Sequencer 查询**：先 `find_assets` 查找 `LevelSequence`，再 `load_asset`。真实 UE Python 可读取 `seq.get_bindings()`、`binding.get_display_name()`、`binding.get_possessed_object_class()`、`binding.get_tracks()` 和播放范围。验证正式序列时，要求球员绑定数量、名称、class、相机绑定、Camera Cut、播放帧率/范围和关键轨道都通过。
 - **Sequencer 重绑限制**：当前 UE 5.8 Python `SequencerBindingProxy` 暴露读取、添加轨道、移动绑定内容和删除绑定等能力，但没有可靠的“原位重绑现有 possessable 并保留 GUID/全部轨道”的通用接口。若需要更换绑定 class，优先复制新 Sequence、迁移轨道到当前 Actor、逐项对比相机/轨道后再替换旧资产；不得未经验证删除并重建绑定。
