@@ -11,9 +11,9 @@
 - UE AutoSave关闭，默认地图指向正式球场。G盘旧staging/work/速度试验、过时文档及UE可再生缓存已清理；关键生产来源和未完成号码开发保留。
 - 基准full，其余quick/basic如实保留，不声称全部逐帧像素审计。
 
-## 正在推进
+## 已完成的代码发布与GPU试验
 
-本轮发布包括数据结构、生产优化、研究入口和文档更新，排除未完成号码实现。内层main先测试并push，再更新外层gitlink推master。独立无号码发布树1710项Python测试通过；干净UE工程构建成功，4项PNG输出自动化测试通过。
+本轮数据结构、生产优化、研究入口和文档已推送：内层main为63b197c，外层master为120c55b，排除未完成号码实现。独立无号码发布树1710项Python测试通过；干净UE工程构建成功，4项PNG输出自动化测试通过。
 
 GPU实验明确检验“合成数据能否在固定真实标注和计算预算下，提高真实足球的检测与多目标追踪”。A预训练、B仅真实、C真实加合成，统一GPU和检测/追踪协议，最终test保留。
 
@@ -21,10 +21,14 @@ GPU实验明确检验“合成数据能否在固定真实标注和计算预算�
 
 GPU执行入口为内层experiments/sim2real/run_serial_pilot.ps1的Gpu阶段；实时输出及启动凭证保存在研究目录comparison，不把启动描述为已经取得增益结论。600张C训练图像的派生标签路径已按实际Ultralytics读入规则核验。
 
+A/B/C同GPU检测、ByteTrack和TrackEval已完成。C首次训练在第1轮后被Windows重启中断，System事件1074与日志终点一致；未完成运行已封存在研究目录runs/incomplete_attempts。最终C使用冻结输入及原始预训练权重，完整执行750次更新，不接续残缺预算。研究目录comparison/gpu_production8_retry_state.json终态complete；旧comparison摘要已归档history/pre_production8。
+
+C相对B：AP50–95下降4.29个百分点、HOTA下降1.57个百分点；AP50上升1.20个百分点、IDF1上升0.19个百分点，IDSW由5降为2。不能声称整体提升或统计显著性。详细结果及证据边界见[首轮试验结果](Docs/PRODUCTION8_PILOT_RESULTS.md)。最终test未使用，UE保持关闭，当前没有训练任务运行。
+
 ## 后续
 
-1. 完成同设备A/B/C检测、ByteTrack和TrackEval，报告正负变化与小样本限制。
-2. 扩大比赛数、训练seed、数据规模及天气/外观消融。
+1. 固定下一轮比例、真实曝光控制与框语义对齐消融，检查定位域差异；不从当前小样本结果挑选有利结论。
+2. 扩大比赛数、训练seed、数据规模及天气/外观消融；协议固定后评估封存test。
 3. 继续号码贴合、遮挡、RGB/mask/bbox同步验收；本次不提交号码代码或资产。
 4. 有真实五人制标注后再验证目标场景收益。
 

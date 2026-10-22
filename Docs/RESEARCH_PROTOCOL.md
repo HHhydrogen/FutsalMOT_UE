@@ -17,3 +17,5 @@ A/B/C统一GPU和真实val，固定ByteTrack及阈值。检测报告AP50、AP50�
 唯一代码入口在内层experiments/sim2real，数据、权重和结果在D:/projects/FutsalMOT_Research。UE与GPU训练串行；最终test不调参。启动训练不代表已经证明合成收益。
 
 发表前应扩大独立比赛、至少多个训练seed、真实预算与合成规模曲线，并做天气/外观消融，报告均值方差。号码相关收益待号码系统完成后另验。
+
+首轮A/B/C已完成，750次更新凭证和同GPU评估齐全；结果有正有负，未证明整体提升。数值、限制与后续控制见[八天气首轮试验结果](PRODUCTION8_PILOT_RESULTS.md)，最终test继续封存。
