@@ -19,6 +19,7 @@ Build/
 # UE 5 auto-generated build files
 *.target.cs
 *.Target.cs
+!Source/*.Target.cs
 *.uprojectdirs
 
 # Crash / logs
@@ -41,3 +42,7 @@ Content/Fab/
 # Python bytecode / cache
 __pycache__/
 *.pyc
+
+# 正式批次按轨迹重建的临时Sequence；共享地图/角色资产仍按原规则管理。
+Content/FutsalMOT/Generated/DatasetV1/
+Content/FutsalMOT/Generated/SpeedTrials/

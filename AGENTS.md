@@ -1,5 +1,16 @@
 # AGENTS.md
 
+## 当前批次与清理边界（2026-10-22）
+
+- 无号码4K正式批次已完成8组、八天气、32相机序列，20116 RGB及同数mask。旧16/32组计划不再执行。
+- 正式数据仅位于`G:/FutsalMOT_Dataset/v1_no_numbers_4k`，布局为`groups/seed_XXXXXXXX/cameras/`；读取group的clip引用，不硬编码`clips/clip_000`或父目录深度。
+- 研究代码在内层`experiments/sim2real`，数据和GPU结果在`D:/projects/FutsalMOT_Research`。研究images目录联接到正式RGB，禁止递归跟随联接清理源数据。
+- UE渲染与GPU训练串行；全部本轮完成、Editor安全退出后才能启动GPU实验。比较固定真实标注及更新预算的真实/真实加合成对照，不预设提升。
+- AutoSave通过项目DefaultEditorPerProjectUserSettings和本机配置关闭；默认地图为L_FutsalCourt。
+- 删除临时资产先核对引用，再通过UE API执行；不从文件系统删除uasset。删除Saved、缓存或数据根其他目录时先核验绝对边界，不跟随junction；保留生产轨迹、冻结代码、关键收据及未完成号码开发。
+- 已结束持久生产会话可保留其自有dirty包，但后续操作必须匹配checkpoint且无范围外改动，不能将retained伪装成restored。
+- 用户当前明确要求的提交/推送视为本轮授权，不重复索要确认；未授权时仍遵循下方默认限制。未完成号码实现与资产不纳入本轮提交。
+
 ## 仓库结构：两个独立 Git 仓库，外层通过 submodule 链接内层
 
 本项目包含两个独立 Git 仓库，版本历史和提交边界完全分离。外层通过 Git submodule 记录内层仓库的 commit，不把内层 Python 文件复制进外层索引：
@@ -73,7 +84,7 @@ SOP 中标记为 `NOT VERIFIED` 的 UE Import Data 或 Blender Axis/Apply Transf
 
 - **C++ 优先项目**：项目使用 Unreal Engine 5.8，已有 `Source/` runtime module、`AFutsalPlayerBase` 和 `UFutsalPlayerAnimInstance`。后续新增运行时逻辑、稳定的数据契约、跨 Blueprint 复用的行为和需要自动化测试的功能，优先使用 C++ 实现；只有在 C++、Python 或 MCP 无法覆盖，或功能明确属于资产编排/视觉配置时，才使用 Blueprint。AnimGraph、BlendSpace、状态机、Control Rig、材质参数和一次性资产配置仍可保留在资产侧。
 - 启用的插件：ModelingToolsEditorMode、GameplayStateTree、MovieRenderPipeline、MoviePipelineMaskRenderPass、ModelContextProtocol、AllToolsets、FutsalMOTMCP。
-- 当前资产地图为 `/Game/FutsalMOT/Maps/L_FutsalCourt`；`Config/DefaultEngine.ini` 仍将 Editor/Game 默认地图指向不存在的 `L_Futsal_Demo`，执行 UE 任务前必须显式核验当前 Level 和地图配置。
+- 当前资产地图及Editor/Game默认地图均为 `/Game/FutsalMOT/Maps/L_FutsalCourt`；执行UE任务前仍须显式核验当前Level。
 - **地图切换与 UWorld 生命周期**：地图切换必须通过 Unreal MCP 原生 `SceneTools.load_level`。切勿在切图期间通过 `unreal.load_asset()` 或 `unreal.load_object()` 取得或保留 `UWorld`；UE 5.8 在该 World 引用仍存活时调用 `EditorLoadingAndSavingUtils.load_map()` 可能触发 `World Memory Leaks` 断言并崩溃。`load_level` 返回后，另发一个独立的只读调用核验当前 Level 和所需 Actor。若原生 `load_level` 不可用，停止并报告 `MANUAL_REQUIRED`，不得猜测 Python 切图回退方案。
 - **episode appearance 前置门禁**：执行 apply 或 restore 前，必须先运行只读 appearance 诊断，并确认当前 Level 精确为 `/Game/FutsalMOT/Maps/L_FutsalCourt`、十名映射球员各自唯一且存在、Actor/资产 package clean、关键资产存在且 class 符合。诊断未通过或信息不完整时，不得开始外观 apply/restore、Task 7 mutation 或 MRQ。
 - **Fab 资产目录 `Content/Fab/` 被 gitignore 忽略**——不要在仓库里提交下载的资产；要把资产真正纳入项目，应在 UE 内容浏览器中移动到 Fab 之外（如 `Content/FutsalMOT/`），UE 会自动修引用。不要用文件资源管理器剪切（会断引用）。
@@ -110,6 +121,24 @@ SOP 中标记为 `NOT VERIFIED` 的 UE Import Data 或 Blender Axis/Apply Transf
 - UE 日志可通过 Unreal MCP 的 **Logs Toolset** 查询，重点类别：`LogPython`、`LogBlueprint`、`LogMovieRenderPipeline`、`LogModelContextProtocol`。
 
 ### Agent 行为规范
+
+### UE 自动重启与 MCP 重连
+
+- 当 UE 5.8 因 C++ module、插件、Python Toolset 或 Editor 状态必须重启时，Agent 应优先自行完成重启闭环，不要默认要求用户手动关闭、重新打开或复制命令。
+- 重启前必须只读检查当前 Level、PIE/Simulate 状态、MRQ 是否运行、dirty packages、打开的关键资产和未完成的 appearance rollback/application report。存在未保存用户改动、运行中的 MRQ 或无法确认的高风险状态时，停止并报告 `MANUAL_REQUIRED`，不得强制结束 Editor。
+- 可安全重启时，按以下顺序执行：停止可停止的 PIE/MRQ 会话；关闭 Unreal Editor；使用当前项目绑定的 UE 5.8 工具链重新编译所需 target；从项目 `.uproject` 启动 Editor；等待项目插件和 `FutsalMOTMCP` 初始化；通过 MCP 重新连接并继续任务。
+- 重启后的成功条件必须用新鲜状态核验：`FutsalMOT` module 在 UE 日志中成功加载；没有 `Incompatible or missing module`、`Still incompatible or missing module`、`different engine version` 或编译失败；MCP toolset 可列出；`FutsalMOTTools.run_python_code` 或 `run_python_file` 可执行；当前 Level、关键 Actor 和 dirty package 状态符合任务门禁。
+- MCP 会话重启后可能需要等待并重试连接。重试期间读取新的 UE `LogModuleManager`、`LogPython`、`LogModelContextProtocol` 和相关构建日志；不得用历史日志替代本次启动证据。连接无法恢复或同一类启动/API 操作连续失败两次时，停止并报告 `MANUAL_REQUIRED`，不要继续猜测重连方式。
+- 重启验证只证明 Editor/module/MCP 生命周期恢复，不等于地图、Blueprint、Sequence、资产、MRQ 或视觉契约已经通过；恢复后仍必须重新执行对应的只读诊断。
+
+### 截图与多模态视觉验收
+
+- UE 视觉验收应优先由 Agent 通过 Unreal MCP 获取当前视口或编辑器截图，并使用模型多模态能力检查；不要默认要求用户手工逐张查看或手动执行截图命令。
+- 截图验收必须绑定明确的 Level、camera、Sequence、frame index、分辨率和渲染状态。对 RGB、Instance-ID mask、jersey-number mask 或 Pose overlay，优先获取同一 camera/frame 的配对截图或对应本地图像文件。
+- 球衣号码至少检查：背面号码可见；正面号码为空；身体或其他 Actor 遮挡时号码 mask 正确消失；号码位置、朝向、缩放和背部贴合合理；号码跟随 `spine_03` 或等效共享骨骼运动；十名球员号码与 manifest 唯一且一致。
+- 多模态截图只能证明可见的视觉现象，不能单独证明数据契约。必须同时读取 PNG/EXR 可用的像素统计、`annotations.jsonl`、`render_summary.json`、manifest、frame index 和 UE 日志，程序化核验 mask 非零像素、号码 bbox tight bounds、帧集合、分辨率以及 RGB/mask/pose 同步。
+- 截图与像素/JSON/日志证据不一致、截图缺失、画面无法判断遮挡或帧身份、或截图接口失败时，验收保持 fail-closed；不得据此创建正式号码资产、执行 appearance mutation、提交正式 MRQ 或切换 v2 smoke config。
+- 视觉验收通过后仍需重新执行 appearance preflight、资产 class/package clean、restore 和 MRQ 完整性检查。截图通过不替代 `task audit`、annotation validator、manifest 校验或 restore evidence。
 
 ### C++ 优先决策规则
 

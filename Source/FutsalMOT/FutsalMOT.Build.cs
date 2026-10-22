@@ -15,7 +15,9 @@ public class FutsalMOT : ModuleRules
 				"CoreUObject",
 				"Engine",
 				"AnimGraphRuntime",
-				"InputCore"
+				"InputCore",
+				"MovieRenderPipelineCore",
+				"MovieRenderPipelineRenderPasses"
 			});
 	}
 }
