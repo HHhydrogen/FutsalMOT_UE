@@ -4,6 +4,12 @@
 
 ### 最新联合阶段
 
+2026年10月23日新增构建与真实执行：原v2六臂已全部结束，R平均29.735 AP、RS30.742 AP（配对差+2.239/−0.721/+1.503点），全部低于预训练49.190，不能宣称合成有效；禁止重启原训练/恢复驱动。独立v3 Trainer、显式COCO sigma、Pose-only冻结及官方评价经root一次21项CPU通过，新协议`Saved/Pose17Development/poseonly_v3_frozen_a01/protocol.json`及准入已冻结；新后台状态入口为`poseonly_v3_driver_a01.json`，以实际state为准，不能把下文旧驱动当当前任务。
+
+真实固定检测关联已首次执行：151/152/153共450帧、6901个官方raw检测，lambda0与标准ByteTrack输出/状态逐值一致。看结果前固定lambda=0.1，预训练Pose相对bbox-only的AssA为71.358→72.121、HOTA65.373→65.727、IDF1为81.163→81.719，IDSW28→25。该结果只证明预训练Pose在同game9开发片段的边际关联作用，**不是合成数据训练收益**。1675/6901检测具有可用几何Pose，5226回退bbox，unknown不变。完整输出`D:/projects/FutsalMOT_Research/pose/association_dev_a01`，不按GT删预测、不读最终test。
+
+交互窗口工具已完成并实际读取现有JSON/JSONL：四组共48秒独立源时长、最长12秒、640框高中位27.33px；100个有完整前后分离context的视角重叠proxy（同队47），不是100次独立真实遮挡恢复。GT驱动6秒候选保持split与四视角共享窗口，不读媒体/模型结果。root新增10项CPU通过；报告`Saved/ResearchDiagnostics/interaction_windows_pilot_a01`。下一批应增加更长连续交互，不能只堆贴图或四机位数量。论文目标见`Docs/CVPR_2027_PAPER_PLAN.md`。以下旧执行段落保留历史，状态以最新收据及驱动为准。
+
 最新执行：四seed×120帧×4相机已全部完成，实际产出1920张4K RGB、1920张实例mask、19200条人物Pose记录，驱动已正常结束，不再启动采集。完成收据为`Saved/Pose17Development/location_pilot_capture_complete_a01.json`。前三组1042/1044/1048为train、1102为synthetic_dev；固定蓝地板与七模型roster，不冒称复现原seed天气/外观。源仍保留diagnostic/not_training、unknown及MRQ_sync_verified=false；下一步通过独立限定位置监督入口接入研究，不能改源标志绕过。
 
 四组均已释放自有回调，地板槽恢复且非地板状态不变、dirty为空。本轮Editor26244在09:54UTC正常quit后出现Exiting和Log file closed，进程已消失，没有新fatal；收据`location_pilot_shutdown_a01.json`。这证明本次退出通过，不证明历史Python GC根因已修复。UE保持关闭，研究代码和协议准备完成后串行GPU训练。
