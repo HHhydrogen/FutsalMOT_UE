@@ -1,5 +1,17 @@
 # AGENTS.md
 
+## 当前研究方向（2026-10-23）
+
+- 用户最新加速要求：004通过后直接复用各模型，不反复逐角色校验。004组合GPU-LBS短诊断现已通过真实切换/三机位配对/头深度及独立目视，收据`Saved/Pose17Development/player004_gpu_lbs_dynamic_head_review_a02.json`。不再运行005–009逐角色三机位近景，改一次十人覆盖003–009的四机位联合小样；保留必要自动身份/骨架/manifest/同步/恢复门禁，抽样仅四张全员总览，不把抽样当全像素审计。
+
+- 用户已将论文重心调整为COCO17姿态数据与姿态跟踪，执行路线见`Docs/POSE_RESEARCH_ROADMAP.md`。旧bbox试验保留证据，不自动继续扫描比例或重启已中断R5。
+- v1八组没有Pose；新Pose17必须独立输出，不能把历史12点文件补名为17点或事后伪造同帧采样。
+- 鼻眼耳需要绑定实际角色几何的校准。场景中隐藏驱动CharacterMesh0与可见MPFBVisual并存，必须核实实际渲染mesh后采样。
+- 地板独立seed随机流，不扰动运动/天气/角色；同运动不同地板配对保持同split。地板颜色丰富度属于实验因素，不直接当作已证明的泛化收益。
+- 真实UE采样和遮挡标签未验证前不得启用正式Pose17批量生产；CPU单测不替代MRQ同步和视觉验收。
+- 当前诊断限制：`player004_closeup_a01`及无网格切换的`player003_closeup_warmup_a06`均在8帧预热/Lumen MeshCardCapture阶段出现LocalVF/View缓冲绑定崩溃，零有效帧。不要自动重复相同CPU渲染配置或把失败归因于004角色资产；默认旧CPU路径不具备正式批产准入。
+- GPU-render/CPU-LBS已完成003/004近景及`joint_seed1048_a01_gpu_lbs`七模型十人四机位联合短动作诊断：真实GRF源100..109、40张4K RGB/40份EXR/400实体记录，采样、场景恢复及四张全员总览通过。收据`Saved/Pose17Development/joint_seed1048_a01_root_review.json`。这不是正式Pose批次；visibility保持unknown，长动作和关节遮挡证据尚待完成。独立重放机位世界点最大差4.274e-6m，导出保留各机位原始world，不平均或放宽严格共享去重。不再逐005–009重复近景，不套用旧CPU override回退。
+
 ## 当前批次与清理边界（2026-10-22）
 
 - 无号码4K正式批次已完成8组、八天气、32相机序列，20116 RGB及同数mask。旧16/32组计划不再执行。
@@ -180,6 +192,7 @@ SOP 中标记为 `NOT VERIFIED` 的 UE Import Data 或 Blender Axis/Apply Transf
 - **诊断脚本保持单一用途**：小型诊断输出结构化 JSON，并对单个属性/绑定使用 `try/except`。完整流程写入项目内 `.py` 文件后使用 `run_python_file`，不要把多步骤资产迁移塞进 `run_python_code`。
 - **失败闭环**：任何 UE Python/MCP 调用失败，先读 `success/result/log`，再查询 `LogPython`、`LogBlueprint`、`LogMovieRenderPipeline`、`LogModelContextProtocol`；修复后重试。不要把第一次异常直接转交用户。
 - **验证结果新鲜性**：声称编译、测试、资产存在、绑定正确或删除成功前，必须在当前状态重新执行对应命令/查询，并记录实际返回结果。历史日志只能作为背景，不能替代当前验证。
+- **自定义日志路径**：通过`-abslog`启动Editor时，当前`FutsalMOTTools`失败返回的`log`可能仍摘取默认日志目录中的旧会话。失败后必须核对时间戳，优先使用原生`LogsToolset.GetLogEntries`的当前会话记录或本次启动收据中的明确abslog；不得按返回的历史异常反复修改已经修复的代码。
 
 **UE 任务默认执行顺序**：对任何 Unreal Engine 相关开发、调试、验证任务，默认按以下闭环执行：
 
