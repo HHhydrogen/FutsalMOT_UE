@@ -4,6 +4,17 @@
 
 ### 最新联合阶段
 
+**2026-10-23晚收尾已完成：用户要求结束今日任务；UE已正常退出，持续跟进已暂停。** 所有本项目数据已实际迁到G盘，研究根为`G:/FutsalMOT_Research`，UE/P1工作数据根为`G:/FutsalMOT_Workspace`，正式发布根仍为`G:/FutsalMOT_Dataset`；旧D路径通过兼容联接保留。最终收据`G:/FutsalMOT_Workspace/migration_20261023/end_day_receipt.json`：D盘可用319.17GiB，项目实际占用4.575GiB（不含联接目标）；复制时逐文件校验并核对完整迁移记录，无全媒体hash复扫。研究34798文件/64联接、Saved19661文件、首个独立raw984文件及P1工作目录均已迁移；清理1个失效旧目录联接。目录属性可能统计联接所指的G盘数据，不能据此认定D盘仍占近300GB。
+
+本次长窗首1048蓝a01因D盘满失败，未形成新可用数据；已安全清理自有回调、恢复地板并正常退出Editor，无新退出fatal。按用户允许直接删除无用数据的要求，已清理该失败attempt的1983份PNG/EXR，原始约89.22GiB，native/计划/日志/失败证据保留。原四seed120帧Pose试产与v1八组不变。不要自动恢复或重提这个失败attempt。
+
+下次明确获准继续后的优先级：
+
+1. 确认所有输入/临时数据/checkpoint的实际路径为G；优先复用迁移后Saved的数据结构，一次验证路径门禁，不为切盘无必要重写稳定流程。MCP执行代码必须仍在D盘项目真实路径内，必需Saved辅助入口先整理到`tools/`，数据留G，不扩大任意文件执行权限。30秒范围需要独立新attempt，失败a01不覆盖；现有G直接入口及完整G后处理仍未完成。
+2. 完成并冻结v4等真实曝光R3/R3+S对照，固定1000实际更新、同一3张R/顺序和独立R/S损失归一化；数学核心5项CPU通过，完整`train_pose_location_separate_v4.py`仍为未测试草稿。构造Dataset前先验证所有媒体实际位于G，不读final test。
+3. 扩充连续交互与同运动地板配对，再加入独立真实比赛开发验证；不把三个训练seed当三个比赛，不把相对R退化减轻写成稳定超过预训练。UE与GPU实验继续串行。
+4. 论文聚焦受控合成姿态监督对固定检测身份连续性的边际作用，检验交互信息量与视觉多样性；4K、Pose格式、四视角和换地板本身不是独立创新点。完整遮挡仍unknown，号码仍未完成且不提交。
+
 30秒新范围已开始真实采集：全部GPU实验结束后安全启动Editor（当前PID40292，明确日志`Saved/Pose17Development/editor_long_window30_a01.log`），8个全新源Sequence保存且原场景/canonical不变。首`longpair_s00001048_sport_blue_v1_a01_gpu_lbs`已完成真实prepare、WorldDepth配置、地板事务和异步MRQ提交；提交不等于完成。计划1048 train源[0,300)、1102 synthetic_dev源[20,320)，各蓝/红棕×四机位300帧，合计4800对4K RGB/mask；visibility保持unknown，原120帧试产与v1不变。GPU训练继续等待UE批次结束。v4等真实曝光与分域损失归一化核心已完成5项CPU验证，尚未GPU执行或签新准入。
 
 v3真实身份关联也已全部完成：相同450帧raw检测、唯一lambda0.1下，三seed的RS−R AssA平均+0.5524点、HOTA+0.2556点、IDF1+0.3961点，三seed均正，事前登记开发门槛通过。RS前两seed与原预训练轨迹相同，RS平均AssA仅比预训练高0.0236点；主要是减少R继续训练退化，仍需等真实曝光控制及独立比赛，不能称已稳超预训练或真实五人制有效。实际汇总`D:/projects/FutsalMOT_Research/pose/association_dev_a01/v3_paired_association_summary_a01.json`。两个v3驱动都已完成，不重启；下一步CPU准备30秒两seed地板配对新契约及更严格训练控制，GPU完成后才可进入新UE采集。后续“正在执行”段落为阶段历史。

@@ -25,13 +25,17 @@ groups/seed_XXXXXXXX/
 - C++：AFutsalPlayerBase、UFutsalPlayerAnimInstance及FinalImage PNG输出过滤。
 - 动画蓝图负责AnimGraph、状态机和FootIK，新增运行时逻辑优先C++。
 - P1固定Python3.9，导出轨迹及后处理；P2仅在真实UE Python执行，通过JSON/JSONL交换数据。
-- 生产复用Editor/场景、逐机位释放executor、SSD暂存和6进程CPU后处理。GPU训练与渲染串行。
+- 生产复用Editor/场景、逐机位释放executor，全部数据暂存于G盘并使用6进程CPU后处理。GPU训练与渲染串行。
 
 入口：[Python README](Content/FutsalMOT/code/README.md)、[MPFB生产SOP](Docs/MPFB_PLAYER_PRODUCTION_SOP.md)、[任务状态](TASK_STATUS_AND_NEXT_STEPS.md)。UE任务优先Unreal MCP原生工具；完整Python文件使用FutsalMOTTools.run_python_file，不使用受限sandbox代替import unreal。
 
 ## 研究目的
 
-在固定真实标注预算和优化步数下，对比仅真实数据与真实加合成数据，在公开真实足球上检验检测和多目标追踪的迁移收益。协议见[研究说明](Docs/RESEARCH_PROTOCOL.md)和[实验入口](Content/FutsalMOT/code/experiments/sim2real/README.md)。研究数据、权重及结果位于D:/projects/FutsalMOT_Research，不入UE仓库。
+当前主线为合成COCO17姿态监督对固定检测输入下身份关联的边际作用，详见[论文计划](Docs/CVPR_2027_PAPER_PLAN.md)。v3三训练seed的合成臂相对真实继续训练平均AssA提高0.5524点，但相对预训练仅提高0.0236点，尚不能确认跨比赛或真实五人制收益。最终测试保持封存。
+
+研究输入、权重、检查点及结果统一位于`G:/FutsalMOT_Research`；UE/P1工作数据位于`G:/FutsalMOT_Workspace`，正式数据仍在`G:/FutsalMOT_Dataset`，均不入UE仓库。旧D盘数据路径仅通过目录联接兼容，D盘保留代码与UE资产。用户已要求结束今日任务，持续跟进暂停，等待明确继续。
+
+2026-10-23迁移已完成，删除89.22GiB失败未发布媒体并保留诊断记录；项目在D盘的实际占用约4.575GiB，不含联接指向的G盘数据。搬迁收据位于`G:/FutsalMOT_Workspace/migration_20261023/end_day_receipt.json`。
 
 号码系统未完成，本次数据和提交均不包含号码实现，保留为后续任务。
 

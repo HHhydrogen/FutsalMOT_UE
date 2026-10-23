@@ -1,5 +1,13 @@
 # AGENTS.md
 
+## 最新停止与存储约束（2026-10-23晚）
+
+- 用户要求迁移完数据后结束今日任务；定时任务`futsalposetrack`已暂停。未经用户重新要求继续，不启动渲染、训练、恢复驱动或新研究开发。
+- 今后所有数据实际写入G盘：正式数据`G:/FutsalMOT_Dataset`，研究输入/权重/检查点/结果`G:/FutsalMOT_Research`，UE与P1工作数据`G:/FutsalMOT_Workspace`。D盘只保留代码、UE资产与必需构建缓存；新代码先核验实际resolve路径，禁止默认回落D盘存数据。
+- `D:/projects/FutsalMOT_Research`、项目`Saved`及P1数据目录保留为迁移后的兼容目录联接；清理/统计必须不跟随联接，不重复复制其G盘目标。迁移收据位于`G:/FutsalMOT_Workspace/migration_20261023`。
+- MCP仍只执行项目根内的真实代码路径。Saved移到G后，不直接用`run_python_file`执行解析后位于G盘的Saved辅助脚本；恢复时将必需入口代码放到D盘项目`tools/`或`ue/`，从G读写数据，不扩大Toolset任意文件执行权限。旧Saved驱动不能直接重启。
+- v3六臂训练和固定真实检测关联已全部结束，不重启旧驱动。30秒长窗首1048蓝a01因磁盘满失败，不能声称完成；失败记录保留。v4数学核心已验，完整Trainer仍为未测试草稿，不具备训练准入。
+
 ## 当前研究方向（2026-10-23）
 
 - 用户最新执行偏好：以实现、导出和实验为主；已通过方法直接复用，只对新功能做一次必要测试/真实执行，后续seed自动检查帧/身份/失败状态。不重复逐模型近景、媒体hash、全量像素审计或无变化复查。
@@ -20,7 +28,7 @@
 
 - 无号码4K正式批次已完成8组、八天气、32相机序列，20116 RGB及同数mask。旧16/32组计划不再执行。
 - 正式数据仅位于`G:/FutsalMOT_Dataset/v1_no_numbers_4k`，布局为`groups/seed_XXXXXXXX/cameras/`；读取group的clip引用，不硬编码`clips/clip_000`或父目录深度。
-- 研究代码在内层`experiments/sim2real`，数据和GPU结果在`D:/projects/FutsalMOT_Research`。研究images目录联接到正式RGB，禁止递归跟随联接清理源数据。
+- 研究代码在内层`experiments/sim2real`，数据和GPU结果实际在`G:/FutsalMOT_Research`；旧D盘同名路径仅保留兼容联接。研究images目录联接到正式RGB，禁止递归跟随联接清理源数据。
 - UE渲染与GPU训练串行；全部本轮完成、Editor安全退出后才能启动GPU实验。比较固定真实标注及更新预算的真实/真实加合成对照，不预设提升。
 - AutoSave通过项目DefaultEditorPerProjectUserSettings和本机配置关闭；默认地图为L_FutsalCourt。
 - 删除临时资产先核对引用，再通过UE API执行；不从文件系统删除uasset。删除Saved、缓存或数据根其他目录时先核验绝对边界，不跟随junction；保留生产轨迹、冻结代码、关键收据及未完成号码开发。
