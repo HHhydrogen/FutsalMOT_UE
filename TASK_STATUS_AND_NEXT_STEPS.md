@@ -4,6 +4,12 @@
 
 ### 最新联合阶段
 
+30秒新范围已开始真实采集：全部GPU实验结束后安全启动Editor（当前PID40292，明确日志`Saved/Pose17Development/editor_long_window30_a01.log`），8个全新源Sequence保存且原场景/canonical不变。首`longpair_s00001048_sport_blue_v1_a01_gpu_lbs`已完成真实prepare、WorldDepth配置、地板事务和异步MRQ提交；提交不等于完成。计划1048 train源[0,300)、1102 synthetic_dev源[20,320)，各蓝/红棕×四机位300帧，合计4800对4K RGB/mask；visibility保持unknown，原120帧试产与v1不变。GPU训练继续等待UE批次结束。v4等真实曝光与分域损失归一化核心已完成5项CPU验证，尚未GPU执行或签新准入。
+
+v3真实身份关联也已全部完成：相同450帧raw检测、唯一lambda0.1下，三seed的RS−R AssA平均+0.5524点、HOTA+0.2556点、IDF1+0.3961点，三seed均正，事前登记开发门槛通过。RS前两seed与原预训练轨迹相同，RS平均AssA仅比预训练高0.0236点；主要是减少R继续训练退化，仍需等真实曝光控制及独立比赛，不能称已稳超预训练或真实五人制有效。实际汇总`D:/projects/FutsalMOT_Research/pose/association_dev_a01/v3_paired_association_summary_a01.json`。两个v3驱动都已完成，不重启；下一步CPU准备30秒两seed地板配对新契约及更严格训练控制，GPU完成后才可进入新UE采集。后续“正在执行”段落为阶段历史。
+
+位置对照新增完成：独立v3六臂1000实际更新及dev200评价均已结束，R平均46.9748 AP、RS47.4309 AP，配对差+0.2107/+0.7140/+0.4435点，均低于预训练49.1896；medium AP下降、large上升及全部负结果保留。root收据`Saved/Pose17Development/poseonly_v3_complete_root_a01.json`。当前唯一GPU任务已切换为`run_poseonly_v3_association_a01.py`，实际state=`poseonly_v3_association_driver_a01.json`（启动实际PID38208），串行执行六个last1000 EMA的固定真实检测Pose附件、关联与TrackEval。原训练驱动已完成，不得重启；UE继续关闭，最终test封存。
+
 2026年10月23日新增构建与真实执行：原v2六臂已全部结束，R平均29.735 AP、RS30.742 AP（配对差+2.239/−0.721/+1.503点），全部低于预训练49.190，不能宣称合成有效；禁止重启原训练/恢复驱动。独立v3 Trainer、显式COCO sigma、Pose-only冻结及官方评价经root一次21项CPU通过，新协议`Saved/Pose17Development/poseonly_v3_frozen_a01/protocol.json`及准入已冻结；新后台状态入口为`poseonly_v3_driver_a01.json`，以实际state为准，不能把下文旧驱动当当前任务。
 
 真实固定检测关联已首次执行：151/152/153共450帧、6901个官方raw检测，lambda0与标准ByteTrack输出/状态逐值一致。看结果前固定lambda=0.1，预训练Pose相对bbox-only的AssA为71.358→72.121、HOTA65.373→65.727、IDF1为81.163→81.719，IDSW28→25。该结果只证明预训练Pose在同game9开发片段的边际关联作用，**不是合成数据训练收益**。1675/6901检测具有可用几何Pose，5226回退bbox，unknown不变。完整输出`D:/projects/FutsalMOT_Research/pose/association_dev_a01`，不按GT删预测、不读最终test。
