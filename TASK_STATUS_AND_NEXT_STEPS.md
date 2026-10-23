@@ -4,9 +4,13 @@
 
 ### 最新联合阶段
 
-最新执行：四seed×120帧×4相机的1920对4K位置试产已启动，后台`run_location_pilot_a01.py`，权威状态`Saved/Pose17Development/location_pilot_driver_a01.json`；1042首组已渲染完成并生成mask/Pose，后续1044/1048/1102串行，不重复启动。新导出器后续默认6个CPU进程、有界6帧在途，不额外出图审计。真实40图位置JSONL CPU loss/backward已通过，visibility loss0、无效点梯度0，未启动研究训练。
+最新执行：四seed×120帧×4相机已全部完成，实际产出1920张4K RGB、1920张实例mask、19200条人物Pose记录，驱动已正常结束，不再启动采集。完成收据为`Saved/Pose17Development/location_pilot_capture_complete_a01.json`。前三组1042/1044/1048为train、1102为synthetic_dev；固定蓝地板与七模型roster，不冒称复现原seed天气/外观。源仍保留diagnostic/not_training、unknown及MRQ_sync_verified=false；下一步通过独立限定位置监督入口接入研究，不能改源标志绕过。
 
-已新增七模型基础蒙皮真实导出、400条历史矩阵SHA精确离线重建和480个十二关节支持候选；所有visibility仍unknown。已落实旧CPU渲染submit禁用、MCP PRIVATE作用域/新鲜错误日志防护。故障归为两次CPU-skin/Lumen、一次PIE后悬空回调、四次Python退出GC；退出AV具体对象仍未定位，不称根治。定时任务已改为构建性产出优先，复用已验方法、减少重复审查。COCO17真实子集/训练协议候选并行准备，GPU仍等本轮渲染全部结束且协议冻结。
+四组均已释放自有回调，地板槽恢复且非地板状态不变、dirty为空。本轮Editor26244在09:54UTC正常quit后出现Exiting和Log file closed，进程已消失，没有新fatal；收据`location_pilot_shutdown_a01.json`。这证明本次退出通过，不证明历史Python GC根因已修复。UE保持关闭，研究代码和协议准备完成后串行GPU训练。
+
+真实COCO位置监督子集已完成：1000张train、200张公开pose-dev，分别3184/729人物框、25417/5439有效点，全缺点人物框保留。官方checkpoint已经COCO预训练，实验是有限子集继续训练；不是总共只用1000真实标注。正在构建精确采样表、研究Trainer和官方COCO评价入口，不重做近景或媒体审计。真实40图CPU loss/backward已通过，尚无研究GPU结果。
+
+已新增七模型基础蒙皮真实导出、400条历史矩阵SHA精确离线重建和480个十二关节支持候选；所有visibility仍unknown。已落实旧CPU渲染submit禁用、MCP PRIVATE作用域/新鲜错误日志防护。故障归为两次CPU-skin/Lumen、一次PIE后悬空回调、四次Python退出GC；退出AV具体对象仍未定位，不称根治。定时任务以构建性产出优先，复用已验方法、减少重复审查。后续段落属于历史证据，不能覆盖本段四组完成和Editor已关闭状态。
 
 004已完成真实网格切换、三近景RGB/头点深度及恢复验收。按用户加速要求取消005–009逐角色近景复验，已直接完成`joint_seed1048_a01_gpu_lbs`：七模型十球员、真实GRF源100..109、四机位各10帧4K，共40RGB/40EXR/400实体采样，队列34.510秒。原生身份/骨架/fence/恢复和帧相机配对通过，主agent仅看四张源105全员叠图。十实体均有去平移后的姿态变化。
 

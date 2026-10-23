@@ -59,7 +59,7 @@ COCO17兼容和地板随机化是实现要素，不单独主张算法创新。�
 
 ## 执行状态
 
-当前由后台四seed试产驱动推进1920对4K RGB/mask/Pose，独立原始world逐机位保留，后处理6CPU进程、不重复预览；已完成的首组以`location_pilot_driver_a01.json`为准。真实40图位置loss/backward已接通；七model资产蒙皮导出、400条矩阵SHA精确重建和480关节支持候选已完成。未知可见性仍unknown，位置监督试产与最终遮挡研究分开推进。COCO真实位置监督子集和固定预算对照协议在准备，GPU等UE本轮全部结束。稳定性已禁用旧CPU渲染提交，并验证MCP独立作用域防护；退出GC坏引用尚未根治，不为复现中断生产。
+四seed试产已全部完成1920对4K RGB/mask及19200人物Pose，原始world逐机位保留，后处理6CPU进程、不重复预览。完成索引见`Saved/Pose17Development/location_pilot_capture_complete_a01.json`；Editor26244随后正常退出，日志Exiting/closed且无新fatal，UE保持关闭。未知可见性仍unknown，源诊断标志不变，有限位置监督研究准入与正式遮挡标签分别推进。COCO官方1000train/200pose-dev已准备完成；下一项为冻结1000更新、R每步4真实与RS每步3真实+1合成的三seed配对采样表并接入研究Trainer/官方COCO评测。相同独立真实ID与更新预算不等于相同真实曝光：R4000、RS3000，且初始化已COCO预训练，均须明确披露。真实40图位置loss/backward、七asset蒙皮、400条矩阵SHA精确重建及480关节支持候选不再重复检查。历史退出GC具体坏引用仍未知，本次正常退出不能视为根治。
 
 当前已进一步完成独立40RGB/40mask/400人物的Pose诊断导出，保留逐相机原world和6800个unknown。蓝/红棕配对各12张4K也已通过实际MRQ：同机位同源帧2040对world精确一致，四张中间帧实例mask差0像素、相机一致，地板恢复通过；主agent目视四机位并列图。该结果验证视觉因素能受控改变，不证明训练收益。472项针对CPU回归通过；内层`88dec26`已推送，号码和Saved不提交。关节遮挡方法、多个独立seed与正式位置监督准入仍待推进。
 

@@ -10,7 +10,7 @@
 
 MCP执行器已改为PRIVATE文件作用域、独立字面代码globals，并删除按最近mtime返回历史错误日志的回退。真实Editor通过两次文件隔离/显式会话保留及字面globals不泄漏检查；1042预备queue在热替换前后对象ID相同，未reload Toolset/UClass、未重启Editor。7项CPU合同测试通过。这是减少临时包装对象长持有的防护，尚未证明它根治退出AV；不为验证这一点中断当前试产。批次内保持同一Editor，完成全部渲染后正常收尾时观察退出终态。
 
-四seed位置监督试产已实际启动，16个新源Sequence已创建，首组1042的四机位120帧4K渲染已完成并进入mask/Pose生成。故障处理没有再阻塞为重复近景或全像素审计。
+四seed位置监督试产已实际完成1920对4K RGB/mask和19200人物Pose。09:54:13 UTC，Editor26244在dirty=[]、PIE=[]、MRQ=false、active_render_modules=[]的门禁后正常quit；09:54:20日志出现Exiting和Log file closed，之后进程快照无Editor或CrashReportClient，未出现新fatal。本次正常退出收据为`Saved/Pose17Development/location_pilot_shutdown_a01.json`。这是PRIVATE防护后的一个真实退出成功样本，尚不能据单次成功定位或证明根治历史GC损坏。
 
 ## 一、正常退出请求后的Python崩溃：尚未修复
 
