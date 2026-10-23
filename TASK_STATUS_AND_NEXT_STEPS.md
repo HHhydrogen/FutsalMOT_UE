@@ -10,7 +10,11 @@
 
 四组已复制到独立`G:/FutsalMOT_Dataset/v2_pose17_location_pilot_a01`，3968文件、18,812,362,393字节；不重编码或复扫媒体hash，原诊断标志保留。当前v1八组不变，新目录是位置研究试产，不宣称完整正式遮挡Pose发布。
 
-真实COCO位置监督子集已完成：1000张train、200张公开pose-dev，分别3184/729人物框、25417/5439有效点，全缺点人物框保留。精确采样表、独立研究Trainer和官方COCO评价入口已经接通，新鲜36项定向CPU检查通过。root限定位置准入与协议已冻结，协议SHA为`577f3d1e1233ce7df5d110279d7dda5af186ef2fa573b7860c761caf8a779e07`。唯一后台`run_location_control_a01.py`已启动，权威状态`Saved/Pose17Development/location_control_driver_a01.json`；先评预训练参考，再串行三seed的R/RS25各1000更新与固定dev200评价，不重复启动。
+真实COCO位置监督子集已完成：1000张train、200张公开pose-dev，分别3184/729人物框、25417/5439有效点，全缺点人物框保留。精确采样表、独立研究Trainer和官方COCO评价入口已经接通，新鲜36项定向CPU检查通过。root限定位置准入与协议已冻结，协议SHA为`577f3d1e1233ce7df5d110279d7dda5af186ef2fa573b7860c761caf8a779e07`。当前唯一后台为`resume_location_control_after_io_a01.py`，权威状态`Saved/Pose17Development/location_control_recovery_driver_a01.json`；原`run_location_control_a01.py`已因Windows文件替换失败退出，不得重新启动。
+
+首个seed完整对照：R AP28.80、RS25 AP31.04，混合相对R提高2.24个点，但都低于预训练参考49.19，不能宣称已证明合成数据有效。已确认v2的17×2头使上游loss使用统一sigma=1/17，改变原COCO17关节容差；全部点定位退化的原因尚不能全归于这一项。独立v3显式sigma及pose-only/固定BN核心已CPU验证，尚未GPU运行，当前v2六臂数值设置保持不变。
+
+第二seed在完整临时checkpoint落盘后发生WinError5；核对实际模型/优化器/EMA和曝光链后已提升真实265步状态并补齐曝光，重放0步。恢复驱动只增加有界Windows原子替换重试，原数值Trainer SHA/协议/数据/总预算不变。收据`control_atomic_recovery_receipt_a01.json`，原last备份保留，不能将旧驱动停止状态当当前GPU停机。
 
 官方checkpoint已经COCO预训练，实验是有限子集继续训练，不是总共只用1000真实标注。R为4000真实曝光，RS25为3000真实加1000合成曝光，独立真实ID和实际更新相同、真实曝光不同。同640 LetterBox后真实框高中位138.27px、选中S为27.33px；S每图有效点170、R25.417，25%合成图像不是25%位置监督量。这些数字已预先记录，不据此重新筛选；COCO AP仅姿态代理，真实足球固定检测的Pose辅助AssA/HOTA仍需后续独立对照。尚无本轮训练提升结论。
 
