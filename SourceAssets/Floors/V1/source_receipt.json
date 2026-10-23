@@ -1,0 +1,12 @@
+{
+  "schema": "futsalmot_floor_texture_source",
+  "version": 1,
+  "generated_date_local": "2026-10-23",
+  "generator": "builtin_image_gen",
+  "source_file": "T_FloorNeutral_Albedo_v1.png",
+  "sha256": "81bfaa6a9e0e826446649d251d638c8a6c11319c135173f7768b3a009f5166eb",
+  "image_edited": false,
+  "usage": "项目地板材质的中性灰色细纹基底，由四个线性颜色实例共享",
+  "seamless_verified": false,
+  "prompt": "Use case: photorealistic-natural. Asset type: seamless neutral grayscale albedo texture base for a real matte polyurethane indoor futsal sports floor in Unreal Engine. Generate exactly one square texture, orthographic straight top-down, fills image edge to edge. Neutral middle gray uniform base, extremely subtle low-contrast fine mineral grain and very soft sparse wear, overall flat consistent brightness suitable for tinting blue, teal, muted terracotta or gray via material parameters. Physically plausible clean commercial sports floor, seamless/tileable intent, no visible directional light or baked shading. NO court lines, NO tiles or grids, NO panels, NO borders, NO logos, NO text, NO people, NO objects, NO cracks, NO strong dirt, NO perspective, NO bright highlights. This is a raw base-color texture map, not a court photograph and not a contact sheet. Opaque background."
+}
