@@ -61,6 +61,8 @@ COCO17兼容和地板随机化是实现要素，不单独主张算法创新。�
 
 四seed试产已全部完成1920对4K RGB/mask及19200人物Pose，原始world逐机位保留，后处理6CPU进程、不重复预览。完成索引见`Saved/Pose17Development/location_pilot_capture_complete_a01.json`；Editor26244随后正常退出，日志Exiting/closed且无新fatal，UE保持关闭。未知可见性仍unknown，源诊断标志不变，有限位置监督研究准入与正式遮挡标签分别推进。COCO官方1000train/200pose-dev已准备完成；下一项为冻结1000更新、R每步4真实与RS每步3真实+1合成的三seed配对采样表并接入研究Trainer/官方COCO评测。相同独立真实ID与更新预算不等于相同真实曝光：R4000、RS3000，且初始化已COCO预训练，均须明确披露。真实40图位置loss/backward、七asset蒙皮、400条矩阵SHA精确重建及480关节支持候选不再重复检查。历史退出GC具体坏引用仍未知，本次正常退出不能视为根治。
 
+后续已完成独立G盘位置试产发布、限定位置准入、精确采样表和研究入口，36项新CPU定向检查通过。协议冻结于`D:/projects/FutsalMOT_Research/pose/coco2017_location_a01/frozen_protocol_a01.json`，后台单个`run_location_control_a01.py`开始预训练参考及六臂串行GPU对照，实际阶段以其state为准。新数据位于`G:/FutsalMOT_Dataset/v2_pose17_location_pilot_a01`；原逐机位world及unknown保持。真实/合成在640输入的框高中位138.27/27.33px、有效点密度不同，结果须结合这些差异解释。COCO开发AP是姿态代理，不替代论文预定的真实足球固定检测身份关联主线；不读取封存test，也不把下降臂丢弃。
+
 当前已进一步完成独立40RGB/40mask/400人物的Pose诊断导出，保留逐相机原world和6800个unknown。蓝/红棕配对各12张4K也已通过实际MRQ：同机位同源帧2040对world精确一致，四张中间帧实例mask差0像素、相机一致，地板恢复通过；主agent目视四机位并列图。该结果验证视觉因素能受控改变，不证明训练收益。472项针对CPU回归通过；内层`88dec26`已推送，号码和Saved不提交。关节遮挡方法、多个独立seed与正式位置监督准入仍待推进。
 
 最新联合阶段：004近景方法通过后，按用户要求直接复用七个模型，不再逐005–009重复近景。`joint_seed1048_a01_gpu_lbs`已完成真实GRF1048源100..109、七模型十实体、四机位各10帧4K，输出40RGB/40EXR/400采样；原生事务、帧/相机配对及四张源105全员总览通过，队列34.510秒。十实体均有去平移姿态变化。独立重放机位world最大差4.274e-6m，保留每机位原始world而不平均/容差去重。当前推进独立完整mask/Pose诊断导出及地板配对，unknown和MRQ_sync_verified=false保留，不宣称正式Pose数据或研究收益已完成。证据`Saved/Pose17Development/joint_seed1048_a01_root_review.json`。下列各小样段落为历史范围和失败记录。

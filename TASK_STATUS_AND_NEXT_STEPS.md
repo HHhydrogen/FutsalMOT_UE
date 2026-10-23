@@ -8,7 +8,11 @@
 
 四组均已释放自有回调，地板槽恢复且非地板状态不变、dirty为空。本轮Editor26244在09:54UTC正常quit后出现Exiting和Log file closed，进程已消失，没有新fatal；收据`location_pilot_shutdown_a01.json`。这证明本次退出通过，不证明历史Python GC根因已修复。UE保持关闭，研究代码和协议准备完成后串行GPU训练。
 
-真实COCO位置监督子集已完成：1000张train、200张公开pose-dev，分别3184/729人物框、25417/5439有效点，全缺点人物框保留。官方checkpoint已经COCO预训练，实验是有限子集继续训练；不是总共只用1000真实标注。正在构建精确采样表、研究Trainer和官方COCO评价入口，不重做近景或媒体审计。真实40图CPU loss/backward已通过，尚无研究GPU结果。
+四组已复制到独立`G:/FutsalMOT_Dataset/v2_pose17_location_pilot_a01`，3968文件、18,812,362,393字节；不重编码或复扫媒体hash，原诊断标志保留。当前v1八组不变，新目录是位置研究试产，不宣称完整正式遮挡Pose发布。
+
+真实COCO位置监督子集已完成：1000张train、200张公开pose-dev，分别3184/729人物框、25417/5439有效点，全缺点人物框保留。精确采样表、独立研究Trainer和官方COCO评价入口已经接通，新鲜36项定向CPU检查通过。root限定位置准入与协议已冻结，协议SHA为`577f3d1e1233ce7df5d110279d7dda5af186ef2fa573b7860c761caf8a779e07`。唯一后台`run_location_control_a01.py`已启动，权威状态`Saved/Pose17Development/location_control_driver_a01.json`；先评预训练参考，再串行三seed的R/RS25各1000更新与固定dev200评价，不重复启动。
+
+官方checkpoint已经COCO预训练，实验是有限子集继续训练，不是总共只用1000真实标注。R为4000真实曝光，RS25为3000真实加1000合成曝光，独立真实ID和实际更新相同、真实曝光不同。同640 LetterBox后真实框高中位138.27px、选中S为27.33px；S每图有效点170、R25.417，25%合成图像不是25%位置监督量。这些数字已预先记录，不据此重新筛选；COCO AP仅姿态代理，真实足球固定检测的Pose辅助AssA/HOTA仍需后续独立对照。尚无本轮训练提升结论。
 
 已新增七模型基础蒙皮真实导出、400条历史矩阵SHA精确离线重建和480个十二关节支持候选；所有visibility仍unknown。已落实旧CPU渲染submit禁用、MCP PRIVATE作用域/新鲜错误日志防护。故障归为两次CPU-skin/Lumen、一次PIE后悬空回调、四次Python退出GC；退出AV具体对象仍未定位，不称根治。定时任务以构建性产出优先，复用已验方法、减少重复审查。后续段落属于历史证据，不能覆盖本段四组完成和Editor已关闭状态。
 
