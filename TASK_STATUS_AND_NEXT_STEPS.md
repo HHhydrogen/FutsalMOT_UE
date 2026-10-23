@@ -4,6 +4,10 @@
 
 ### 最新联合阶段
 
+最新执行：四seed×120帧×4相机的1920对4K位置试产已启动，后台`run_location_pilot_a01.py`，权威状态`Saved/Pose17Development/location_pilot_driver_a01.json`；1042首组已渲染完成并生成mask/Pose，后续1044/1048/1102串行，不重复启动。新导出器后续默认6个CPU进程、有界6帧在途，不额外出图审计。真实40图位置JSONL CPU loss/backward已通过，visibility loss0、无效点梯度0，未启动研究训练。
+
+已新增七模型基础蒙皮真实导出、400条历史矩阵SHA精确离线重建和480个十二关节支持候选；所有visibility仍unknown。已落实旧CPU渲染submit禁用、MCP PRIVATE作用域/新鲜错误日志防护。故障归为两次CPU-skin/Lumen、一次PIE后悬空回调、四次Python退出GC；退出AV具体对象仍未定位，不称根治。定时任务已改为构建性产出优先，复用已验方法、减少重复审查。COCO17真实子集/训练协议候选并行准备，GPU仍等本轮渲染全部结束且协议冻结。
+
 004已完成真实网格切换、三近景RGB/头点深度及恢复验收。按用户加速要求取消005–009逐角色近景复验，已直接完成`joint_seed1048_a01_gpu_lbs`：七模型十球员、真实GRF源100..109、四机位各10帧4K，共40RGB/40EXR/400实体采样，队列34.510秒。原生身份/骨架/fence/恢复和帧相机配对通过，主agent仅看四张源105全员叠图。十实体均有去平移后的姿态变化。
 
 独立机位重放的世界点最大差4.274e-6m；不平均或伪装严格相同，v2诊断导出保留每机位原world。visibility仍unknown，MRQ_sync_verified=false，未升级正式Pose/训练准入。当前继续完整mask/bbox导出与蓝/红棕地板配对；v1不变、最终test116/187封存、不重启旧R5。最新收据`Saved/Pose17Development/joint_seed1048_a01_root_review.json`；以下带旧时间和“下一步”的段落为历史证据，不能覆盖本段当前状态。

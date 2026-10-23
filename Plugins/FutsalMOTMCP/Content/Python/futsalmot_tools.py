@@ -32,39 +32,27 @@ def _log_text(log_output) -> str:
     return "\n".join(entry.output for entry in log_output)
 
 
-def _tail_python_log(max_lines: int = 40) -> str:
-    try:
-        log_dir = os.path.join(unreal.Paths.project_saved_dir(), "Logs")
-        candidates = [
-            os.path.join(log_dir, name)
-            for name in os.listdir(log_dir)
-            if name.endswith(".log")
-        ]
-        if not candidates:
-            return ""
-        log_path = max(candidates, key=os.path.getmtime)
-        with open(log_path, "r", encoding="utf-8", errors="replace") as f:
-            lines = f.read().splitlines()
-        python_lines = [
-            ln
-            for ln in lines
-            if "LogPython" in ln or "LogPythonScriptPlugin" in ln
-        ]
-        return "\n".join(python_lines[-max_lines:])
-    except Exception:
-        return ""
-
-
 def _execute_python(command: str, mode, path: str) -> dict[str, str]:
+    # UE5.8 的 RunString 忽略 FileExecutionScope；字面代码须另建 globals。
+    # 外层只执行一个表达式，不把调用内的 UObject 临时变量写入控制台。
+    if not path:
+        command = (
+            "exec(compile(" + repr(command)
+            + ", '<futsalmot_mcp_diagnostic>', 'exec'), "
+            + "{'__name__': '__futsalmot_mcp_diagnostic__'})"
+        )
+        # 避免 ExecuteFile 将字面代码中的 .py 空格误判为文件命令。
+        mode = unreal.PythonCommandExecutionMode.EXECUTE_STATEMENT
     result = unreal.PythonScriptLibrary.execute_python_command_ex(
-        command, mode, unreal.PythonFileExecutionScope.PUBLIC
+        command, mode, unreal.PythonFileExecutionScope.PRIVATE
     )
     if result is None:
         return {
             "success": "false",
             "path": path,
             "result": "execution failed (see UE Output Log, category LogPython)",
-            "log": _tail_python_log(),
+            # abslog 可在项目 Saved/Logs 外；不能返回按 mtime 猜测的旧日志。
+            "log": "本次执行失败；请读取当前 Editor 的 LogPython / 原生启动 abslog。未回退到历史日志。",
         }
     command_result, log_output = result
     return {

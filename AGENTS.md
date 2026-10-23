@@ -2,6 +2,10 @@
 
 ## 当前研究方向（2026-10-23）
 
+- 用户最新执行偏好：以实现、导出和实验为主；已通过方法直接复用，只对新功能做一次必要测试/真实执行，后续seed自动检查帧/身份/失败状态。不重复逐模型近景、媒体hash、全量像素审计或无变化复查。
+- 四seed位置监督试产已由`Saved/Pose17Development/run_location_pilot_a01.py`串行执行，状态看`location_pilot_driver_a01.json`，正常时不重复启动。显式120帧契约仅1042/1044/1048 train及1102 synthetic_dev，四机位4K；未知visibility与位置有效性分开，试产不冒充正式COCO可见性数据。v1不变、真实final test封存。
+- 旧CPU渲染蒙皮路径已在submit前禁用，以免再次进入Lumen LocalVF/View崩溃。MCP文件PRIVATE/字面代码独立globals已在真实Editor热替换验证；显式sys.modules会话保留。退出期另有Py_FinalizeEx→PyGC_Collect崩溃，具体坏对象未定位；批次内复用Editor，不为复验频繁重启，正常收尾再观察退出终态。见`Docs/UE_CRASH_FINDINGS_20261023.md`。
+
 - 用户最新加速要求：004通过后直接复用各模型，不反复逐角色校验。004组合GPU-LBS短诊断现已通过真实切换/三机位配对/头深度及独立目视，收据`Saved/Pose17Development/player004_gpu_lbs_dynamic_head_review_a02.json`。不再运行005–009逐角色三机位近景，改一次十人覆盖003–009的四机位联合小样；保留必要自动身份/骨架/manifest/同步/恢复门禁，抽样仅四张全员总览，不把抽样当全像素审计。
 
 - 用户已将论文重心调整为COCO17姿态数据与姿态跟踪，执行路线见`Docs/POSE_RESEARCH_ROADMAP.md`。旧bbox试验保留证据，不自动继续扫描比例或重启已中断R5。
