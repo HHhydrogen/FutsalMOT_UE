@@ -8,6 +8,7 @@
 - [当前任务](TASK_STATUS_AND_NEXT_STEPS.md)：实际阶段与下一步，不以历史命令代替当前状态。
 - [Agent规则](AGENTS.md)：Git、存储、UE生命周期及研究边界。
 - [Python入口](python/README.md)：轨迹、后处理和UE Python脚本的统一入口。
+- [运行与维护](Docs/operations/RUNNING_AND_MAINTENANCE.md)：项目根的统一启动器与本机配置。
 
 ## 代码和环境
 
@@ -21,7 +22,7 @@
 
 P1与UE之间通过JSON/JSONL交换数据；UE不导入NumPy/OpenEXR依赖的P1模块。GPU训练与UE渲染串行。默认地图保持`/Game/FutsalMOT/Maps/L_FutsalCourt`，资产移动通过UE API修引用。
 
-用户已授权四阶段整理：文档/产物→Python与实验代码→UE资产→入口与规范固化。阶段完成情况以任务状态为准，号码WIP保留且不纳入成果提交。
+目录已按文档、Python/实验、UE资产和运行入口分层。号码WIP保留且不纳入成果提交；旧环境路径仍有17个兼容重定向器，见[资产目录](Docs/production/UE_ASSET_LAYOUT.md)。
 
 ## 数据集
 

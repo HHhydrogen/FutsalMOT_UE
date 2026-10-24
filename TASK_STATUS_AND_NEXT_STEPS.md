@@ -9,11 +9,12 @@
 - 混合臂与预训练Pose的追踪登记指标差为0。COCO AP均差仅+0.03878669点，两臂均低于预训练参考；不能宣称已证明稳定的合成收益。
 - 权威训练收据为研究根`pose/poseonly_v4/recovery_cim_a01`，追踪为`pose/association_dev_a01/v4_association_path_a02`；原CIM/路径门禁失败attempt仍保留。完整结果见[结果说明](Docs/research/POSE_V4_RESULTS.md)。
 
-## 正在执行
+## 本轮整理结果
 
-1. D恢复迁移已完成：44,007文件约13.889GiB，保留97条正式Dataset引用；辅助小证据已归档、可再生夹具已清理，旧G盘Research/Workspace根已删除。原迁移完成收据位于`tools/pose17_ops/storage_receipts/restore_D_20261025_045844_4237/`，辅助收据位于`Saved/CodexMigration/workspace_aux_20261025/`，不重放。
+1. D恢复迁移已完成：44,007文件约13.889GiB，保留97条正式Dataset引用；辅助小证据已归档、可再生夹具已清理，旧G盘Research/Workspace根已删除。原迁移完成收据已归档到`Saved/Maintenance/pose17_20261025/storage_receipts/restore_D_20261025_045844_4237/`，辅助收据位于`Saved/CodexMigration/workspace_aux_20261025/`，不重放。
 2. 阶段1文档整理已推送`599e90b`。阶段2代码已移到`python/`，实验提到根`experiments/sim2real/`，P1运行数据位于`Saved/P1/`；没有兼容旧Content的junction。Python3.9环境已离线重装本项目editable，CLI和真实GRF同seed跨进程4步检查通过；路径/CLI/resolved-task针对CPU检查71项通过。Git仅按原blob改名并叠加本轮路径修改，保留未完成号码及其他WIP。
-3. 下一步为阶段3：通过真实UE接口归类资产、修复引用；阶段4随后固化稳定入口、整理源码区运行收据。当前没有UE、MRQ或GPU训练在运行。
+3. 阶段3已完成并推送`d4468e9`：60个足球/球门/看台资产通过真实MCP移到Environment，23处场景网格引用检查通过，17个仍有引用的旧重定向器保留，5个既有资产WIP字节未变。本轮Editor已正常退出。
+4. 阶段4统一入口为`tools/run.ps1`、`tools/mcp_cli.py`；路径输出、P1实际配置校验/UE命令生成、独立研究帮助及MCP帮助已通过。37项一次性清单/入口已归档，运行收据回Saved，旧驱动放入`tools/legacy/`。下一轮30秒[实验方案](Docs/research/LONGPAIR_NEXT_EXPERIMENT.md)已提出，尚未冻结或启动。当前没有UE、MRQ或GPU训练在运行。
 
 ## 数据与存储
 

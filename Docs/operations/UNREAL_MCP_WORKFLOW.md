@@ -41,7 +41,7 @@ SOP 中标记为 `NOT VERIFIED` 的 UE Import Data 或 Blender Axis/Apply Transf
 - 这两个工具运行在**真实 Unreal Python 环境**，可正常 `import unreal`，**不是** `ProgrammaticToolset.execute_tool_script` 的受限 Python sandbox。
 - 已验证：
   - `run_python_code` 能执行真实 UE Python（`unreal.log` 正常写日志）；
-  - `run_python_file` 能执行项目内 Python 文件，例如 `Content/FutsalMOT/code/ue/*.py`。
+  - `run_python_file` 能执行项目内 Python 文件，例如 `python/ue/*.py`。
 - UE 日志可通过 Unreal MCP 的 **Logs Toolset** 查询，重点类别：`LogPython`、`LogBlueprint`、`LogMovieRenderPipeline`、`LogModelContextProtocol`。
 
 ### Agent 行为规范
@@ -121,7 +121,7 @@ SOP 中标记为 `NOT VERIFIED` 的 UE Import Data 或 Blender Axis/Apply Transf
 - 手动复制 Output Log；
 - 手动查询 Actor / 查看 Transform / 确认组件。
 
-**什么时候使用 `run_python_file`**：已有或新建的是完整 UE Python 文件（如 `Content/FutsalMOT/code/ue/build_*.py`、`read_*.py`、`export_*.py`、`render_*.py`），默认使用 `FutsalMOTTools.run_python_file`，**不要让用户复制代码到 UE Python Console**。
+**什么时候使用 `run_python_file`**：已有或新建的是完整 UE Python 文件（如 `python/ue/build_*.py`、`read_*.py`、`export_*.py`、`render_*.py`），默认使用 `FutsalMOTTools.run_python_file`，**不要让用户复制代码到 UE Python Console**。
 
 **什么时候使用 `run_python_code`**：仅用于小型诊断和快速状态查询，例如 `import unreal`、查询一个对象、打印一个属性、验证某个 API 是否存在、输出一条 UE log。**不要把大型多步骤逻辑塞进 `run_python_code`**。
 
@@ -169,6 +169,6 @@ SOP 中标记为 `NOT VERIFIED` 的 UE Import Data 或 Blender Axis/Apply Transf
 ### Git 注意事项
 
 - **不要提交** `__pycache__/`、`*.pyc`（已在根 `.gitignore` 补充忽略）。
-- UE资产、C++、插件及 `Content/FutsalMOT/code/` 统一由根Git管理；不重新建立submodule或嵌套Git。
+- UE资产、C++、插件及 `python/` 统一由根Git管理；不重新建立submodule或嵌套Git。
 
 > For Unreal Engine tasks in this project, do not ask the user to manually run UE Python unless MCP automation has been attempted and an actual API/tooling limitation has been confirmed.
