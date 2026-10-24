@@ -83,7 +83,11 @@ def main():
     if config is None:
         config = unreal.MoviePipelinePrimaryConfig()
     output = config.find_or_add_setting_by_class(unreal.MoviePipelineOutputSetting)
-    output.output_directory = unreal.DirectoryPath(str(MASK_DIR))
+    import sys as _storage_sys
+    from pathlib import Path as _StoragePath
+    _storage_sys.path.insert(0, str(_StoragePath(__file__).resolve().parents[1] / "src"))
+    from grf_ue_bridge.storage_policy import require_render_destination as _checked_media
+    output.output_directory = unreal.DirectoryPath(str(_checked_media(MASK_DIR)))
     output.file_name_format = "{frame_number}"
     output.zero_pad_frame_numbers = 4
     output.output_resolution = unreal.IntPoint(w, h)

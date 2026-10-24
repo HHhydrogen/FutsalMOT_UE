@@ -1,0 +1,46 @@
+存储策略候选（2026-10-25；不修改legacy冻结代码）
+
+根：完成与临时渲染媒体一律G:/FutsalMOT_Dataset。
+新raw G:/FutsalMOT_Dataset/_work/<attempt>/raw；导出_staging/<attempt>。
+D项目Saved仅metadata/配置/日志/必要缓存。
+研究执行代码、权重、checkpoint、结果实际D:/projects/FutsalMOT_Research。
+研究图像可链接正式GDataset；清理不得跟随链接。
+
+真实只读盘点（不跟junction、不读媒体像素或媒体SHA）：
+python tools/storage/dataset_storage_policy.py --output Saved/StoragePolicy/new_inventory.json inventory
+
+新attempt提交前空间预飞（例如预算仅为演示，实际由root估计）：
+python tools/storage/dataset_storage_policy.py --output Saved/StoragePolicy/new_preflight.json preflight --attempt new_attempt --render-peak-gib 220 --research-peak-gib 20
+预算包含EXR峰值+RGB+mask+可能stage副本；G至少另留80GiB，D另留40GiB。
+此工具不创建G媒体目录，不自动启动Editor/GPU。新入口须消费返回路径，禁止默认D Saved/raw。
+多相机批次在新camera/attempt前再次检查空间；活动MRQ低空间由root自有正常cancel闭环处理。
+
+EXR清理收据契约：
+Saved/StoragePolicy/postprocess_receipt_template.json 与 consumer_receipt_template.json仅模板，状态未成功。
+后处理器实际成功后写GDataset收据，绑定stage dataset.json与逐相机Pose/world JSONL SHA，
+逐相机PNG精确数量及人物记录数；exr_decode_count必须等于raw EXR数和各相机帧数和。
+已实际完成的消费驱动写DResearch收据，绑定postprocess SHA、所有消费输入索引SHA、
+独立EXR消费PID、consumer_scope=raw_exr_only、producer_output_closed=true、raw_exr_consumers_finished=true、raw_exr_required=false。仍计划用深度研究则不得标false。
+字段变成true本身不是证明；root只接受真实完成驱动写出的收据，不能从模板手工放行。
+
+默认dryrun（仅写新的D Saved清单）：
+python tools/storage/dataset_storage_policy.py --output Saved/StoragePolicy/cleanup_plan.json cleanup-exr --postprocess-receipt G:/FutsalMOT_Dataset/_work/new_attempt/postprocess.json --consumer-receipt D:/projects/FutsalMOT_Research/pose/runs/new_attempt/consumers_complete.json
+
+root复核后实际执行同参数，另加 --apply --expected-files-sha256 <dryrun.files_sha256>，并换新output文件名。
+真实执行仅要求登记的独立EXR消费PID退出；只读RGB的GPU训练与其他attempt的Editor不受阻。生产者必须已关闭该attempt输出；仅逐文件unlink .exr，不递归、不删目录，不动PNG/Pose/world/native/校准/轨迹。
+实际path每一祖先都拒绝junction/reparse；仅_work或_staging精确attempt/raw。
+固定事务journal在D Saved/StoragePolicy/cleanup_transactions/<raw-path-hash>.jsonl。
+一旦存在journal（哪怕仅intent）禁止改名绕过重放；partial必须root调查，不能伪称完成。
+消费JSON/JSONL包含任何EXR引用即阻止。工具不会自动发现未登记未来任务，所有消费必须由root登记。
+
+历史location1042的480 EXR/39.46GiB已完成独立消费复核，候选可退休（尚未执行）：Saved/StoragePolicy/legacy1042_dependency_report_a01.json。
+此工具刻意不接受正式provenance/groups作为删除范围。历史定向工具retire_legacy1042_exr.py仅接受固定480清单，root复核后执行，不挪进_work规避。
+删除EXR会不可逆丢失原始深度/cryptomatte；不能宣称原始EXR仍保留。
+诊断/not_training/unknown/MRQ_sync_verified=false保持不变；清理不产生训练准入。
+
+CPU针对检查：python tools/storage/test_dataset_storage_policy.py
+只使用D Saved/StoragePolicy内小临时夹具；不执行生产删除。
+
+旧1042定向dryrun：
+python tools/storage/retire_legacy1042_exr.py --expected-manifest-sha256 c40104809d68514ee940cb778fef54231a24923cf277ecf3381fa18569056026
+root确认后加 --apply；只接受480 EXR/42369846866bytes，独立固定journal拒绝partial重放，元数据SHA变化拒绝。

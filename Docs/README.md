@@ -25,13 +25,14 @@
 - [控制协议与历史兼容证据](research/POSE_CONTROL_PROTOCOL.md)、[COCO公开开发评价口径](research/POSE_COCO_EVALUATION.md)。
 - [固定检测Pose附件](research/POSE_FIXED_DETECTION_ATTACHMENT.md)、[关联评价细节](research/POSE_ASSOCIATION_TRACKEVAL.md)及[交互窗口候选](research/INTERACTION_WINDOW_CANDIDATE.md)。
 - [本轮v4真实结果](research/POSE_V4_RESULTS.md)：本次根据已结束元数据新增；同真实曝光平均AssA仅+0.26444035pp、1/3 seed为正，未过登记门槛；混合臂未超过预训练关联结果。不预设合成收益。
-- [30秒数据后续实验](research/LONGPAIR_NEXT_EXPERIMENT.md)：先尺度/附件覆盖，再做同运动地板控制；尚未冻结或启动。
+- [30秒数据后续实验](research/LONGPAIR_NEXT_EXPERIMENT.md)：先尺度/附件覆盖，再做同运动地板控制；当前执行口径见[v5协议](research/POSE_LONGPAIR_V5.md)。
 - [原Pose路线历史](research/POSE_PIPELINE_HISTORY.md)保存原阶段独有决策，不能当作今天的恢复命令。
 
 ## operations：维护与历史
 
 - [UE与MCP工作流](operations/UNREAL_MCP_WORKFLOW.md)：资产API、dirty、切图和安全重启约定。
 - [统一运行与维护](operations/RUNNING_AND_MAINTENANCE.md)：本机路径、启动器和历史入口边界。
+- [严格存储与EXR清理](operations/STORAGE_POLICY.md)：G盘媒体边界、D研究执行bundle及成功后定向清理。
 - [根目录文件用途](operations/ROOT_FILES.md)：必须保留的入口、旧OpenCode配置和可再生IDE索引。
 - [UE手动启动修复](operations/UE_STARTUP_REPAIR_20261025.md)：最近项目自动恢复导致的模块搜索问题与明确项目启动入口。
 - [单仓库迁移记录](operations/SINGLE_REPOSITORY_MIGRATION_20261025.md)。原双仓库/备份建议为历史，不授权补建用户已删除的备份。

@@ -1324,7 +1324,8 @@ def main() -> int:
     pose_cfg = (rt.get('postprocess') or {}).get('yolo_pose') or {}
     pose_enabled = bool(pose_cfg.get('enabled', False))
     episode_dir = Path(rt['trajectory_output'])
-    dataset_root = Path(rt['dataset_root'])
+    from grf_ue_bridge.storage_policy import require_dataset_workspace
+    dataset_root = require_dataset_workspace(Path(rt["dataset_root"]))
     mapping_path = Path(rt['actor_mapping'])
     seq_list = ue_profile.get('sequences') or []
     seq_pkg = ue_profile.get('sequence_package_path') or '/Game/FutsalMOT/Sequences'

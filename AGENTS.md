@@ -16,7 +16,9 @@
 
 ## 存储与生命周期
 
-- 生成完成的数据集仅保存在`G:/FutsalMOT_Dataset`。UE工作文件位于项目原`Saved/`物理目录；研究输入、权重、检查点和结果位于实际`D:/projects/FutsalMOT_Research`。
+- 所有渲染媒体（包括临时EXR/RGB/mask）仅写入`G:/FutsalMOT_Dataset`；新raw放`_work/<attempt>/raw`，导出放`_staging/<attempt>`，验收后同卷发布。禁止渲染写D Saved或直接覆盖成品。UE的配置、日志、轨迹、native及运行收据仍在项目原`Saved/`物理目录。
+- EXR后处理成功且所有EXR消费结束后立即按精确清单清理，不等不消费EXR的GPU训练结束；未完成/失败任务只保留明确诊断期限与用途。保留RGB、实例mask、Pose/world、轨迹、校准及成功收据。深度研究若需保留，必须在收据中登记用途与范围，不能长期默认堆积。入口与规则见[存储规范](Docs/operations/STORAGE_POLICY.md)。
+- 研究输入、不可变执行代码`code/<SHA>`、权重、检查点和结果位于实际`D:/projects/FutsalMOT_Research`。生成图像只引用G成品，不复制4K到研究目录；执行bundle只装必要源码，不另建Git或复制环境。
 - D恢复迁移已完整结束，G盘旧Research/Workspace根已移除；不重放旧迁移驱动。P1运行数据位于`Saved/P1/`，运行收据位于`Saved/`，历史协议原路径通过独立relocation解释。
 - 统计、复制和清理不跟随junction；不对DataSet目标递归删/搬。冻结协议、源码绑定、轨迹、native、校准和关键收据保留原bytes/SHA，另记relocation映射，不伪造历史路径可运行。
 - G盘或D项目外写删按具体范围申请工具自动审批，不能通过junction绕过；拒绝时说明实际动作与原因。

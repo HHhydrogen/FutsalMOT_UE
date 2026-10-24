@@ -36,11 +36,13 @@ P1与UE之间通过JSON/JSONL交换数据；UE不导入NumPy/OpenEXR依赖的P1�
 
 均为原生3840×2160、10FPS。按seed/manifest解析，不硬编码旧clips/clip_000层级。v2保留逐机位world、unknown及原诊断标记，不冒充正式可见性或遮挡标签；地板配对world约0.068mm差异保留原值，不称exact。
 
-工作文件已恢复到本项目Saved物理目录，研究输入/权重/结果位于实际`D:/projects/FutsalMOT_Research`；G盘仅保留生成后的数据集。Saved、缓存、虚拟环境、媒体、模型权重不入Git；AutoSave关闭。
+UE配置、轨迹与收据位于本项目Saved物理目录；渲染媒体（含临时EXR）统一写G盘数据集根的`_work/_staging`，成功消费后清理EXR。研究执行源码按SHA安装到实际`D:/projects/FutsalMOT_Research/code`，输入/权重/结果同在D研究根；生成图像只引用G成品。见[严格存储规则](Docs/operations/STORAGE_POLICY.md)。Saved、缓存、虚拟环境、媒体、模型权重不入Git；AutoSave关闭。
 
 ## 研究
 
 主问题是固定真实检测输入时，合成Pose监督能否改善身份连续性。[本轮v4](Docs/research/POSE_V4_RESULTS.md)在相同真实曝光下AssA均差+0.2644个百分点、仅1/3训练seed提高，未达到登记门槛；混合臂未超过预训练关联结果。全部负结果保留，不以格式、4K、四机位或地板变化单独宣称创新。最终SNMOT116/187保持封存。
+
+下一轮[v5配对对照](Docs/research/POSE_LONGPAIR_V5.md)使用30秒数据的固定虚拟裁剪，比较纯真实、加蓝地板合成、加红棕地板合成；真实曝光保持相同，并独立比较共同预训练参考。实际进度以任务状态和D研究运行收据为准。
 
 ## Git
 

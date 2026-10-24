@@ -32,6 +32,9 @@ from typing import Dict, List, Optional, Sequence, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+from grf_ue_bridge.storage_policy import require_render_destination
+
 from annotation_utils import entity_id_to_mask_id  # noqa: E402
 from dataset_export import ensure_dir, load_episode, load_mapping, write_json_atomic  # noqa: E402
 from render_preset import (  # noqa: E402
@@ -862,6 +865,7 @@ def _build_mrq_job(
     # UE 5.8 MRQ：配置用 find_or_add_setting_by_class 获取/创建设置并配置。
     # 注意：setup_basic_configuration() 依赖默认预设资产 /Temp/MovieRenderPipeline/
     # BasicConfigDefaults，本项目不存在，无法自动带上渲染 pass，需手动添加。
+    render_dir = require_render_destination(render_dir)
     config = _get_job_config(job)
     try:
         output = config.find_or_add_setting_by_class(unreal.MoviePipelineOutputSetting)
@@ -957,7 +961,7 @@ def _build_combined_mrq_job(
 
     config = _get_job_config(job)
     output = config.find_or_add_setting_by_class(unreal.MoviePipelineOutputSetting)
-    output.output_directory = unreal.DirectoryPath(str(render_dir))
+    output.output_directory = unreal.DirectoryPath(str(require_render_destination(render_dir)))
     # PNG writer使用render_pass区分FinalImage和BurnInOverlay；EXR writer
     # 会将render_pass token解析为空，再把各pass作为命名layer写入同一帧文件。
     output.file_name_format = combined_file_name_format(file_name_format)
@@ -1327,7 +1331,7 @@ def _configure_mask_job(
 
     config = _get_job_config(job)
     output = config.find_or_add_setting_by_class(unreal.MoviePipelineOutputSetting)
-    output.output_directory = unreal.DirectoryPath(str(mask_dir))
+    output.output_directory = unreal.DirectoryPath(str(require_render_destination(mask_dir)))
     output.file_name_format = file_name_format
     output.zero_pad_frame_numbers = zero_pad
     output.output_resolution = unreal.IntPoint(image_width, image_height)

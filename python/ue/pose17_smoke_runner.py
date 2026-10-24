@@ -355,7 +355,11 @@ def prepare(plan):
         job.map = unreal.SoftObjectPath(_LEVEL)
         config = job.get_configuration()
         output = config.find_or_add_setting_by_class(unreal.MoviePipelineOutputSetting)
-        output.output_directory = unreal.DirectoryPath(str(attempt / camera["camera_id"]))
+        import sys as _storage_sys
+        from pathlib import Path as _StoragePath
+        _storage_sys.path.insert(0, str(_StoragePath(__file__).resolve().parents[1] / "src"))
+        from grf_ue_bridge.storage_policy import require_render_destination as _checked_media
+        output.output_directory = unreal.DirectoryPath(str(_checked_media(attempt / camera["camera_id"])))
         output.output_resolution = unreal.IntPoint(3840, 2160)
         # 文件帧为attempt内相对编号；EXR/native仍保留真实Sequence源帧。
         output.file_name_format = "{render_pass}{frame_number_rel}"

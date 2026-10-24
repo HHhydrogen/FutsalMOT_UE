@@ -25,14 +25,25 @@ try {
         if (-not $CommandArguments.Count) { throw 'research需要experiments下的脚本路径' }
         $runEntry=(Resolve-Path -LiteralPath $CommandArguments[0]).Path
         $runAllowed=[IO.Path]::GetFullPath((Join-Path $runProject 'experiments'))+[IO.Path]::DirectorySeparatorChar
-        if (-not $runEntry.StartsWith($runAllowed,[StringComparison]::OrdinalIgnoreCase)) { throw '研究入口必须位于experiments/' }
+        $runBundleAllowed=[IO.Path]::GetFullPath((Join-Path $runResearch 'code'))+[IO.Path]::DirectorySeparatorChar
+        $runFromSource=$runEntry.StartsWith($runAllowed,[StringComparison]::OrdinalIgnoreCase)
+        $runFromBundle=$runEntry.StartsWith($runBundleAllowed,[StringComparison]::OrdinalIgnoreCase)
+        if (-not $runFromSource -and -not $runFromBundle) { throw '研究入口必须来自experiments帮助或DResearch/code/<SHA>执行bundle' }
         if ($CommandArguments -notcontains '--help') {
+            if (-not $runFromBundle) { throw '正式研究执行须使用已冻结DResearch/code/<SHA>，源码目录仅允许--help' }
+            $runBundleRel=$runEntry.Substring($runBundleAllowed.Length).Split([IO.Path]::DirectorySeparatorChar)
+            if ($runBundleRel[0] -notmatch '^[0-9a-f]{64}$') { throw '执行bundle目录必须为内容清单SHA' }
             $runEditors=@(Get-CimInstance Win32_Process -Filter "Name='UnrealEditor.exe'")
             if ($runEditors.Count) { throw 'Editor仍在运行；GPU研究必须等UE安全退出后再执行' }
         }
         & $runResearchPython -c 'import sys;assert sys.version_info[:2]==(3,10),"研究环境必须Python3.10"'
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-        $env:PYTHONPATH=(Join-Path $runProject 'python/src')+';'+(Join-Path $runResearch 'runtime_dependencies')
+        $runImportRoot=Join-Path $runProject 'python/src'
+        if ($runFromBundle) {
+            $runBundlePart=$runEntry.Substring($runBundleAllowed.Length).Split([IO.Path]::DirectorySeparatorChar)[0]
+            $runImportRoot=Join-Path (Join-Path $runResearch 'code') ($runBundlePart+'/python/src')
+        }
+        $env:PYTHONPATH=$runImportRoot+';'+(Join-Path $runResearch 'runtime_dependencies')
         & $runResearchPython $runEntry @($CommandArguments | Select-Object -Skip 1)
     } else {
         & $runPython -c 'import sys;assert sys.version_info[:2]==(3,9),"P1环境必须Python3.9"'

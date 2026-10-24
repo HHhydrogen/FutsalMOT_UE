@@ -1,6 +1,6 @@
 {
   "paths": {
-    "dataset_root": "D:/projects/FutsalMOT_UEDataset/Saved/Render/Tasks",
+    "dataset_root": "G:/FutsalMOT_Dataset/_work",
     "ue_project_root": "D:/projects/FutsalMOT_UEDataset"
   }
 }

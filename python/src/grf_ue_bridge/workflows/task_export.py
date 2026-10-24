@@ -49,7 +49,8 @@ def run_export(
     from grf_ue_bridge.grf_runner import run_episode
 
     export_cfg = ExportConfig(**resolved.export_profile)
-    Path(resolved.dataset_root).mkdir(parents=True, exist_ok=True)
+    from grf_ue_bridge.storage_policy import require_dataset_workspace
+    require_dataset_workspace(resolved.dataset_root).mkdir(parents=True, exist_ok=True)
     traj = Path(resolved.trajectory_output)
     appearance_catalog = (resolved.ue_profile or {}).get("appearance")
     environment_profile = (resolved.ue_profile or {}).get("environment_profile")
