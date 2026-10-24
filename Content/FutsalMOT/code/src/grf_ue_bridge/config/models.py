@@ -1,0 +1,635 @@
+"""配置数据模型：数据集 task（单 config）、resolved task。
+
+任务 = 一个自包含 JSON（导出 + UE + 机器路径内联，本地路径直接入库）；
+resolved task 是 P1↔UE 共享的运行时契约。
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import ClassVar, Dict, List, Literal, Optional
+
+from pydantic import BaseModel, Field, StrictInt, StrictStr, field_validator, model_validator
+
+from .paths import RESOLVED_TASK_SCHEMA, TASK_SCHEMA
+
+VALID_POSTPROCESS_FORMATS = ("json", "mot", "yolo-det", "yolo-seg")
+
+
+# ── YOLO Pose（人体关键点）后处理配置 ────────────────────────────────────
+
+class YoloPoseTaskConfig(BaseModel):
+    """YOLO Pose 标注导出参数（属于 task 的 postprocess.yolo_pose）。
+
+    单一开关同时控制 UE 侧关键点导出（resolved task 经 run_task.py 读到）与
+    P1 侧标签生成（postprocess 阶段）。默认关闭，不影响原有 pipeline。
+    """
+
+    enabled: bool = Field(
+        False,
+        description=(
+            "是否导出 YOLO Pose（12 点肢体关键点）。开启后 UE 导出 pose_keypoints.jsonl，"
+            "postprocess 生成 labels_pose/ + futsal_pose.yaml"
+        ),
+    )
+    visibility_neighborhood_radius: int = Field(
+        2,
+        ge=0,
+        le=8,
+        description="Instance-ID Mask 邻域判定半径（像素），用于 keypoint 遮挡判定",
+    )
+    write_dataset_yaml: bool = Field(
+        True,
+        description="是否在 episode 根生成 yolo_pose/ 可训练暂存目录与 futsal_pose.yaml",
+    )
+    occlusion_trace: bool = Field(
+        False,
+        description=(
+            "UE 侧是否对每个关键点做遮挡 trace（自遮挡 / 非 mask 几何）。"
+            "默认关闭：mask 判定已是主要且准确的遮挡信号，trace 是边缘增强，"
+            "且 61 万次射线会明显拖慢渲染前导出（大任务建议保持关闭）"
+        ),
+    )
+    trace_tolerance_cm: float = Field(
+        20.0,
+        gt=0.0,
+        le=200.0,
+        description="UE 遮挡 trace 容差（cm）：命中距离 < 关键点距离 - 容差 即判遮挡",
+    )
+    bone_overrides: Dict[str, str] = Field(
+        default_factory=dict,
+        description="UE bone 名覆盖：{12 点肢体名: UE bone 名}（用于骨骼命名不同的资产）",
+    )
+
+    def validate_pose(self) -> None:
+        """跨字段一致性：bone_overrides 键名合法。"""
+        # 延迟 import：config 层早期加载，避免依赖 ue/ 路径；运行时补 sys.path
+        import sys
+
+        _ue_dir = Path(__file__).resolve().parent.parent.parent.parent / "ue"
+        if str(_ue_dir) not in sys.path:
+            sys.path.insert(0, str(_ue_dir))
+        from pose_bones import POSE_KEYPOINT_NAMES
+
+        valid = set(POSE_KEYPOINT_NAMES)
+        for k in self.bone_overrides:
+            if k not in valid:
+                raise ValueError(
+                    f"yolo_pose.bone_overrides 键 {k!r} 非法（只接受 12 点肢体名）"
+                )
+
+
+# ── 数据集 Task（单 config：导出 + UE + 机器路径内联）──────────────────
+
+class PostprocessTaskConfig(BaseModel):
+    """后处理参数（属于 task）。"""
+
+    include_ball: bool = True
+    workers: int = Field(4, ge=1, le=32, description="并行 worker 数")
+    chunk_size: int = Field(50, ge=0, description="帧分块大小（0=自动）")
+    png_compress_level: int = Field(1, ge=0, le=9)
+    formats: List[str] = Field(
+        default_factory=lambda: ["json", "mot", "yolo-det", "yolo-seg"]
+    )
+    clean_stale: bool = True
+    validation_level: Literal["full", "quick"] = "full"
+    yolo_pose: YoloPoseTaskConfig = Field(
+        default_factory=YoloPoseTaskConfig,
+        description="YOLO Pose 标注导出参数（默认关闭）",
+    )
+    debug: "DebugTaskConfig" = Field(
+        default_factory=lambda: DebugTaskConfig(),
+        description="debug 可视化：全量渲染 bbox/彩色 mask/pose 图集并拼接视频（默认关闭）",
+    )
+
+    def validate_formats(self) -> None:
+        for f in self.formats:
+            if f not in VALID_POSTPROCESS_FORMATS:
+                raise ValueError(
+                    f"不支持的 postprocess 格式: {f!r}（可选 "
+                    f"{'/'.join(VALID_POSTPROCESS_FORMATS)}）"
+                )
+        self.yolo_pose.validate_pose()
+
+
+class DebugTaskConfig(BaseModel):
+    """debug 可视化参数（属于 task 的 postprocess.debug）。
+
+    enabled=true 时 `task postprocess` 全量渲染三套 debug 图集
+    （bbox overlay / 彩色 mask / pose 关节点）并自动拼接为三个 mp4。
+    """
+
+    enabled: bool = Field(
+        False,
+        description=(
+            "是否全量渲染 debug 可视化：bbox overlay / 彩色 mask / pose 关节点 三套图集，"
+            "并把三套图集各拼接为 mp4"
+        ),
+    )
+    include_ball: bool = Field(False, description="bbox overlay 是否绘制球")
+    make_videos: bool = Field(True, description="渲染图集后自动拼接视频（bbox/mask/pose 各一个）")
+    video_fps: Optional[int] = Field(
+        None, ge=1, description="debug 视频帧率（None = 读 seqinfo.ini frameRate，缺省 30）"
+    )
+    pose_dot_radius: int = Field(3, ge=1, le=30, description="pose 关键点半径（像素，远景默认小一点避免遮挡）")
+    pose_edge_width: int = Field(3, ge=1, le=20, description="pose 骨架连线宽度（像素）")
+
+
+class AuditTaskConfig(BaseModel):
+    """审计预期（属于 task）。"""
+
+    expected_cameras: int = Field(4, ge=1)
+    expected_frames_per_camera: int = Field(300, ge=1)
+
+
+class CameraLensConfig(BaseModel):
+    """相机镜头参数：焦距是唯一 authority，FOV 仅作兼容性断言。"""
+
+    focal_length_mm: Optional[float] = Field(None, gt=0.0)
+    horizontal_fov_deg: Optional[float] = Field(None, gt=0.0, lt=180.0)
+
+    model_config = {"extra": "forbid"}
+
+class CameraProfileConfig(BaseModel):
+    """静态监控相机 profile，支持 C1..C5 anchor 和 P01 partial prototype。"""
+
+    type: Literal["static_surveillance"]
+    coverage: Literal["full_field", "partial_field"]
+    region: Optional[Literal["left_half"]] = None
+    coverage_ratio: Optional[float] = Field(None, gt=0.0, lt=1.0)
+    placement_template: Optional[str] = None
+    resolution: List[int] = Field(default_factory=lambda: [1920, 1080])
+    lens: CameraLensConfig = Field(default_factory=CameraLensConfig)
+    position_m: List[float]
+    rotation_deg: List[float]
+    height_m: float = Field(..., gt=0.0)
+    distortion: Optional[Dict] = None
+
+    model_config = {"extra": "forbid"}
+
+
+class CameraDistributionConfig(BaseModel):
+    """固定五个 canonical anchor 的分布配置。"""
+
+    system: Literal["dual"] = "dual"
+    anchors: List[Literal["C1", "C2", "C3", "C4", "C5"]]
+    episode_profile: Literal[
+        "anchor_only",
+        "anchor_plus_one_partial",
+        "anchor_plus_two_partial",
+    ] = "anchor_only"
+    static_surveillance_ratio: Optional[List[float]] = None
+    dynamic_broadcast_ratio: Optional[List[float]] = None
+
+    model_config = {"extra": "forbid"}
+
+    def validate_anchor_contract(self) -> None:
+        required = ["C1", "C2", "C3", "C4", "C5"]
+        if self.anchors != required:
+            raise ValueError("anchor cameras 必须按 C1..C5 顺序完整提供")
+
+
+class SimulationCameraConfig(BaseModel):
+    """simulation.camera 的 canonical anchor 和受控 partial 配置。"""
+
+    distribution: CameraDistributionConfig
+    profiles: Dict[str, CameraProfileConfig]
+
+    _RESOLUTION_ALLOWLIST: ClassVar[Dict[str, set]] = {
+        "C1": {(1920, 1080), (2560, 1440)},
+        "C2": {(1920, 1080), (2560, 1440)},
+        "C3": {(1920, 1080), (2560, 1440)},
+        "C4": {(1920, 1080), (2560, 1440)},
+        # 1920x1080 remains valid for legacy C5 tasks.
+        "C5": {(1920, 1080), (2560, 1440), (3840, 2160)},
+    }
+    _FOCAL_LENGTH_ALLOWLIST: ClassVar[Dict[str, set]] = {
+        "C1": {12.0, 15.0, 18.0},
+        "C2": {12.0, 15.0, 18.0},
+        "C3": {12.0, 15.0, 18.0},
+        "C4": {12.0, 15.0, 18.0},
+        "C5": {8.0, 10.0, 12.0},
+    }
+    _DEFAULT_FOCAL_LENGTH_MM: ClassVar[Dict[str, float]] = {
+        "C1": 15.0,
+        "C2": 15.0,
+        "C3": 15.0,
+        "C4": 15.0,
+        "C5": 10.0,
+    }
+    _FOV_TOLERANCE_DEG: ClassVar[float] = 1e-3
+    _ALLOWED_PROFILE_IDS: ClassVar[set] = {"C1", "C2", "C3", "C4", "C5", "P01"}
+
+    model_config = {"extra": "forbid"}
+
+    def validate_camera_contract(self) -> None:
+        self.distribution.validate_anchor_contract()
+        required = ["C1", "C2", "C3", "C4", "C5"]
+        profile_ids = set(self.profiles)
+        if not set(required).issubset(profile_ids) or not profile_ids.issubset(self._ALLOWED_PROFILE_IDS):
+            actual = ",".join(sorted(self.profiles)) or "<empty>"
+            raise ValueError(
+                f"camera profiles 必须包含 C1..C5，且只允许额外 P01，当前 ID: {actual}"
+            )
+        for camera_id, profile in self.profiles.items():
+            if camera_id in required and profile.coverage != "full_field":
+                raise ValueError(f"canonical camera {camera_id} 必须使用 coverage=full_field")
+            if profile.coverage == "full_field" and (
+                profile.region is not None or profile.coverage_ratio is not None
+            ):
+                raise ValueError(f"full_field camera {camera_id} 不允许 region 或 coverage_ratio")
+            if profile.coverage == "partial_field":
+                if camera_id != "P01" or profile.region != "left_half":
+                    raise ValueError("partial camera 当前只允许 P01 + region=left_half")
+                if profile.placement_template != "left_half_sideline_high_v1":
+                    raise ValueError("P01 必须使用 placement_template=left_half_sideline_high_v1")
+            if camera_id == "P01" and profile.coverage != "partial_field":
+                raise ValueError("P01 必须使用 coverage=partial_field")
+            if len(profile.resolution) != 2 or any(v <= 0 for v in profile.resolution):
+                raise ValueError(f"camera resolution[{camera_id}] 必须为正数 [width, height]")
+            resolution = tuple(profile.resolution)
+            allowed = self._RESOLUTION_ALLOWLIST.get(camera_id, set())
+            if camera_id == "P01":
+                allowed = {(1920, 1080)}
+            if resolution not in allowed:
+                choices = ", ".join(
+                    "{}x{}".format(width, height)
+                    for width, height in sorted(allowed)
+                )
+                raise ValueError(
+                    f"camera resolution[{camera_id}] 不在允许集合内: "
+                    f"{resolution[0]}x{resolution[1]}（可选 {choices}）"
+                )
+            if len(profile.position_m) != 3 or len(profile.rotation_deg) != 3:
+                raise ValueError(
+                    f"camera position_m / rotation_deg[{camera_id}] 必须为三维向量"
+                )
+            if abs(profile.position_m[2] - profile.height_m) > 1e-6:
+                raise ValueError(f"camera height_m[{camera_id}] 必须与 position_m[2] 一致")
+            lens = profile.lens
+            if lens.focal_length_mm is None:
+                if lens.horizontal_fov_deg is not None:
+                    raise ValueError(
+                        f"camera lens[{camera_id}] 必须提供 focal_length_mm；"
+                        " horizontal_fov_deg 不能控制焦距"
+                    )
+                lens.focal_length_mm = self._DEFAULT_FOCAL_LENGTH_MM[camera_id]
+            focal_length = float(lens.focal_length_mm)
+            allowed_focal_lengths = self._FOCAL_LENGTH_ALLOWLIST.get(camera_id, {12.0})
+            if focal_length not in allowed_focal_lengths:
+                choices = "/".join(str(int(value)) for value in sorted(allowed_focal_lengths))
+                raise ValueError(
+                    f"camera focal_length_mm[{camera_id}] 不在允许集合内: "
+                    f"{focal_length:g} mm（可选 {choices} mm）"
+                )
+            if lens.horizontal_fov_deg is not None:
+                import sys
+
+                ue_dir = Path(__file__).resolve().parent.parent.parent.parent / "ue"
+                if str(ue_dir) not in sys.path:
+                    sys.path.insert(0, str(ue_dir))
+                from camera_projection import focal_length_to_horizontal_fov_deg
+
+                expected_fov = focal_length_to_horizontal_fov_deg(focal_length)
+                if abs(float(lens.horizontal_fov_deg) - expected_fov) > self._FOV_TOLERANCE_DEG:
+                    raise ValueError(
+                        f"camera horizontal_fov_deg[{camera_id}] 与 focal_length_mm "
+                        f"不一致（provided={lens.horizontal_fov_deg:g}, "
+                        f"derived={expected_fov:.6f}）"
+                    )
+
+
+class CameraMappingConfig(BaseModel):
+    """canonical camera 到现有 UE Actor/Sequence 的显式映射。"""
+
+    actor: str = Field(..., min_length=1)
+    sequence: str = Field(..., min_length=1)
+
+    model_config = {"extra": "forbid"}
+
+
+class SimulationTaskConfig(BaseModel):
+    """任务中的 simulation 配置。"""
+
+    camera: SimulationCameraConfig
+
+    model_config = {"extra": "forbid"}
+
+
+def _validate_appearance_asset_path(value: str) -> str:
+    if not value.startswith("/Game/"):
+        raise ValueError("必须是非空的 /Game/ 资产路径")
+    segments = value[len("/Game/"):].split("/")
+    if any(not segment.strip() for segment in segments):
+        raise ValueError("/Game/ 资产路径不能包含空路径段")
+    package_leaf, has_object_name, object_name = segments[-1].partition(".")
+    if not package_leaf.strip() or (has_object_name and not object_name.strip()):
+        raise ValueError("必须是非空的 /Game/ 资产路径，且包含资产叶段")
+    return value
+
+
+class AppearanceModelCandidate(BaseModel):
+    """一个可随机选择的 MPFB 球员模型候选。"""
+
+    player_id: StrictInt
+    mesh: StrictStr
+    anim_class: StrictStr
+    skeleton: StrictStr
+
+    model_config = {"extra": "forbid"}
+
+    _validate_paths = field_validator("mesh", "anim_class", "skeleton")(
+        _validate_appearance_asset_path
+    )
+
+
+class AppearanceSkinCandidate(BaseModel):
+    """一个可随机选择的皮肤纹理候选。"""
+
+    skin_id: StrictStr = Field(..., min_length=1)
+    texture: StrictStr
+
+    model_config = {"extra": "forbid"}
+
+    _validate_texture_path = field_validator("texture")(_validate_appearance_asset_path)
+
+    @field_validator("skin_id")
+    @classmethod
+    def validate_skin_id(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("skin_id 不能为空")
+        return value
+
+
+class AppearanceKitCandidate(BaseModel):
+    """一个 Set_01 至 Set_05 的球衣和短裤材质候选。"""
+
+    set_id: Literal["01", "02", "03", "04", "05"]
+    jersey_material: StrictStr
+    shorts_material: StrictStr
+
+    model_config = {"extra": "forbid"}
+
+    _validate_paths = field_validator("jersey_material", "shorts_material")(
+        _validate_appearance_asset_path
+    )
+
+    @model_validator(mode="after")
+    def validate_material_set_ids(self) -> "AppearanceKitCandidate":
+        expected_suffix = f"_Set_{self.set_id}"
+        for field_name in ("jersey_material", "shorts_material"):
+            material_path = getattr(self, field_name)
+            asset_leaf = material_path[len("/Game/"):].rsplit("/", 1)[-1]
+            package_leaf, has_object_name, object_path = asset_leaf.partition(".")
+            object_name = object_path.partition(":")[0]
+            if (
+                not package_leaf.endswith(expected_suffix)
+                or (
+                    has_object_name
+                    and not object_name.endswith(expected_suffix)
+                )
+            ):
+                raise ValueError(
+                    f"set_id {self.set_id} 与 {field_name} 不匹配："
+                    f"package 和 object 名称必须属于 {expected_suffix}"
+                )
+        return self
+
+
+
+
+class AppearanceCatalog(BaseModel):
+    """seeded episode 外观目录及其完整候选集合。"""
+
+    mode: Literal["seeded"]
+    policy: Literal["futsalmot_appearance_v1"]
+    catalog_id: Literal["mpfb_players_003_009_v1"]
+    models: List[AppearanceModelCandidate]
+    skins: List[AppearanceSkinCandidate]
+    kits: List[AppearanceKitCandidate]
+    body_texture_parameter: Literal["SkinTexture"]
+
+    model_config = {"extra": "forbid"}
+
+    @model_validator(mode="after")
+    def validate_candidate_contract(self) -> "AppearanceCatalog":
+        if len(self.models) != 7:
+            raise ValueError("appearance models 必须包含 7 个候选")
+        model_ids = [model.player_id for model in self.models]
+        if len(set(model_ids)) != len(model_ids):
+            raise ValueError("appearance models.player_id 存在重复值")
+        if set(model_ids) != set(range(3, 10)):
+            raise ValueError("appearance models 必须完整覆盖 player_id 3-9")
+
+        if len(self.skins) != 9:
+            raise ValueError("appearance skins 必须包含 9 个候选")
+        skin_ids = [skin.skin_id for skin in self.skins]
+        if len(set(skin_ids)) != len(skin_ids):
+            raise ValueError("appearance skins.skin_id 存在重复值")
+
+        if len(self.kits) != 5:
+            raise ValueError("appearance kits 必须包含 5 个候选")
+        kit_ids = [kit.set_id for kit in self.kits]
+        if len(set(kit_ids)) != len(kit_ids):
+            raise ValueError("appearance kits.set_id 存在重复值")
+        if set(kit_ids) != {"01", "02", "03", "04", "05"}:
+            raise ValueError("appearance kits 必须完整覆盖 set_id 01-05")
+        return self
+
+
+
+class EnvironmentConfig(BaseModel):
+    """episode 环境 v1.5 的严格 task 配置。"""
+
+    mode: Literal["seeded"]
+    policy: Literal["futsalmot_environment_v1_5"]
+    catalog_id: Literal["futsalmot_indoor_environment_v1_5"]
+    environment_seed: Optional[StrictInt] = Field(None, ge=0)
+    preset: Literal[
+        "daylight_clear_v1",
+        "overcast_soft_v1",
+        "warm_evening_v1",
+        "cool_evening_v1",
+        "light_haze_v1",
+        "cloudy_variation_v1",
+        "dawn_cool_v1",
+        "night_floodlit_v1",
+        "auto",
+    ]
+
+    model_config = {"extra": "forbid"}
+
+
+class UeProfile(BaseModel):
+    """UE 相机/Sequence/渲染参数（内联在 task 的 ue 块，非独立文件）。"""
+
+    actor_mapping: str = Field("ue/actor_mapping.example.json", description="相对仓库根")
+    sequence_package_path: str = "/Game/FutsalMOT/Sequences"
+    sequences: List[Dict] = Field(default_factory=list, description="相机/Sequence 列表")
+    camera_mapping: Optional[Dict[str, CameraMappingConfig]] = Field(
+        None, description="canonical camera ID 到 UE Actor/Sequence 的映射"
+    )
+    appearance: Optional[AppearanceCatalog] = Field(
+        None, description="seeded MPFB 外观目录（与 legacy player_visuals 互斥）"
+    )
+    environment: Optional[EnvironmentConfig] = Field(
+        None, description="seeded episode environment v1.5 配置"
+    )
+    replace_existing: bool = True
+    ball_rolling: Dict = Field(default_factory=dict)
+    annotation_export: Dict = Field(default_factory=dict, description="标注/渲染配置")
+
+    model_config = {"populate_by_name": True, "extra": "allow"}
+
+    @model_validator(mode="after")
+    def reject_mixed_appearance_configuration(self) -> "UeProfile":
+        legacy_visuals = (self.model_extra or {}).get("player_visuals")
+        if self.appearance is not None and legacy_visuals:
+            raise ValueError(
+                "ue.appearance 不能与非空 ue.player_visuals 同时配置"
+            )
+        return self
+
+
+class DatasetTaskConfig(BaseModel):
+    """一个数据集任务的完整描述（单 config）。
+
+    导出参数（export）+ UE 参数（ue）+ 机器路径（dataset_root / ue_project_root）
+    都内联在一个文件里，直接入库；repo_root 自动探测。产出统一落
+    <dataset_root>/<episode_name>/ 下自包含。
+    """
+
+    schema_: Literal["futsalmot_dataset_task"] = Field(TASK_SCHEMA, alias="schema")
+    version: int = 2
+
+    task_id: str = Field(..., pattern=r"^[A-Za-z0-9_-]+$", description="任务唯一 ID")
+    episode_name: str = Field(
+        ..., pattern=r"^[A-Za-z0-9_]+$", description="episode 名（目录名，无路径分隔符）"
+    )
+
+    dataset_root: str = Field(..., description="数据集输出根目录（绝对路径，入库）")
+    ue_project_root: str = Field(
+        ..., description="Unreal Engine 项目根目录（含 .uproject，绝对路径，入库）"
+    )
+
+    export: "ExportConfig" = Field(..., description="导出参数（GRF 侧）")
+    ue: UeProfile = Field(..., description="UE 相机/Sequence/渲染参数")
+    simulation: Optional[SimulationTaskConfig] = Field(
+        None, description="simulation 层的相机分布参数"
+    )
+
+    postprocess: PostprocessTaskConfig = Field(default_factory=PostprocessTaskConfig)
+    audit: AuditTaskConfig = Field(default_factory=AuditTaskConfig)
+
+    # C6-P1.6 产物生命周期：cleanup 策略（research_minimal = 默认清理 transient）。
+    artifact_policy: Dict = Field(
+        default_factory=lambda: {"profile": "research_minimal"},
+        description="产物策略：profile ∈ {research_minimal, full}",
+    )
+
+    model_config = {"populate_by_name": True}
+
+
+# ── Resolved Task（运行时，含绝对路径）──────────────────────────────────
+
+class ResolvedTask(BaseModel):
+    """解析后的任务：把单 config 归一化为运行时绝对路径。
+
+    本文件允许含绝对路径，因为它位于被 gitignore 的 `.futsalmot/runtime/`。
+    """
+
+    schema_: Literal["futsalmot_resolved_task"] = Field(
+        RESOLVED_TASK_SCHEMA, alias="schema"
+    )
+    version: int = 1
+
+    task_id: str
+    episode_name: str
+    source_task_file: str = Field(..., description="运行时 source task 绝对路径")
+
+    repo_root: str
+    ue_project_root: str
+    dataset_root: str
+
+    trajectory_output: str = Field(..., description="轨迹输出目录（绝对）")
+    dataset_episode_dir: str = Field(..., description="数据集 episode 目录（绝对）")
+
+    export_profile: Dict = Field(default_factory=dict, description="完整解析后的导出参数")
+    simulation: Dict = Field(default_factory=dict, description="解析后的 simulation 参数")
+    ue_profile: Dict = Field(default_factory=dict, description="完整解析后的 UE 参数")
+    actor_mapping: str = Field("", description="actor mapping 绝对路径")
+
+    postprocess: Dict = Field(default_factory=dict)
+    audit: Dict = Field(default_factory=dict)
+    artifact_policy: Dict = Field(
+        default_factory=lambda: {"profile": "research_minimal"},
+        description="产物策略（cleanup 依据）",
+    )
+
+    model_config = {"populate_by_name": True}
+
+
+# ── 原有 ExportConfig（从 grf_ue_bridge/config.py 迁入，保持兼容）────────
+
+class ExportConfig(BaseModel):
+    """单个 GRF episode 导出的配置。"""
+
+    scenario: str = Field(..., description="GRF 场景名，例如 '5_vs_5'")
+    seed: int = Field(42, description="随机种子，用于可复现")
+    num_steps: int = Field(300, description="要运行的步数（GRF 10 FPS 仿真）")
+    target_fps: int = Field(
+        0,
+        description=(
+            "目标导出帧率：0 或 10 = 保持 GRF 原生 10fps（不插值，每 GRF 步一条标注）；"
+            "30 = 把 10fps 位置线性插值到 30fps 导出（渲 900 标 900，1:1）。须为 10 的倍数"
+        ),
+    )
+    trajectory_time_scale: float = Field(
+        1.0,
+        ge=0.1,
+        description=(
+            "轨迹时间缩放（时间轴重采样）：source_time = dataset_time × time_scale。"
+            "> 1 时按真实 GRF 轨迹做时间型 Hermite 重采样，dataset 位置/速度一致地"
+            "加快（速度 = source 速度 × time_scale），score/ownership/game_mode 等"
+            "离散状态按 source_time hold/nearest。1.0 = 不缩放（普通 10fps→目标 fps 插值）。"
+        ),
+    )
+    playback_fps: int = Field(30, description="Unreal Engine 目标回放帧率")
+    field_length_m: float = Field(40.0, description="UE 场地长度（米）")
+    field_width_m: float = Field(20.0, description="UE 场地宽度（米）")
+    render: bool = Field(False, description="是否渲染游戏画面")
+    write_video: bool = Field(False, description="是否录制视频")
+    dump_full_raw_observation: bool = Field(
+        False, description="是否导出完整原始观测，用于调试"
+    )
+    number_of_left_players_agent_controls: int = Field(
+        0, description="由 agent 控制的左队球员数（0 = 全部内置 AI）"
+    )
+    number_of_right_players_agent_controls: int = Field(
+        0, description="由 agent 控制的右队球员数（0 = 全部内置 AI）"
+    )
+    game_duration: Optional[int] = Field(
+        None,
+        ge=1,
+        description=(
+            "单个回合的引擎帧数（场景 game_duration，5_vs_5 默认 3000）。"
+            "设大避免采集步数耗尽回合→重置瞬移；None = 用场景默认"
+        ),
+    )
+    left_team_difficulty: Optional[float] = Field(
+        None,
+        ge=0.0,
+        le=1.0,
+        description=(
+            "左队 AI 难度（0~1，5_vs_5 默认 0.05）。调高→球更少出界、"
+            "减少 set-piece 重摆阵型瞬移；None = 用场景默认"
+        ),
+    )
+    right_team_difficulty: Optional[float] = Field(
+        None,
+        ge=0.0,
+        le=1.0,
+        description="右队 AI 难度（0~1，5_vs_5 默认 0.05）；None = 用场景默认",
+    )
+
+    model_config = {"populate_by_name": True}

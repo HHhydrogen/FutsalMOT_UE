@@ -1,0 +1,328 @@
+"""从 Object ID Pass 渲染的 Cryptomatte multilayer EXR 提取逐实体 mask（P1 纯逻辑）。
+
+输入：MRQ `MoviePipelineObjectIdRenderPass` + EXR(multilayer) 输出的 `render_mask/*.exr`
+      （UE 5.8 实测）。
+输出：`mask/{frame_index:06d}.png`，每个实体像素 = mask_id
+      （`L0..L4→1..5`、`R0..R4→6..10`、`BALL→11`，背景 0），与现有
+      `annotate-masks` / validator 的 mask 契约完全一致。
+
+UE 5.8 实测编码：
+  - manifest 在 EXR header 的 `cryptomatte/<hash>/manifest`（JSON：{actor_label: "hex_id"}）。
+  - 实体 ID 以 float32 存于 `RGBA` 层的 R 通道；`hex_id` 是该 float32 位模式的**大端**十六进制。
+  - 逐实体 mask = (R 通道 == float32(hex_id))（float32 精确相等）。
+
+性能说明：
+  - EXR 用 PIZ 压缩（整帧解压）；openexr Python 绑定只提供整层 `pixels`（RGBA 4 通道），
+    当前读取仍需整帧解压，不以降低分辨率或精度减少成本。
+  - 选择 ID 层用小型索引表加完整 uint32 比较统计精确命中，冲突多时回退二分查找，
+    避免 np.isin 为每个 4K 候选层排序数百万像素。仅在候选层的命中上限也不能
+    超过当前最优项时跳过统计，保持“最多命中、同分 RGBA 优先”的精确语义。
+  - ID 匹配用 float32 位模式 → uint32 精确整数比较（`ids.view(np.uint32)`），
+    比浮点比较更快且 bit-exact。
+
+依赖：openexr + numpy。
+"""
+
+import json
+import struct
+from concurrent.futures import ProcessPoolExecutor
+from pathlib import Path
+from typing import Dict, List, Optional, Sequence, Tuple
+
+import numpy as np
+
+# 把仓库的 ue/ 目录加入 sys.path（与 conftest 一致），以便 import 纯模块
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+_UE_DIR = _REPO_ROOT / "ue"
+if str(_UE_DIR) not in __import__("sys").path:
+    __import__("sys").path.insert(0, str(_UE_DIR))
+
+from annotation_utils import entity_id_to_mask_id  # noqa: E402
+from dataset_export import ensure_dir, write_json_atomic  # noqa: E402
+from render_episode import (  # noqa: E402
+    map_rendered_to_annotation,
+    select_rendered_frame_indices,
+)
+
+
+def hex_id_to_float(hex_id: str) -> float:
+    """manifest 的 8 位十六进制 ID → float32（大端位模式）。"""
+    return struct.unpack(">f", bytes.fromhex(hex_id))[0]
+
+
+def _count_manifest_hits(bits: np.ndarray, sorted_targets: np.ndarray) -> int:
+    """小表索引只缩小查找范围，最终始终比较完整的 uint32，绝不截断 ID。"""
+    hits = 0
+    low_bits = sorted_targets & np.uint32(65535)
+    table = np.zeros(65536, dtype=np.uint32)
+    present = np.zeros(65536, dtype=bool)
+    table[low_bits] = sorted_targets
+    present[low_bits] = True
+    # 同桶中未进入主表的键单独精确比较；过多冲突时使用有界二分查找。
+    collisions = sorted_targets[table[low_bits] != sorted_targets]
+    # 每块最多约 52 万像素，4K 时索引、目标值与比较临时数组合计约 7 MB。
+    rows = max(1, (512 * 1024) // max(1, bits.shape[1]))
+    for start in range(0, bits.shape[0], rows):
+        chunk = bits[start:start + rows]
+        if len(collisions) <= 4:
+            indices = chunk & np.uint32(65535)
+            hits += int(np.count_nonzero((table[indices] == chunk) & present[indices]))
+            for target in collisions:
+                hits += int(np.count_nonzero(chunk == target))
+        else:
+            indices = np.searchsorted(sorted_targets, chunk)
+            # 超过最大目标的索引截到末项，完整整数比较仍会排除它。
+            matched_targets = np.take(sorted_targets, indices, mode="clip")
+            hits += int(np.count_nonzero(matched_targets == chunk))
+    return hits
+
+
+def select_cryptomatte_id_channel(
+    manifest: dict,
+    layers: dict,
+) -> Tuple[np.ndarray, str]:
+    """按 manifest 精确匹配选择 Cryptomatte float32 ID R 通道。
+
+    一个 multilayer EXR 可以同时包含 FinalImage 和 Object-ID pass。不能只按
+    ``RGBA`` 层名取值，因为合并输出时 ``RGBA`` 通常属于 FinalImage；这里用
+    manifest hash 的 float32 位模式统计每个候选层的命中像素，选择命中最多的
+    layer，并保留旧式独立 Object-ID EXR 的 RGBA 兼容性。
+    """
+    targets = []
+    for hex_id in manifest.values():
+        try:
+            targets.append(np.uint32(int(str(hex_id), 16)))
+        except (TypeError, ValueError):
+            continue
+    if not targets:
+        raise ValueError("Cryptomatte manifest 没有有效的十六进制 ID")
+    target_bits = np.unique(np.asarray(targets, dtype=np.uint32))
+
+    candidates = []
+    best = None
+    for layer_name, channel in layers.items():
+        pixels = getattr(channel, "pixels", channel)
+        if pixels is None:
+            continue
+        array = np.asarray(pixels)
+        if array.ndim != 3 or array.shape[2] < 1:
+            continue
+        name = str(layer_name)
+        preference = 1 if name.upper() == "RGBA" else 0
+        candidates.append(name)
+        maximum = (array.shape[0] * array.shape[1], preference)
+        if best is not None and array.dtype.kind in "fiu" and maximum <= best[0]:
+            # 命中数最多等于像素数；连上限也无法胜出时，统计结果不影响选择。
+            continue
+        # 仅 R 参与匹配；无需将半精度 FinalImage 的整张 RGBA 转为 float32。
+        channel_r = np.ascontiguousarray(array[:, :, 0], dtype=np.float32)
+        bits = channel_r.view(np.uint32)
+        hits = _count_manifest_hits(bits, target_bits)
+        priority = (hits, preference)
+        # 严格大于才替换，保持旧稳定排序的同分顺序和 RGBA 优先级。
+        if best is None or priority > best[0]:
+            best = (priority, name, channel_r)
+
+    if not candidates:
+        raise ValueError("Cryptomatte EXR 没有可用的三维 float32 图层")
+    priority, layer_name, selected = best
+    if priority[0] <= 0:
+        names = ", ".join(candidates)
+        raise ValueError(
+            f"Cryptomatte manifest 未命中任何候选 ID 层（候选: {names}）"
+        )
+    return np.ascontiguousarray(selected, dtype=np.float32), layer_name
+
+
+def load_cryptomatte(exr_path) -> Tuple[dict, np.ndarray]:
+    """读一个 Cryptomatte EXR，返回 (manifest: {actor_label: hex_id}, id_channel: float32 R)。
+
+    id_channel 是 (H, W) float32，像素值 == 实体的 float32 ID（0 = 背景）。
+    """
+    import OpenEXR
+
+    f = OpenEXR.File(str(exr_path))
+    # manifest：取 header 里第一个 cryptomatte/*/manifest
+    manifest = {}
+    for key, val in f.header().items():
+        if key.startswith("cryptomatte/") and key.endswith("/manifest"):
+            manifest = json.loads(val)
+            break
+    if not manifest:
+        raise ValueError(f"{exr_path}: 无 cryptomatte manifest")
+    try:
+        ids, _ = select_cryptomatte_id_channel(manifest, f.channels())
+    except ValueError as exc:
+        raise ValueError(f"{exr_path}: {exc}") from exc
+    return manifest, ids
+
+
+def entity_names_from_mapping(mapping: dict) -> Dict[str, str]:
+    """entity_id → manifest 名（actor 标签）。"""
+    return {eid: label for eid, label in mapping.items()}
+
+
+def _resolve_actor_plan(mapping: dict) -> List[Tuple[str, str, int]]:
+    """预先解析 entity_id → (actor label, mask_id)，整批转换只算一次。
+
+    返回 [(entity_id, label, mask_id), ...]，与 mapping 的键顺序一致（保证
+    counts 字典的插入顺序确定）。
+    """
+    return [(eid, label, entity_id_to_mask_id(eid)) for eid, label in mapping.items()]
+
+
+def build_mask(
+    manifest: dict,
+    ids: np.ndarray,
+    mapping: dict,
+    plan: Optional[List[Tuple[str, str, int]]] = None,
+) -> Tuple[np.ndarray, Dict[str, int]]:
+    """把 Cryptomatte ID 通道映射成 mask_id 标签图。
+
+    返回 (out, counts)：out 为 (H, W) uint8，每个实体像素 = mask_id；counts 为
+    {entity_id: 像素数}。mapping: entity_id → actor label（manifest 名）。
+
+    位模式精确匹配：manifest 的 8 位十六进制 ID 是 float32 Actor ID 的**大端**
+    位模式，直接按位解释为 uint32（`ids.view(np.uint32)`）后做整数相等比较——
+    比浮点比较更快且保证 bit-exact（绝无宽松浮点误差导致的 ID 混淆）。
+    plan 为 _resolve_actor_plan(mapping) 的缓存（同一批 EXR 只解析一次）。
+    """
+    if plan is None:
+        plan = _resolve_actor_plan(mapping)
+    h, w = ids.shape
+    out = np.zeros((h, w), dtype=np.uint8)
+    counts: Dict[str, int] = {}
+    ids_bits = ids.view(np.uint32)  # float32 位模式按位解释为 uint32（视图，不复制）
+    for entity_id, label, mask_id in plan:
+        hex_id = manifest.get(label)
+        if hex_id is None:
+            counts[entity_id] = 0
+            continue
+        try:
+            target = np.uint32(int(hex_id, 16))  # 8 位十六进制 → 大端 uint32 位模式
+        except ValueError:
+            # 防御：非标准 manifest 值回退到 float32 精确比较
+            target = np.float32(hex_id_to_float(hex_id))
+            mask = ids == target
+        else:
+            mask = ids_bits == target
+        n = int(mask.sum())
+        counts[entity_id] = n
+        if n > 0:
+            out[mask] = mask_id
+    return out, counts
+
+
+def save_mask_png(mask_arr: np.ndarray, out_png: Path, png_compress_level: int = 1) -> None:
+    """把 mask_id 标签图写成单通道 L 模式 PNG。
+
+    compress_level: PNG zlib 压缩等级 0–9。实例 ID 图是离散小整数，等级 1 已足够
+    （与默认 9 相比解码后逐像素一致，写入显著更快）。不改变像素值。
+    """
+    from PIL import Image
+
+    ensure_dir(out_png.parent)
+    Image.fromarray(mask_arr, mode="L").save(
+        str(out_png), compress_level=png_compress_level, optimize=False
+    )
+
+
+def convert_frame(
+    exr_path: Path,
+    mapping: dict,
+    out_png: Path,
+    png_compress_level: int = 1,
+    plan: Optional[List[Tuple[str, str, int]]] = None,
+) -> Dict[str, int]:
+    """把一个 Cryptomatte EXR 帧转成 mask PNG（每个实体像素 = mask_id）。
+
+    返回 {entity_id: 像素数}。mapping: entity_id → actor label（manifest 名）。
+    """
+    manifest, ids = load_cryptomatte(exr_path)
+    out, counts = build_mask(manifest, ids, mapping, plan=plan)
+    save_mask_png(out, out_png, png_compress_level=png_compress_level)
+    return counts
+
+
+def convert_render_mask_dir(
+    render_mask_dir: Path,
+    mapping: dict,
+    mask_dir: Path,
+    num_steps: int,
+    source_step_seconds: float,
+    playback_fps: int,
+    png_compress_level: int = 1,
+    workers: int = 0,
+    chunk_size: int = 0,
+    max_frames: Optional[int] = None,
+) -> Tuple[str, Dict[str, dict]]:
+    """把 render_mask/*.exr 全部转成 mask/{frame_index:06d}.png。
+
+    帧映射与 RGB 一致：annotation frame_index = step + 1 ↔ render 帧 round(step*step*fps)。
+    返回 (status, per_frame)。status ∈ {"success","partial","failed"}。
+
+    workers：0=自动（min(相机内帧数, max(1, cpu_count//2))），1=串行，>1=多进程
+    并行（每帧一个任务，写入独立 PNG，天然无写冲突）。输出确定：
+    per_frame 按 frame_index 升序组装，与并行与否无关。
+    chunk_size：传给 ProcessPoolExecutor.map 的批大小（>0 时），控制每 worker 一批任务数。
+    max_frames：>0 时只转换前 max_frames 个 annotation 帧（smoke / benchmark 截断用）。
+    """
+    keep_indices = select_rendered_frame_indices(num_steps, source_step_seconds, playback_fps)
+    # 解析 .exr 帧号
+    rendered = {}
+    for p in render_mask_dir.glob("*.exr"):
+        digits = "".join(ch for ch in p.stem if ch.isdigit())
+        if digits:
+            rendered[int(digits)] = p
+    if not rendered:
+        return "failed", {}
+    mapping_ann = map_rendered_to_annotation(sorted(rendered.keys()), keep_indices)
+    if max_frames is not None and max_frames > 0:
+        mapping_ann = dict(list(mapping_ann.items())[:max_frames])
+    plan = _resolve_actor_plan(mapping)
+    if workers == 0:
+        workers = min(max(1, len(mapping_ann)), max(1, _cpu_count() // 2))
+
+    if workers <= 1:
+        per_frame: Dict[str, dict] = {}
+        for frame_index, render_num in mapping_ann.items():
+            counts = convert_frame(
+                rendered[render_num], mapping, mask_dir / f"{frame_index:06d}.png",
+                png_compress_level=png_compress_level, plan=plan,
+            )
+            per_frame[str(frame_index)] = {"render_frame": render_num, "pixel_counts": counts}
+    else:
+        tasks = [
+            (str(rendered[render_num]), str(mask_dir / f"{frame_index:06d}.png"),
+             mapping, plan, png_compress_level)
+            for frame_index, render_num in mapping_ann.items()
+        ]
+        chunksize = chunk_size if chunk_size > 0 else 1
+        with ProcessPoolExecutor(max_workers=workers) as ex:
+            results = list(ex.map(_convert_frame_task, tasks, chunksize=chunksize))
+        per_frame = {
+            str(fi): {"render_frame": rn, "pixel_counts": counts}
+            for (fi, rn), counts in zip(mapping_ann.items(), results)
+        }
+    total = len(per_frame)
+    status = "success" if total == len(keep_indices) else "partial"
+    return status, per_frame
+
+
+def _cpu_count() -> int:
+    """os.cpu_count 的防御包装（None 时返回 1）。"""
+    import os
+    return os.cpu_count() or 1
+
+
+def _convert_frame_task(task: tuple) -> Dict[str, int]:
+    """进程池 worker：转换单个 Cryptomatte EXR 帧 → mask PNG。
+
+    task = (exr_path, out_png_path, mapping, plan, png_compress_level)。
+    返回 {entity_id: 像素数}。模块级函数（可 pickle，Windows spawn 安全）。
+    """
+    exr_path, out_png_path, mapping, plan, png_compress_level = task
+    return convert_frame(
+        Path(exr_path), mapping, Path(out_png_path),
+        png_compress_level=png_compress_level, plan=plan,
+    )

@@ -1,5 +1,40 @@
 # AGENTS.md
 
+## 最新 Git 决策（2026-10-25）
+
+- 用户确认继续以命令行 Git 管理。UE Git Provider 不自动启用，不初始化新仓库。
+- 用户已明确授权“开始git仓库融合”。本次采用标准双父合并保留两仓历史，代码路径不变；内层 `.git` 已移到D盘独立备份，未删除原历史。迁移说明见 `Docs/SINGLE_REPOSITORY_MIGRATION_20261025.md`。不丢弃WIP、不重写已发布历史、不归档或删除旧远端。
+- Git融合只改变仓库边界和文档，不修改正在运行的v4绑定源码、数据路径或预算。未完成号码及其他WIP留在原位，不纳入融合提交。
+
+## 最新存储与并行整理要求（2026-10-25，覆盖下方旧G盘规则）
+
+- 旧日志/tmp 独立整理已完成：14 文件共 19,884,096 字节，项目/本机 AutoSave 均为 False；见 `Docs/UE_SAVED_MAINTENANCE_20261025.md`。精确 raw 媒体清理已完整成功：23013 文件/638.191GiB，其中7961个EXR；前后1936个活动引用检查一致。实际收据 `tools/pose17_ops/storage_receipts/raw_media_20261025_041634_0487/completion_receipt.json`，不重放。活动四个 export/号码/所有非媒体及 Dataset 未删除；原EXR深度/Cryptomatte已丢弃，不能声称仍保留。
+- 用户明确要求：生成完成的数据集只保存在`G:/FutsalMOT_Dataset`；G盘不再作为UE工作区。UE `Saved`最终恢复为`D:/projects/FutsalMOT_UEDataset/Saved`实际目录，研究输入/权重/检查点/实验结果恢复实际`D:/projects/FutsalMOT_Research`（用户已选择）。清理外部失败/重复生成媒体，必要计划/native/冻结收据保留，不能把全部659GiB原始媒体搬D。
+- 当前v4六臂和随后真实追踪还在运行，D Saved/DResearch均是到G的junction；旧冻结链比较实际resolve且合成1440训练图仍读取Saved下四个原始诊断导出RGB。必须等当前六训练及六追踪安全结束再整体解除这些联接/迁移依赖；此前只可清理经清单确认不被使用的raw媒体，不能把当前四个`diagnostic_location_pilot_*_export_a01`目录当废弃产物删除。具体只读清单`tools/pose17_ops/storage_cleanup_actions_candidate_20261025.json`，研究评估`STORAGE_SWITCH_READONLY_20261025.md`。不改运行中的绑定源码/协议，不重放数学更新。
+- 用户另开独立聊天任务“整理UE仓库、清理Saved并核验AutoSave”（thread `01a16f81-ba8f-7cd2-aa5c-18f2ef77f89f`）处理Saved无用旧日志/tmp/Autosaves与配置；该任务不处理raw媒体或目录联接迁移，主聊天负责大数据存储调整。两边不要竞争写同一批文件。保持本轮退出日志、finalize_longpair_a04、冻结协议和实验收据。Config项目默认已有AutoSave=False，仍核验本机有效配置；Git不保护未保存Editor内存。
+- 路径迁移完成前，以下历史状态中的G路径仍是现行实验的真实依赖；完成后须更新新默认入口/路径映射，不伪造旧来源或删除唯一原始轨迹证据。当前权限为受限workspace；G盘或D项目外写删需按实际范围申请工具自动审批，禁止绕过或使用junction逃逸。自动审批若拒绝，说明具体动作和理由并保留未完成状态。
+
+## 最新运行状态（2026-10-25）
+
+- 原训练18976及交接7936因受限CIM权限查询失败而停止，历史state/锁/日志保留，不能改为成功。第五R3_seed20261026已完整1000步/3000R、exit0；root实际对照确认普通隔离环境CIM拒绝、批准环境同查询成功。新独立恢复 `tools/pose17_ops/recover_v4_after_cim_a01.py` 已限域审批启动，权威 `G:/FutsalMOT_Research/pose/poseonly_v4/recovery_cim_a01/driver_state.json`；只补第五评价、第六原训练/评价，优化器重放0。新交接权威 `handoff_recovery_tracking_a01/state.json`，自动等恢复完成后关联。真实PID/命令行为准，旧18976已发生RuntimeBroker复用，绝不按旧PID结束进程。Saved/Research迁移须消费显式新恢复完成链，而非修改旧failed状态。
+- 本轮a04四stage与发布均已真实完成：`G:/FutsalMOT_Dataset/v2_pose17_longpair_pilot_a01`，4800RGB/4800mask/48000人物Pose，2seed×2floor×4camera×300帧4K。仅G同卷variant移动，原stage小索引保留；完成收据`_publication_a04/complete.json`。一次地板配对metadata通过，world不完全exact，最大差6.809602211279827e-5m，原值/unknown/diagnostic/not_training/MRQ_syncfalse保留，不冒称正式遮挡或逐像素验收。
+- Editor26836本次clean/idle/own-release门禁通过，2026-10-25 03:38:02正常Exiting/closed且PID消失，真实最终收据`G:/FutsalMOT_Workspace/UE/Saved/Pose17Development/finalize_longpair_a04/root_final_shutdown.json`。渲染驱动6036及协调器2332均已完成退出，禁止重启。
+- v4已在该真实退出后冻结`G:/FutsalMOT_Research/pose/poseonly_v4/frozen_a01`（协议dfab1c73c2815fe2690446a616e3f07d50452376f3b40593cdb43860e6e3c583，准入160704f9205bd7d3ba87ee2a9b09f755a8b762aff3faedd79ed05cc9d034078d），六文本上下文/COCO200dev链与无UE/GPU预飞实际通过。唯一`tools/pose17_ops/run_poseonly_v4_a01.py`已启动，实际driver18976（launcher21684，以真实state为准），权威`G:/FutsalMOT_Research/pose/poseonly_v4/control_a01/driver_state.json`。当前首R3_seed20261024.train，禁止重复启动/改绑定源码协议或重放预算；UE继续关闭。
+- v4为保持公平使用原120帧试产的固定R/S选择，新30秒配对是独立发布候选，不偷偷替换训练表。三seed各R3后R3S1、1000更新，两臂相同3000R，同序；混合另1000S/独立loss归一alpha1/3。评价last1000 FP32 EMA，所有负结果保留。之后原450帧固定raw/.1足球关联；test116/187继续封存。
+- q8交接已真实完成：首1048蓝stage为1200RGB/1200mask/12000人物Pose，保留diagnostic/not_training/visibility unknown。旧driver18864在首stage完成后按授权source门禁退出；idle实际队列4→8、线程12保持、dirty空，收据`resume_20261024_a04_q8/queue_adjustment.json`。同Editor26836上接续driver6036已运行1048红棕；权威为q8目录`driver_state.json`，协调器2332正常等待该driver。禁止重启旧driver或再改已绑定源码/队列，全部渲染结束后才v4。
+- q8安全交接协调器`tools/pose17_ops/coordinate_queue8_a04.py`已由root后台启动，PID2332（以后以实际状态为准），权威`G:/FutsalMOT_Workspace/UE/Saved/Pose17Development/resume_20261024_a04_q8/coordinator_state.json`。当前等待首CPU导出及旧driver自然退出；它会单次真实MCP调整idle队列至8、验证后唯一启动剩余三组driver。不要重复启动协调器/接续driver，不要修改其冻结源码；3文件SHA在同目录coordinator_launch.json，4项CPU候选收据在G Workspace/tests/remaining_q8_a04_candidate_cpu.json。
+- 用户最新要求首组后处理结束后适当提高队列。首1048蓝a04的1200RGB/EXR及恢复/release已完成，CPU导出仍运行；root已在旧queue收据追加显式handoff请求，原bytes保存在`resume_20261024_a04/write_queue_preflight_original_q4.json`，实际队列仍4。这是有意绑定变更：旧driver在首stage完成、下一UE动作前因source绑定变化退出，禁止误当程序故障撤销配置或重启旧driver。由独立q8接续driver验证首stage真实完成与旧PID退出，idle门禁通过后仅将队列4→8，线程12不变，在`resume_20261024_a04_q8`记录新权威状态并接续原剩余3个a04；不重复首组后处理、不打断活动CPU/MRQ。
+- 用户已关闭游戏并再次明确继续。启动前实际系统commit余量37.4GiB，G可用约1.14TiB；a04 Editor26836已真实MCP确认规范地图、dirty空和写队列12/4。唯一驱动`tools/pose17_ops/run_longpair_batch_a04.py`已启动（18864，后续以真实state/PID为准），首1048蓝a04已submitted并处于`rendering_no_interference`，不是已完成。
+- 权威状态为`G:/FutsalMOT_Workspace/UE/Saved/Pose17Development/resume_20261024_a04/driver_state.json`，启动/队列/预飞收据同目录。正常时不重复启动、不修改已绑定源码/计划，不干预MRQ。仍是四组4800对4K及48000逐视角人物Pose，unknown/诊断限制保留。
+- 四stage完成后由root发布及安全退出UE，再冻结v4六臂真实曝光对照准入并训练；不得提前GPU训练。旧a01/a02/a03失败记录保留、驱动不可重启。持续跟进已按a04更新并启用，下方历史暂停/游戏占用不再是当前状态。
+
+## 最新恢复执行（2026-10-24）
+
+- 用户已明确继续昨日工作，撤销下方暂停要求：先确认G路径，恢复30秒Pose地板配对，期间仅CPU完善v4，全部渲染结束且UE安全退出后才训练；每完成独立阶段汇报。
+- G读写和三条主要迁移映射已实际通过，初始G空闲约1200GiB，本批保守预留600GiB。a02因Windows提交内存不足崩溃；a03队列12/8仍受系统提交余量不足影响，root已通过自有MRQ正常取消、恢复地板、核验clean并释放失败会话，随后正常quit。二者均失败，不复用媒体、不启动其批次驱动。额外StarRail进程私有内存约11.7GiB，已请用户自行关闭，禁止擅自结束。
+- 下一独立a04仍为两seed×两地板×四机位×300帧、合计4800对4K，目标写队列12线程/容量4，提交前至少16GiB系统commit余量、运行中低于6GiB正常取消自有MRQ。必须读取新launch和队列收据，禁止用a03旧PID或直接重启旧Saved驱动。全部渲染结束且本次UE安全退出后才训练。
+- 当前项目内MCP辅助代码在`tools/pose17_ops/`，请求/收据实际写G盘Saved的本轮独立目录；原8源Sequence/P2来源证据复用，只换新attempt，不覆盖旧失败记录。v4独立Trainer5项及评价适配9项CPU已通过，候选`G:/FutsalMOT_Research/pose/poseonly_v4/candidate_a02`；尚未冻结准入或GPU执行。
+
 ## 最新停止与存储约束（2026-10-23晚）
 
 - 用户要求迁移完数据后结束今日任务；定时任务`futsalposetrack`已暂停。未经用户重新要求继续，不启动渲染、训练、恢复驱动或新研究开发。
@@ -35,53 +70,26 @@
 - 已结束持久生产会话可保留其自有dirty包，但后续操作必须匹配checkpoint且无范围外改动，不能将retained伪装成restored。
 - 用户当前明确要求的提交/推送视为本轮授权，不重复索要确认；未授权时仍遵循下方默认限制。未完成号码实现与资产不纳入本轮提交。
 
-## 仓库结构：两个独立 Git 仓库，外层通过 submodule 链接内层
+## 仓库结构：统一 Git 仓库
 
-本项目包含两个独立 Git 仓库，版本历史和提交边界完全分离。外层通过 Git submodule 记录内层仓库的 commit，不把内层 Python 文件复制进外层索引：
+唯一工作仓库为本目录 `D:/projects/FutsalMOT_UEDataset`，分支 `master`，远端 `git@github.com:HHhydrogen/FutsalMOT_UE.git`。`Content/FutsalMOT/code/` 是同仓库中的普通Python代码目录，不再是submodule，也不保留嵌套 `.git`。
 
-1. **外层 UE 项目**（本目录 `D:\projects\FustalMOT_UEDataset`）— git 远程 `git@github.com:HHhydrogen/FutsalMOT_UE.git`，分支 `master`。
-2. **内层 Python 数据集代码** `Content/FutsalMOT/code/` — submodule 指向自己的仓库 `git@github.com:HHhydrogen/FutsalMOT_Dataset.git`，分支 `main`。
-
-外层索引只记录 `Content/FutsalMOT/code/` 的 gitlink 和 `.gitmodules` 配置；外层 `git add -A` 不会把内层 Python 文件逐个加入外层。改 Python 代码必须进入 `Content/FutsalMOT/code/` 在内层仓库单独提交；内层 commit 完成后，再在外层更新 submodule 指针。
-
-首次克隆外层仓库后初始化内层仓库：
+历史融合保留外层原69提交及Python原148提交，融合提交有两个父节点；旧Python远端保留为历史来源，不再作为本项目日常推送目标。代码路径、Python3.9/Python3.10/UE三环境边界不变。新克隆无需 `git submodule update`：
 
 ```powershell
-git submodule update --init --recursive
-```
-
-检查两个仓库时必须分别执行 `git status`。外层显示的是 submodule 指针状态，内层显示的是 Python 文件状态。
-
-### Submodule 提交与推送顺序
-
-修改内层代码、配置或文档时，必须先完成并推送内层仓库，再提交外层 gitlink：
-
-```powershell
-# 1. 在内层仓库检查、测试、提交并推送
-git -C Content/FutsalMOT/code status --short --branch
-git -C Content/FutsalMOT/code add <仅限本次内层改动>
-git -C Content/FutsalMOT/code diff --cached --stat
-git -C Content/FutsalMOT/code commit -m "<简体中文提交说明>"
-git -C Content/FutsalMOT/code push origin main
-
-# 2. 回到外层仓库记录已经在远程存在的子仓库 commit
-git add Content/FutsalMOT/code
-git diff --cached --submodule=short -- Content/FutsalMOT/code
+git clone git@github.com:HHhydrogen/FutsalMOT_UE.git
+cd FutsalMOT_UE
+git status --short
+# 仅选择本次已验收文件；不要git add -A。
+git add <明确文件列表>
+git diff --cached --stat
 git commit -m "<简体中文提交说明>"
 git push origin master
 ```
 
-必须遵守以下顺序：
+即使cwd在 `Content/FutsalMOT/code`，Git根也应解析到本项目根。不要重新初始化内层Git或恢复历史gitlink。提交前检查暂存区，数据集、权重、Saved、虚拟环境、缓存及未完成号码均不提交；不force-push或跳过hooks。完整备份在 `D:/projects/FutsalMOT_GitBackup_20261025_0430`，含两仓已验证bundle、原索引、WIP和原内层Git目录。它不是日常工作仓库。
 
-- 子仓库 push 失败时停止，不得让外层提交或推送一个远程不可取得的 gitlink。
-- 外层只提交 mode `160000` 的 `Content/FutsalMOT/code` gitlink，不要把内层文件复制到外层，也不要从外层使用 `git add -f` 强行加入内层文件。
-- 外层更新指针前确认内层 `git rev-parse HEAD` 是刚刚推送成功的 commit；用 `git diff --cached --submodule=short` 检查指针变化。
-- 两个仓库都可能有未提交改动。不要使用无选择的 `git add -A`；分别检查 `git status --short`，只暂存本次目标文件。
-- 外层 clone 后使用 `git submodule update --init --recursive`；也可以使用 `git clone --recurse-submodules <外层仓库地址>`。拉取外层新指针后再次执行该命令。
-- `git submodule status` 前缀为 `-` 表示未初始化，`+` 表示工作区 commit 与外层记录不一致；外层提交前应消除意外的 `+`，或明确确认要更新指针。
-- 禁止 force-push、跳过 hooks 或把外层 commit 与内层 commit 混写。推送被拒绝时先 fetch 并按实际分支历史处理，不得用强制推送覆盖远程历史。
-
-## 内层 Python 仓库：先读当前技术文档
+## Python 代码目录：先读当前技术文档
 
 `Content/FutsalMOT/code/README.md` 是 Python 数据集代码仓库的入口说明；`Content/FutsalMOT/code/docs/DATA_CONTRACT.md` 记录数据格式，`Content/FutsalMOT/code/docs/VALIDATION_AND_LIMITATIONS.md` 记录验证入口和当前限制。进入该目录工作前应先阅读这些文档。要点：
 
@@ -116,9 +124,9 @@ SOP 中标记为 `NOT VERIFIED` 的 UE Import Data 或 Blender Axis/Apply Transf
 
 ## git 约定（整个仓库都遵循）
 
-- **未经用户明确确认，不得自动 commit/push**：每次提交或推送前先询问用户并等待明确确认。
+- 未授权时不自动commit/push；用户已授权本轮仓库融合及已验阶段成果提交推送，不重复请求同一授权。精确暂存本次文件，不提交其他WIP。
 - **commit message 使用简体中文**。
-- 外层仓库当前分支 `master`，内层为 `main`。
+- 唯一工作分支为 `master`；旧Python的 `main` 仅存在于已导入历史和独立备份。
 
 ## Unreal Engine MCP Automation Workflow
 
@@ -269,9 +277,6 @@ SOP 中标记为 `NOT VERIFIED` 的 UE Import Data 或 Blender Axis/Apply Transf
 ### Git 注意事项
 
 - **不要提交** `__pycache__/`、`*.pyc`（已在根 `.gitignore` 补充忽略）。
-- 保持本项目原有「双 Git 仓库」规则：
-  - UE 资产 / `Plugins/` / `.uproject` / `.gitmodules` 等属于**外层 UE 仓库**；
-  - `Content/FutsalMOT/code/` 的 Python 文件和内层 commit 属于**内层 Python 数据集仓库**；
-  - 外层只更新 submodule gitlink，不要把两个仓库的 commit 混淆。
+- UE资产、C++、插件及 `Content/FutsalMOT/code/` 统一由根Git管理；不重新建立submodule或嵌套Git。
 
 > For Unreal Engine tasks in this project, do not ask the user to manually run UE Python unless MCP automation has been attempted and an actual API/tooling limitation has been confirmed.

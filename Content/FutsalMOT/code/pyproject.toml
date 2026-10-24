@@ -1,0 +1,43 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "grf-ue-bridge"
+version = "0.1.0"
+requires-python = ">=3.9,<3.10"
+dependencies = [
+    "gfootball>=2.10.2",
+    "gym<0.26",
+    "numpy",
+    "opencv-python",  # 后处理性能依赖：实例 mask 的连通域/轮廓（annotate-masks 快速路径）；无 cv2 时自动回退纯 Python（更慢）
+    "openexr",  # 读取 Object ID Pass 的 Cryptomatte multilayer EXR
+    "pillow",  # 读取 mask PNG（annotate-masks）/ annotate-overlay 调试可视化
+    "pydantic",
+    "six>=1.17.0",
+    "typer",
+]
+
+[project.scripts]
+grf-ue = "grf_ue_bridge.cli:app"
+
+[dependency-groups]
+dev = [
+    "pytest",
+]
+
+[tool.pytest.ini_options]
+markers = [
+    "grf_integration: 真实 GRF 引擎集成测试（本地运行：uv run pytest -m grf_integration -q）",
+]
+# 默认不运行需要完整 GRF 引擎的集成测试；显式 -m grf_integration 覆盖
+# mcp_smoke_test.py 是 UE-only 冒烟脚本（import unreal），P1 pytest 排除
+addopts = ["-m", "not grf_integration", "--ignore=ue/mcp_smoke_test.py"]
+
+[tool.hatch.build.targets.wheel]
+packages = [
+    "src/grf_ue_bridge",
+    "src/grf_ue_bridge/config",
+    "src/grf_ue_bridge/workflows",
+    "src/grf_ue_bridge/tools",
+]

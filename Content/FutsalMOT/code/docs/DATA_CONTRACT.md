@@ -1,0 +1,389 @@
+# FutsalMOT 数据契约
+
+当前发布入口为G:/FutsalMOT_Dataset/v1_no_numbers_4k，8个seed、32相机序列、20116对4K RGB/mask。每seed单片段平铺在groups/seed_XXXXXXXX/cameras；group的clip引用为clip.json。结构与共享字段见[SEED_DATASET.md](SEED_DATASET.md)，生产准入等级见[PRODUCTION_V1.md](PRODUCTION_V1.md)。号码和Pose不在本轮输出中。
+
+本文档描述当前代码读写的 JSON/JSONL、图像和标签格式。字段名称以 `src/grf_ue_bridge/schema.py`、`ue/dataset_export.py`、`ue/annotation_exporter.py`、`ue/pose_annotator.py` 和相关验证器为准。
+
+## 目录和阶段
+
+单文件 task 的 `dataset_root` 和 `episode_name` 决定 episode 目录：
+
+```text
+<dataset_root>/<episode_name>/
+  meta.json
+  frames.jsonl
+  raw_observations.jsonl       # 可选
+  provenance/
+    export_config.json         # 旧式 exporter 可能写入
+    task.json                  # task 工作流写入
+    resolved-task.sanitized.json
+    export-profile.json
+    ue-profile.json
+    actor-mapping.json
+    external_sources.lock.json
+    appearance.json              # ue.appearance 启用时由 P1 原子生成
+    appearance_application.json # ue.appearance 启用时由 P2 写入/更新
+  <camera_id>/
+    camera.json
+    annotations.jsonl
+    seqinfo.ini                # export_mot=true 时由 UE 侧写入
+    gt/gt.txt                  # export_mot=true 或 annotate-masks 选择 mot 时写入
+    img1/*.png                 # 对齐后的 canonical RGB
+    render/*.png               # MRQ FinalImage/临时 pass 输出，可能在完成后被 zero-waste 删除
+    render_mask/*.exr          # Object-ID Cryptomatte canonical 原始输出
+    mask/*.png                 # P1 从 EXR 解码的 Instance-ID Mask
+    mask_config.json
+    labels/det/*.txt
+    labels/seg/*.txt
+    labels_pose/*.txt
+    debug/
+  pose_capture.jsonl           # Runtime Pose 原始持久化
+  pose_session.json
+  coco17_3d.jsonl
+  futsal_pose.yaml
+  yolo_pose/labels/<camera>/*.txt
+  dataset_manifest.json
+  audit/soak_audit_report.json
+  audit/soak_audit_report.md
+```
+
+P1 轨迹输出和 P2 数据集输出在当前 resolver 中都指向同一个 episode 目录。P1 先写 `meta.json`、`frames.jsonl` 和 provenance，UE 再在相同目录下写 camera 子目录和渲染产物。
+
+## Task 与 resolved task
+
+task 文件的顶层 schema 是：
+
+```json
+{
+  "schema": "futsalmot_dataset_task",
+  "version": 2,
+  "task_id": "...",
+  "episode_name": "...",
+  "dataset_root": "${FUTSALMOT_DATASET_ROOT} 或 legacy 路径",
+  "ue_project_root": "${FUTSALMOT_UE_ROOT} 或 legacy 路径",
+  "export": {},
+  "ue": {},
+  "postprocess": {},
+  "audit": {},
+  "artifact_policy": {"profile": "research_minimal"}
+}
+```
+
+`export` 和 `ue` 必须内联在同一个 JSON 中；`ue.actor_mapping` 默认相对 Python 仓库根目录解析为 `ue/actor_mapping.example.json`。`postprocess.formats` 的合法值是 `json`、`mot`、`yolo-det`、`yolo-seg`，`yolo_pose.enabled` 和 `debug.enabled` 默认关闭。路径可由 `.futsalmot/local.json`、`FUTSALMOT_DATASET_ROOT` / `FUTSALMOT_UE_ROOT` 或 task CLI override 提供，优先级为 CLI > local > environment > task placeholder > legacy task path。
+
+`task resolve` 产生的运行时 schema 是 `futsalmot_resolved_task`，版本为 `1`。它包含绝对的 `repo_root`、`dataset_root`、`ue_project_root`、`trajectory_output`、`dataset_episode_dir`、`actor_mapping`，以及归一化后的 `export_profile`、`ue_profile`、`postprocess` 和 `audit`。该文件在 `.futsalmot/runtime/<task_id>/resolved-task.json`，属于被忽略的运行时文件，不是提交契约。
+
+同一 runtime 目录还可保存 `pipeline_state.json`，schema 为 `futsalmot_pipeline_state` v1。它记录固定步骤的执行进度和失败信息，不改变 resolved-task 或数据 artifact 格式，也不替代 Audit 的 `ValidationResult`。
+
+同一 runtime 目录还可保存 `run_manifest.json`，schema 为 `futsalmot_run_manifest` v1。Run Manifest 记录原始 task JSON hash、代码和可选 UE commit、运行时间、Pipeline State 摘要、Audit `ValidationResult.passed` 以及 best-effort artifact counts。它是运行结果摘要，不属于数据 artifact 格式，也不参与 Audit/Cleanup 的成功判定。
+
+Audit report 可选包含 `metrics` 对象。`metrics.dataset` 记录 `frame_count`、`image_count` 和 `camera_count`；存在 MOT 时可记录 `track_count`、`frame_count` 和 `avg_track_length`；存在 mask 时可记录非零 instance ID 数量。metrics 只用于分析和展示，不参与 `checks` 或 `ValidationResult.passed`。
+
+## Episode 轨迹
+
+### `meta.json`
+
+`meta.json` 的 schema 为 `grf_ue_episode`，版本为 `1`，主要字段为：
+
+- `episode_id`：输出目录名。
+- `source`：`environment`、`scenario`、`control_mode`、`seed`、外部仓库 commit，以及可选的 `game_duration` 和双方 AI 难度。
+- `randomness`：`policy`、`root_seed`、`grf_game_engine_seed`、`python_seed`、`numpy_seed`、`ue_visual_seed`。当前 policy 为 `futsalmot_seed_v1`；`ue_visual_seed` 当前只记录，不被 UE 视觉随机化消费。
+- `timing`：`source_step_seconds`、`playback_fps`、`num_steps`。
+- `field`：长度、宽度、中心原点和 `x_range_m`/`y_range_m`。
+- `entities`：10 名球员和 `BALL` 的定义，包括 `id`、队伍、源索引、角色和 `is_goalkeeper`。
+- `coordinate_transform`：导出时使用的坐标变换说明。
+
+实体 ID 固定为 `L0` 至 `L4`、`R0` 至 `R4` 和 `BALL`。角色优先从 GRF 观测读取，缺失或异常时使用默认角色序列。
+
+### `frames.jsonl`
+
+每个非空行是一个 frame 对象：
+
+```json
+{
+  "step": 0,
+  "time_seconds": 0.0,
+  "score": [0, 0],
+  "ball": {
+    "position_m": [0.0, 0.0, 0.11],
+    "source_grf_position": [0.0, 0.0, 0.11],
+    "velocity_mps": [0.0, 0.0, 0.0]
+  },
+  "players": [
+    {
+      "id": "L0",
+      "position_m": [0.0, 0.0, 0.0],
+      "velocity_mps": [0.0, 0.0],
+      "speed_mps": 0.0,
+      "movement_heading_deg": null,
+      "active": true,
+      "has_ball": false
+    }
+  ],
+  "ball_owned_team": -1,
+  "ball_owned_player": -1,
+  "game_mode": 0
+}
+```
+
+字段规则：
+
+- `step` 从 `0` 开始，导出器正常情况下按行递增。
+- `time_seconds` 单位为秒。
+- 每帧恰好 10 名球员，ID 必须覆盖两队的 `L0..L4` 和 `R0..R4`，且不重复。
+- 球员 `position_m` 单位为米，Z 固定为 `0`。球的位置 Z 原样保留；旧 episode 可能没有速度、持球或 game mode 字段。
+- `velocity_mps` 和 `speed_mps` 单位为米/秒；`movement_heading_deg` 使用 `atan2(vy, vx)`，静止时可能为 `null`。
+- `ball_owned_team` 的约定是 `-1` 无持球、`0` 左队、`1` 右队；`ball_owned_player` 是队内下标，`-1` 表示无持球。
+
+### 坐标和时间重采样
+
+默认场地为 `40m x 20m`，原点在中心：
+
+- GRF X 的 `[-1, 1]` 映射到米坐标 `[-field_length/2, field_length/2]`。
+- GRF Y 的实际可用半范围约为 `1/2.25`，代码将它拉伸到 `[-field_width/2, field_width/2]`。
+- 球 Z 使用 `Z_FIELD_SCALE=1` 原样透传，通常已经近似为米；球员 Z 固定为 `0`。
+- GRF 原生采样步长为 `0.1s`，即 10fps。
+
+当 `target_fps` 为 `0` 或 `10` 时保持 GRF 原生帧数。当 `target_fps=30` 时，普通导出输出 `num_steps * 3` 帧，使用位置插值。`trajectory_time_scale > 1` 时，数据集时间 `k / target_fps` 对应源轨迹时间 `k / target_fps * trajectory_time_scale`，位置使用速度感知的 Hermite 重采样，离散状态使用 hold/nearest，不做数值插值。
+
+图像标注使用 1 基帧号，而轨迹和 Sequence 使用 0 基源步：
+
+```text
+annotation frame_index = source_step + 1
+Sequence/MRQ frame = round(source_step * source_step_seconds * playback_fps)
+img1/000001.png      <-> annotation frame_index=1 <-> source_step=0
+```
+
+这里的 `playback_fps` 是 Sequence display rate。MRQ 的输出 `frame_rate` 不能替换这个映射参数。
+
+## Actor、相机和几何标注
+
+### Camera Coverage 语义
+
+`simulation.camera.profiles.<camera_id>.coverage` 描述的是相机分布策略的覆盖意图，不能直接解释为单个相机 footprint 的集合覆盖结果：
+
+- `full_field` 表示选定的 camera set 的整体目标是覆盖完整场地。当前 canonical Anchor set 为 `C1..C5`，因此 `C1..C5` 的联合 footprint 才是 full-field coverage 的判断对象。
+- `partial_field` 表示该相机作为分布策略中的局部补充视角。当前 `P01` 使用 `partial_field + left_half`。
+- 单个 `full_field` profile 不要求其理论地面 footprint 独立包含球场四个角点。
+- `Camera Coverage Visualization` 展示单相机 footprint；set-level full-field 结论需要合并选定 camera set 的 footprint 后判断。
+
+该语义澄清不改变相机位置、旋转、镜头、分辨率、UE Actor 或运行时 camera selection 行为。
+
+默认映射文件 `ue/actor_mapping.example.json` 为：
+
+| entity_id | UE Actor 标签 | track_id | mask_id |
+| --- | --- | ---: | ---: |
+| `L0..L4` | `Player_L0..Player_L4` | `1..5` | `1..5` |
+| `R0..R4` | `Player_R0..Player_R4` | `6..10` | `6..10` |
+| `BALL` | `Ball_01` | `100` | `11` |
+
+Mask 背景值为 `0`。MOT 和 Mask 的 ID 映射是固定的，不能按相机或帧改变。
+
+`camera.json` 由 UE 侧从 `CineCameraComponent` 当前状态生成，包含：
+
+- `image_width`、`image_height`。
+- `intrinsics.width/height/fx/fy/cx/cy`，单位为像素。
+- `extrinsics.world_location_m`、`world_rotation_deg` 和 `forward/right/up`。
+- `focal_length_mm`、`sensor_size_mm`、水平/垂直 FOV 和单位说明。
+
+世界到相机的计算是 `camera = R @ (world - location)`，其中 R 的行向量依次是相机 forward、right、up。图像原点在左上角，投影公式为：
+
+```text
+u = cx + fx * y_cam / x_cam
+v = cy - fy * z_cam / x_cam
+```
+
+`x_cam <= 0` 的点在相机后方，视为投影失败。几何标注将 Actor 世界 AABB 的 8 个角点投影到图像并裁剪到图像边界。球可通过 `ball_radius_m` 使用指定半径。球员仅在 task 提供非空 `player_bbox` 时进入 `player_world_bounds()`：该函数的 `source` 缺省值为 `mesh`，也可显式选择 `capsule`；若 task 完全省略 `player_bbox`，代码会走 `get_world_bounds()`，其优先级是 Character Capsule、网格组件 bounds、Actor bounds fallback。
+
+`annotations.jsonl` 每行包含：
+
+```json
+{
+  "episode_id": "episode_name",
+  "camera_id": "CineCam_01",
+  "frame_index": 1,
+  "source_step": 0,
+  "time_seconds": 0.0,
+  "objects": []
+}
+```
+
+几何阶段的 object 至少包含 `entity_id`、`track_id`、`class`、`team`、`role`、`is_goalkeeper`、`world_position`、`raw_bbox_xyxy`、`raw_bbox_xywh`、`bbox_xyxy`、`bbox_xywh`、`in_frame`、`truncated` 和 `visibility`。`visibility` 不表示真实遮挡，几何导出默认写 `null`。
+
+## Instance-ID Mask 和可见像素 GT
+
+当前正式 mask 来源是 UE MRQ 的 `MoviePipelineObjectIdRenderPass`，输出 multilayer EXR 到 `render_mask/`。启用 Object-ID 的正式路径与 Deferred RGB、Runtime Pose 共用一个 MRQ job；stencil PNG 是兼容 fallback。`ue/render_episode.py` 对 EXR 只归档与标注对齐的帧，不在 UE 中解码；P1 的 `grf-ue cryptomatte-to-mask` 使用 `openexr` 和 NumPy 完成转换。
+
+Cryptomatte 解码契约：
+
+- manifest 位于 EXR header 的 `cryptomatte/<hash>/manifest`。
+- UE 5.8 独立 Object-ID EXR 通常把 float32 Actor ID 放在 `RGBA` 层 R 通道；RGB+Object-ID 合并的 multilayer EXR 可能把 `RGBA` 用作 FinalImage，并把 ID 放在 `ActorHitProxyMask00` 等层。P1 按 manifest hash 命中数选择 ID 层，不依赖固定层名。
+- manifest 的十六进制 ID 按 float32 位模式精确匹配，不使用宽松的浮点误差比较。
+- 输出 `mask/{frame_index:06d}.png` 为单通道 PNG，背景为 `0`，实体为 `1..11`。
+
+`grf-ue annotate-masks` 读取 `mask/` 和几何 `annotations.jsonl`，覆盖写回 `annotations.jsonl` 并写入 `mask_config.json`。有 mask 时，object 的语义为：
+
+| 条件 | `bbox_source` | 可见 bbox | 是否进入 MOT/YOLO |
+| --- | --- | --- | --- |
+| 实体像素数大于 0 | `instance_mask` | 由 mask 像素 min/max 得到的 pixel-tight bbox | 是，按 `include_ball` 过滤球 |
+| 实体像素数为 0 | `not_visible` | `bbox_xyxy/xywh` 和 raw bbox 为 `null` | 否 |
+| 没有 mask 目录或缺某帧 mask | 保持几何字段 | 保留几何 fallback | 不作为 mask-primary YOLO 对象 |
+
+几何 bbox 不会被回填到可见 bbox；有 mask 的情况下保存在 `geometry_bbox_xyxy` 和 `geometry_bbox_xywh`。`visible_pixel_count` 是可见像素数，`visibility` 仍为 `null`。完全不可见对象的几何 bbox 只用于参考。
+
+默认会提取分割轮廓。多连通域时尝试桥接为一个 ring，并检查栅格化面积：额外面积比例不超过 `0.10`、缺失面积比例不超过 `0.05` 且 IoU 不低于 `0.75` 才接受桥接；失败时回退到最大连通域，并记录 `segmentation_fallback` 和原因。`--no-segmentation` 会跳过 polygon 计算，但仍计算 bbox、可见像素、MOT 和 YOLO Detect。
+
+`postprocess.formats` 控制派生产物。`annotations.jsonl` 和 `mask_config.json` 始终写入；`mot` 控制 `gt/gt.txt`，`yolo-det` 控制 `labels/det/`，`yolo-seg` 控制 `labels/seg/`。默认 `clean_stale=true` 会删除本次未选择的旧派生产物目录或 `gt/gt.txt`。
+
+## MOT 和 YOLO
+
+### MOTChallenge
+
+`gt/gt.txt` 每行 9 列：
+
+```text
+frame,track_id,x,y,w,h,confidence,class_id,visibility
+```
+
+帧号从 `1` 开始；`x/y/w/h` 为图像内整数像素；confidence 固定为 `1`。球员 `class_id=1`，球 `class_id=100`。默认 `visibility=1.00`，表示当前版本没有把真实遮挡程度写入 MOT visibility；图像边界截断的另一种模式在序列化器中存在，但 mask-primary 后处理固定使用 `unoccluded`。
+
+只有 `in_frame=true` 且 bbox 合法的对象进入 MOT；`not_visible` 对象不会进入。`include_ball` 由 UE 标注配置和 P1 后处理配置分别控制，使用时要保持两侧意图一致。
+
+`seqinfo.ini` 使用 `img1` 作为图像目录，记录 episode 名、帧率、帧数、宽高和 `.png` 扩展名。
+
+### YOLO Detect 和 Segment
+
+YOLO Detect 的每行是：
+
+```text
+class_id center_x center_y width height
+```
+
+坐标归一化到 `[0,1]`，类别为 `0=player`、`1=ball`。YOLO Segment 使用类别 ID 加归一化 polygon 坐标。两种标签只从 `bbox_source="instance_mask"` 的可见对象写出；没有 mask 的 legacy 几何对象和 `not_visible` 对象不会进入训练标签。
+
+## Runtime Pose、12 点肢体 Pose 和 YOLO Pose
+
+正式 `run_task.py --mode full` 使用 5 个 C4 Recorder，每个 Recorder 负责 2 名球员：
+
+| Recorder | 球员 |
+| --- | --- |
+| G0 | `L0`, `L1` |
+| G1 | `L2`, `L3` |
+| G2 | `L4`, `R0` |
+| G3 | `R1`, `R2` |
+| G4 | `R3`, `R4` |
+
+每名球员采样 13 个骨骼：`head`、左右 `upperarm`、`lowerarm`、`hand`、`thigh`、`calf` 和 `foot`。BurnIn 的 `OnOutputFrameStarted` 每个输出帧调用 5 个 Recorder；每个 Recorder 写入带 episode 和主相机名的动态 SaveGame slot。`head` 只用于 raw capture 完整性，不进入最终 Pose 点数组。
+
+`pose-finalize` 读取第一个配置相机的 5 个 slot：
+
+- `pose_capture.jsonl`：每行一个 actor/bone sample，位置为 UE cm，包含 `root`、`shot`、`game_time`、`actor_id`、`bone`、`x/y/z` 和四元数。每个 actor/frame 必须有 13 条 raw bone 记录（包括 `head`）。
+- `pose_session.json`：保存主相机、期望帧数、捕获帧数、完整性标志、样本数和 root 帧范围。`capture_complete` 不为 true 时禁止生成正式最终 Pose。
+- `coco17_3d.jsonl`：历史文件名保持兼容；当前每行一个 actor/frame，`keypoints_3d_m` 已改为固定顺序的 12 个肢体世界坐标点，单位米。
+- `<camera>/coco17_2d.jsonl`：历史文件名保持兼容；每相机一份，每行包含 12 个 `keypoints_2d_px` 和 12 个 `visible`；投影坐标单位为像素。
+- `<camera>/pose_keypoints.jsonl`：`run_task.py` 把 12 点 3D 结果桥接为 P1 Pose 标注器的输入，`keypoints_world` 单位米。Runtime Pose 桥接不写 `occluded`，P1 主要依据 mask 判定 visibility。
+
+最终 12 点顺序固定为：
+
+```text
+left_shoulder, right_shoulder, left_elbow, right_elbow,
+left_wrist, right_wrist, left_hip, right_hip,
+left_knee, right_knee, left_ankle, right_ankle
+```
+
+12 个肢体点使用候选骨骼的世界 transform。`pose_bones.py` 是两侧共用的映射常量来源，正式输出不再生成脸部估计点。
+
+`grf-ue annotate-pose` 读取 Pose、相机、mask-primary annotations 和 mask，写入 `labels_pose/{frame_index:06d}.txt`。每行固定 41 个字段：
+
+```text
+class xc yc w h (x y visibility) * 12
+```
+
+Pose 类别当前只写 `0=player`；关键点坐标归一化到 `[0,1]`，visibility 为 `0=无效`、`1=遮挡`、`2=可见`。Pose bbox 直接复用同一对象的 mask-primary bbox，与 YOLO Detect 一致。只有可见球员且至少有一个有效关键点时才写行。`futsal_pose.yaml` 使用 `kpt_shape: [12, 3]` 和左右翻转索引 `[1, 0, 3, 2, 5, 4, 7, 6, 9, 8, 11, 10]`。`futsal_pose.yaml` 和 `yolo_pose/labels/<camera>/` 是可再生的训练暂存结构，RGB 不复制到 `yolo_pose/images/`，训练应引用各 camera 的 `img1/`。
+
+## provenance、manifest 和清理
+
+task export 会保存 task、sanitized resolved task、export profile、UE profile、actor mapping 和外部锁文件快照。sanitized resolved task 用 `${REPO_ROOT}`、`${UE_PROJECT_ROOT}`、`${DATASET_ROOT}` 占位符替换绝对路径。
+
+顶层 `grf-ue build-manifest` 生成数据集根目录的 `dataset_manifest.json`，对明确纳入的 episode 统计产物，按 `metadata`、`final` 或 `all` profile 写 SHA-256 JSONL 校验文件，并计算 trajectory hash、canonical hash、重复 seed/轨迹组和 dataset fingerprint。`verify-manifest` 的退出码为 `0=通过`、`1=内容缺失或不匹配`、`2=manifest/schema/参数错误`。
+
+task 级 `manifest` 使用 `src/grf_ue_bridge/workflows/artifact_cleanup.py` 的 episode manifest builder，和顶层 `build-manifest` 不是同一个入口。不要用其中一个命令的输出字段去推断另一个命令的完整性结论。
+
+## Seeded Episode Environment v1.5
+
+当 task 配置包含 `ue.environment` 时，resolver 会生成独立的 `ue_profile.environment_profile`，并由 P1 在轨迹成功写出后生成 `provenance/environment.json`。环境 profile 的 policy 必须为 `futsalmot_environment_v1_5`，catalog 为 `futsalmot_indoor_environment_v1_5`；没有该 resolved policy 时，残留的 environment 文件不会激活任何 environment requirement。
+
+当前 catalog revision 为 `2`。`preset` 可显式指定下表状态，或填 `auto`；省略 `environment_seed` 时使用 `export.seed`。auto 对 UTF-8 字节 `sha256_weather_preset_v1:<environment_seed>` 做 SHA-256，取前 8 字节的大端无符号整数，对固定的八项 preset 顺序取模。顺序为 daylight、overcast、warm evening、cool evening、haze、cloudy、dawn、night。resolver 在生成 resolved task 时就将 auto 替换为具体 preset；P2 不重新抽样。显式 preset 不随 seed 切换天气类别。
+
+环境参数使用独立 SHA-256 命名空间派生，不消费 Python/NumPy 全局 RNG，也不改变轨迹或球员外观分配。完整 catalog、参数生成范围、天气选择算法和有序列表均参与 catalog fingerprint。同 seed 的复现前提是相同 catalog fingerprint、task、资产、地图基线和渲染配置；revision 更新后必须重新 export/resolve，不能把旧 manifest 改 fingerprint 后冒充新版本。这里只保证确定性的场景参数和输入契约，不承诺跨 UE/GPU 版本的 PNG 字节一致。
+
+| preset | 场景 | 太阳基准 pitch / intensity | SkyLight 基准 intensity | 十灯 EV |
+| --- | --- | --- | --- | --- |
+| `daylight_clear_v1` | 晴天 | -32° / 8.0 | 1.4 | 5 |
+| `overcast_soft_v1` | 阴天柔光 | -38° / 1.5 | 2.0 | 8 |
+| `warm_evening_v1` | 暖色低太阳傍晚 | -10° / 3.2 | 0 | 10 |
+| `cool_evening_v1` | 冷色暮光 | -8° / 1.5 | 0 | 10 |
+| `light_haze_v1` | 薄雾 | -30° / 6.8 | 1.65 | 5 |
+| `cloudy_variation_v1` | 多云 | -45° / 2.0 | 1.8 | 8.5 |
+| `dawn_cool_v1` | 清晨低太阳薄雾 | -6° / 2.2 | 0.35 | 10 |
+| `night_floodlit_v1` | 纯场馆灯夜间 | -20° / 0 | 0 | 10 |
+
+表中为 catalog 基准值，太阳 pitch/yaw/roll 各有 ±2° 的确定性微变化，非零太阳和天空光 intensity 有 ±4% 微变化，云、雾、曝光也有受限变化。十灯 EV 固定，夜间太阳和 SkyLight intensity 始终为零。清晨、暖傍晚和冷暮光分别使用 5600/8000/5000 K 的画面白平衡；该值是相机白平衡，不等于灯光色温，低白平衡值会使中性场馆灯画面偏冷。
+
+环境 manifest schema 为 `futsalmot_episode_environment` v1，包含 `episode_id`、`environment_seed`、`policy`、`catalog_id`、`preset`、`namespace_seed`、六组 environment Actor 参数、`venue_fill_lighting` compatibility 参数和 `venue_spot_lighting` 固定灯组参数、`trajectory_sha256`、`catalog_fingerprint` 和顶层 `fingerprint`。参数是 JSON 基础类型，fingerprint 排除自身，轨迹 hash 直接散列当前 `frames.jsonl` 原始字节。P2 必须在 apply 前重验 manifest、resolved profile、`meta.json`、frames hash 和 catalog fingerprint。
+
+`parameters.venue_fill_lighting` 保留 transient `RectLight` 的兼容字段；当前所有 preset 均要求 `enabled=false` 且不得创建 transient Actor。实际场馆灯光使用 `parameters.venue_spot_lighting`：固定包含 `SpotLight`、`SpotLight2` 至 `SpotLight10` 十个关卡 Actor，`intensity_units="ev"`，强度见上表。事务只修改十灯的 intensity 和单位，必须读取、验证并恢复原 intensity；Actor transform、颜色、半径、锥角和阴影保持手动配置。apply/readback/restore 需记录十个 External Actor package 并恢复 package clean baseline。
+
+`parameters.directional_light.rotation_deg` 与 `parameters.sky_atmosphere.transform_rotation_deg` 都是 UE Rotator 的 `[pitch, yaw, roll]` 角度，不是“太阳高度角”。UE Directional Light 的 light vector 等于该旋转的 forward 向量，所以太阳位于地平线上方时必须写 `pitch <= 0`；`pitch > 0` 会让光朝上、场景几乎全黑。preset 中给出的太阳高度角（如 32°）必须编码为 `-32.0`。 post_process.white_balance_tint 对应 UE WhiteTint，有效范围是 [-1, 1]，超出会产生异常色偏；white_balance_temperature 必须落在 [2000, 20000] 开尔文。
+
+P2 的 `provenance/environment_application.json` schema 为 `futsalmot_environment_application` v1，至少记录 environment manifest/catalog/trajectory 指纹、preset、transaction ID、六类 Actor identity、十灯组的 label/intensity/EV 和 restore status、`state`、`render_result`、`restore_status`、errors 和 warnings。状态使用 `not_started`、`preflight_failed`、`applied`、`rendering`、`restored`、`restore_failed`。portable report 不包含机器绝对路径；本机 rollback snapshot 位于被忽略的 `.futsalmot/runtime/<task_id>/environment-rollback.json`，并单独保存手动十灯的强度 baseline。
+
+active environment 的 `render_summary.json` 可增加 `environment_policy`、`environment_manifest_fingerprint`、`environment_preset` 和 `environment_restore_ready`。这些字段只在 environment active 时出现；旧 v1 summary 保持兼容。Audit 只在 resolved policy 激活时检查 environment manifest/application report、trajectory/catalog/fingerprint、render metadata 和 restored 状态；cleanup 永远保留两个 canonical environment provenance 文件，并在 report 未 restored 或本机 rollback snapshot 存在时拒绝 `--apply`。
+
+## Seeded Episode Appearance
+
+当 task 配置包含 `ue.appearance` 时，P1 在成功写出并验证 `meta.json` 与 `frames.jsonl` 后，原子生成 `<episode>/provenance/appearance.json`。未配置 `ue.appearance` 的旧 task 不要求该文件；`ue.appearance` 与非空 legacy `ue.player_visuals` 互斥。P1 只读写 episode JSON/JSONL，不加载 Unreal Python 或修改 Actor。
+
+### Catalog
+
+`ue.appearance` v1 固定使用 `mode="seeded"`、`policy="futsalmot_appearance_v1"`、`catalog_id="mpfb_players_003_009_v1"`，并要求完整且无重复 ID 的候选目录：
+
+- `models` 恰有 7 项，`player_id` 精确覆盖整数 3–9；每项包含 `mesh`、`anim_class`、`skeleton`。当前角色各自使用自己的 mesh，所有候选共享 `/Game/FutsalMOT/Characters/MPFB/Core/Retarget/ABP_MPFB_RuntimeRetarget` 和 `/Game/FutsalMOT/Characters/MPFB/Core/Skeleton/SKEL_MPFB_Base`。Player_003 mesh 位于 `Players/Player_003/MPFB_Player_003`；Player_004–009 mesh 位于各自目录的 `Mesh/MPFB_Player_NNN`。
+- `skins` 恰有 9 项，每项包含唯一非空 `skin_id` 和 `texture`，路径指向导入的男士 `Texture2D`。皮肤与模型独立抽样。
+- `kits` 恰有 5 项，`set_id` 精确覆盖字符串 `"01"`–`"05"`；每项包含配对的 `jersey_material` 和 `shorts_material`，两条路径都必须与同一 Set ID 对应。
+- `body_texture_parameter` 固定为经验证的 `"SkinTexture"`。所有资产路径必须是带资产叶段的非空 `/Game/` 路径。
+
+task config 是完整 catalog 的权威输入，路径必须来自已导入并验证的 UE 资产。P1 能验证字段、候选数量、唯一性、ID 覆盖和路径形状，不能证明 UE 资产实际存在、类正确、材质参数可写或网格 slot 语义兼容。
+
+### Seed、排序与指纹
+
+外观使用 `meta.randomness.ue_visual_seed`，不会调用或改变 GRF seed 派生，也不读写 Python/NumPy 全局 RNG。对于命名空间 `N` 为 `model`、`skin`、`kit`，先计算：
+
+```text
+SHA256(UTF8("futsalmot_appearance_v1:<ue_visual_seed>:<N>"))
+namespace_seed = unsigned_big_endian(digest[0:4]) & 0x7fffffff
+```
+
+候选排名不使用 Python `hash()`。每个实体与候选的排名键为下列 UTF-8 字节的 SHA-256 原始 digest，再以候选 ID 字符串作为平局排序键：
+
+```text
+SHA256(UTF8("futsalmot_appearance_v1:rank:<namespace>:<namespace_seed>:<entity_id>:<candidate_id>"))
+sort_key = (digest_bytes, candidate_id_string)
+```
+
+模型和皮肤分别对每名球员选排名最小的候选，允许重复，即有放回抽样。Kit 对五个 Set ID 使用 namespace `kit`、entity ID 字面值 `kit` 排名，取排名前四的不同 ID，再按固定次序映射：`left_outfield`、`right_outfield`、`left_goalkeeper`、`right_goalkeeper`。守门员身份取自 `meta.entities.is_goalkeeper`，左右队伍取自实体 team；不按实体下标猜测。四类各自固定一个 kit，球衣和短裤总是来自同一个 Set。
+
+Catalog fingerprint 与 manifest fingerprint 均为小写十六进制 SHA-256。参与 fingerprint 的对象按 `json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))` 编为 UTF-8 后散列。Catalog fingerprint 散列经 catalog schema 校验后的完整 catalog。Manifest fingerprint 散列完整 manifest 对象，但先移除顶层 `fingerprint` 字段。轨迹摘要 `trajectory_sha256` 则直接散列 `frames.jsonl` 的原始文件字节，不经过 JSON 重新序列化。
+
+### `provenance/appearance.json`
+
+Manifest schema 为 `futsalmot_episode_appearance`，`version` 为整数 `1`，包括：
+
+- `episode_id`、`root_seed`、`ue_visual_seed`、`policy` 和 `namespace_seeds`（model/skin/kit 三个派生 seed）。
+- `trajectory_sha256`、`catalog_id`、`catalog_fingerprint`、`body_texture_parameter` 和最终 `fingerprint`。
+- `kit_classes`：四种 kit class 到四个互异 Set ID 的固定映射。
+- `entities`：恰好十项 `L0..L4`、`R0..R4`，每项记录 `entity_id`、`team`、`is_goalkeeper`、`kit_class`、`player_id`、`mesh`、`anim_class`、`skeleton`、`skin_id`、`skin_texture`、`kit_set_id`、`jersey_material` 和 `shorts_material`。
+
+允许 `meta.entities` 另外含一个 `BALL`，但 appearance manifest 不为球分配外观。两队必须各有且仅有一名 goalkeeper；十人 roster 缺失、重复、队伍不匹配或守门员元数据含糊时导出失败。Manifest 写到同目录临时文件，flush/close 后 replace；失败时不保留半成品。P2 必须将 manifest 与当前 meta、完整 catalog 及当前轨迹原始 SHA-256 重验，不能重抽或接受旧轨迹对应的 manifest。
+
+P2 的 apply/restore、便携 application report、地图/Actor/dirty package 诊断门禁、异步 MRQ 生命周期和 Cleanup 恢复证据 fail-closed 规则见 `docs/VALIDATION_AND_LIMITATIONS.md` 的「Episode Appearance P1/P2」小节。本机 rollback 快照与本机 report 位于被忽略的 `.futsalmot/runtime/<task_id>/appearance-rollback.json` 和 `appearance-application.json`；它们是 Editor 恢复证据，不属于 episode provenance、dataset manifest 或 Git。episode 只保存便携的 `provenance/appearance_application.json`。

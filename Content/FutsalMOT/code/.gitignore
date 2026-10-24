@@ -1,0 +1,64 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+dist/
+build/
+
+# Local Python selection
+.python-version.local
+
+# External repositories and native builds
+.external/
+external/
+third_party/
+
+# Generated episodes
+outputs/*
+!outputs/.gitkeep
+
+# Unreal generated directories
+Binaries/
+DerivedDataCache/
+Intermediate/
+Saved/
+
+# 运行时产物（resolved task / active task）
+.futsalmot/*
+!.futsalmot/local.example.json
+_futsalmot/
+runtime/
+reports/local/
+benchmarks/local/
+
+# 运行日志与临时文件
+*.csv
+*.log
+*.tmp
+resource_monitor*.csv
+benchmark_*.txt
+soak_audit_report.json
+soak_audit_report.md
+
+# Visual Studio / CMake / vcpkg build products
+.vs/
+CMakeFiles/
+CMakeCache.txt
+cmake-build-*/
+out/
+x64/
+Debug/
+Release/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini

@@ -1,0 +1,367 @@
+"""task 解析：把单 config（含绝对机器路径）归一化为 resolved task。
+
+resolved task 是唯一运行时契约：普通 Python CLI 与 UE Python（ue/run_task.py）
+都读取它，不再分别实现两套路径解析。
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import tempfile
+from pathlib import Path
+from typing import Dict, List, Optional
+
+from grf_ue_bridge.config import loader
+from grf_ue_bridge.config import models as m
+from grf_ue_bridge.config import paths as _paths
+from grf_ue_bridge.config.runtime import resolve_runtime_paths
+from grf_ue_bridge.config.paths import (
+    PLACEHOLDER_DATASET_ROOT,
+    PLACEHOLDER_REPO_ROOT,
+    PLACEHOLDER_UE_PROJECT_ROOT,
+    sanitize_path,
+)
+from grf_ue_bridge.environment import (
+    derive_environment_seed,
+    environment_catalog_fingerprint,
+    resolve_environment_preset,
+)
+
+
+def _validate_camera_mapping(task: m.DatasetTaskConfig) -> None:
+    """校验 anchor 相机到 UE Actor/Sequence 的跨字段映射。"""
+    if task.simulation is None:
+        return
+
+    required = {"C1", "C2", "C3", "C4", "C5"}
+    mapping = task.ue.camera_mapping
+    if mapping is None:
+        raise ValueError(
+            "simulation.camera 存在时必须提供 ue.camera_mapping，且完整包含 C1..C5"
+        )
+    profile_ids = set(task.simulation.camera.profiles)
+    mapping_ids = set(mapping)
+    allowed_mapping_ids = required | {"P01"}
+    p01_required_but_missing = "P01" in profile_ids and "P01" not in mapping_ids
+    if (
+        not required.issubset(mapping_ids)
+        or not mapping_ids.issubset(allowed_mapping_ids)
+        or p01_required_but_missing
+    ):
+        missing = sorted(required - mapping_ids)
+        unknown = sorted(mapping_ids - allowed_mapping_ids)
+        if "P01" in profile_ids and "P01" not in mapping_ids:
+            missing.append("P01")
+        details = []
+        if missing:
+            details.append(f"缺少 {', '.join(missing)}")
+        if unknown:
+            details.append(f"未知 {', '.join(unknown)}")
+        raise ValueError(
+            "ue.camera_mapping 必须恰好包含 C1,C2,C3,C4,C5（"
+            + "；".join(details)
+            + "）"
+        )
+
+    if "P01" in mapping_ids and "P01" not in profile_ids:
+        raise ValueError("ue.camera_mapping.P01 只有在 P01 profile 存在时才允许")
+
+    episode_profile = task.simulation.camera.distribution.episode_profile
+    if episode_profile == "anchor_plus_one_partial":
+        if "P01" not in profile_ids or "P01" not in mapping_ids:
+            raise ValueError(
+                "anchor_plus_one_partial 要求同时提供 P01 profile 和 ue.camera_mapping.P01"
+            )
+    elif episode_profile == "anchor_plus_two_partial":
+        raise ValueError(
+            "anchor_plus_two_partial 当前需要第二个已实现 Partial Camera，例如 P02"
+        )
+
+    actors = {}
+    for camera_id in sorted(mapping):
+        entry = mapping[camera_id]
+        actor = entry.actor.strip()
+        sequence = entry.sequence.strip()
+        if not actor:
+            raise ValueError(f"Canonical ID {camera_id} 的 camera_mapping.actor 不能为空")
+        if not sequence:
+            raise ValueError(
+                f"Canonical ID {camera_id} 的 camera_mapping.sequence 不能为空"
+            )
+        previous_id = actors.get(actor)
+        if previous_id is not None:
+            raise ValueError(
+                f"Canonical ID {camera_id} 的 UE Actor {actor!r} 与 {previous_id} 重复"
+            )
+        actors[actor] = camera_id
+
+    task.simulation.camera.validate_camera_contract()
+
+
+# ── 校验（只读，不写文件）───────────────────────────────────────────────
+
+def validate_task(
+    task_file: Path,
+    *,
+    dataset_root: Optional[str] = None,
+    ue_project_root: Optional[str] = None,
+    local_config: Optional[Path] = None,
+) -> List[str]:
+    """只读校验一个 task，返回问题列表（空 = 通过）。不生成任何文件。"""
+    problems: List[str] = []
+    task_file = task_file.resolve()
+
+    try:
+        task = loader.load_task_config(task_file)
+        _validate_camera_mapping(task)
+    except Exception as e:  # noqa: BLE001
+        return [f"task 解析失败: {e}"]
+
+    repo_root = _paths.default_repo_root()
+    try:
+        resolved_dataset_root, resolved_ue_root = resolve_runtime_paths(
+            task_file, task, repo_root, dataset_root, ue_project_root, local_config
+        )
+    except ValueError as exc:
+        problems.append(str(exc))
+        resolved_dataset_root = resolved_ue_root = None
+    if resolved_ue_root is not None:
+        if not resolved_ue_root.is_dir():
+            problems.append(
+                f"ue_project_root 不存在或不是目录（必须包含 .uproject）: {resolved_ue_root}"
+            )
+        elif not any(resolved_ue_root.glob("*.uproject")):
+            problems.append(f"ue_project_root 缺少 .uproject: {resolved_ue_root}")
+
+    # 相机数量
+    cam_ids = (task.ue.annotation_export or {}).get("cameras") or []
+    expected_cams = task.audit.expected_cameras
+    if cam_ids and len(cam_ids) != expected_cams:
+        problems.append(
+            f"相机数 {len(cam_ids)} != audit.expected_cameras {expected_cams}"
+        )
+
+    # 期望帧数 vs 导出步数
+    steps = task.export.num_steps
+    factor = max(1, (task.export.target_fps or 10) // 10)
+    expected_frames = steps * factor
+    if expected_frames != task.audit.expected_frames_per_camera:
+        problems.append(
+            f"导出帧数 {expected_frames}（num_steps={steps}×factor={factor}）"
+            f" != audit.expected_frames_per_camera {task.audit.expected_frames_per_camera}"
+        )
+
+    # source duration 必须满足 output_frames × tempo（fail-fast，禁止截断/重复/补末帧）
+    # source_time = dataset_time × tempo；GRF 引擎需运行到 source_last 时刻。
+    # compute_source_steps 已用 +2 步（0.2s）为 Hermite 后继 sample 留余量，
+    # 故此处只需保证 game_duration 覆盖到 source_last = (output_frames-1)/fps × tempo。
+    tempo = float(task.export.trajectory_time_scale or 1.0)
+    if tempo >= 1.0 and task.export.game_duration:
+        output_frames = expected_frames
+        source_last = (output_frames - 1) / float(task.export.target_fps or 10) * tempo
+        available_source_s = float(task.export.game_duration)
+        if available_source_s < source_last:
+            problems.append(
+                f"source duration 不足：需要 ≥ {source_last:.1f}s（output {output_frames}帧 "
+                f"× tempo {tempo} 的 source_last），但 game_duration={available_source_s:.0f}s。"
+                f"请增大 export.game_duration 或降低 num_steps/tempo，禁止截断/重复/补末帧。"
+            )
+
+    return problems
+
+
+# ── 解析为 resolved task ────────────────────────────────────────────────
+
+def resolve_task(
+    task_file: Path,
+    *,
+    dataset_root: Optional[str] = None,
+    ue_project_root: Optional[str] = None,
+    local_config: Optional[Path] = None,
+) -> m.ResolvedTask:
+    """把单 config 解析为运行时 resolved task（含绝对路径）。"""
+    task_file = task_file.resolve()
+    task = loader.load_task_config(task_file)
+    _validate_camera_mapping(task)
+
+    repo_root = _paths.default_repo_root()
+    dataset_path, ue_project_path = resolve_runtime_paths(
+        task_file, task, repo_root, dataset_root, ue_project_root, local_config
+    )
+    episode_dir = dataset_path / task.episode_name
+
+    actor_mapping = _paths.resolve_task_relative(task.ue.actor_mapping, repo_root)
+
+    # 把 export.playback_fps 注入 annotation_export，让 render_episode 帧映射正确
+    # （render_episode 用 annotation_export.playback_fps 做 Sequence display rate 帧映射）
+    ue_profile = task.ue.model_dump()
+    if task.ue.appearance is None:
+        ue_profile.pop("appearance", None)
+    if task.ue.environment is None:
+        ue_profile.pop("environment", None)
+        ue_profile.pop("environment_profile", None)
+    else:
+        environment = task.ue.environment
+        ue_profile.pop("environment", None)
+        environment_profile = environment.model_dump(exclude_none=True)
+        environment_profile["environment_seed"] = derive_environment_seed(
+            environment.environment_seed, task.export.seed
+        )
+        environment_profile["preset"] = resolve_environment_preset(
+            environment_profile["environment_seed"], environment.preset
+        )
+        environment_profile["catalog_fingerprint"] = environment_catalog_fingerprint()
+        ue_profile["environment_profile"] = environment_profile
+    ann_export = ue_profile.get("annotation_export") or {}
+    if "playback_fps" not in ann_export:
+        ann_export["playback_fps"] = task.export.playback_fps
+    ue_profile["annotation_export"] = ann_export
+    if task.simulation is not None:
+        ue_profile["camera_mapping"] = {
+            camera_id: {
+                "actor": mapping.actor.strip(),
+                "sequence": mapping.sequence.strip(),
+            }
+            for camera_id, mapping in task.ue.camera_mapping.items()
+        }
+
+    return m.ResolvedTask(
+        task_id=task.task_id,
+        episode_name=task.episode_name,
+        source_task_file=str(task_file),
+        repo_root=str(repo_root),
+        ue_project_root=str(ue_project_path),
+        dataset_root=str(dataset_path),
+        trajectory_output=str(episode_dir),
+        dataset_episode_dir=str(episode_dir),
+        export_profile=task.export.model_dump(),
+        simulation=(task.simulation.model_dump() if task.simulation is not None else {}),
+        ue_profile=ue_profile,
+        actor_mapping=str(actor_mapping),
+        postprocess=task.postprocess.model_dump(),
+        audit=task.audit.model_dump(),
+        artifact_policy=dict(task.artifact_policy or {"profile": "research_minimal"}),
+    )
+
+
+def validate_resolved_task(resolved: m.ResolvedTask) -> List[str]:
+    """校验 resolved task 结构（schema/version/路径包含）。"""
+    problems: List[str] = []
+    if resolved.schema_ != _paths.RESOLVED_TASK_SCHEMA:
+        problems.append(f"resolved task schema 非法: {resolved.schema_!r}")
+    if resolved.version != 1:
+        problems.append(f"resolved task version 非法: {resolved.version!r}")
+
+    def _contained(value: str, root: str, label: str) -> None:
+        try:
+            Path(value).resolve().relative_to(Path(root).resolve())
+        except ValueError:
+            problems.append(f"{label} 逃逸其根目录: {value}")
+
+    _contained(resolved.trajectory_output, resolved.dataset_root, "trajectory_output")
+    _contained(resolved.dataset_episode_dir, resolved.dataset_root, "dataset_episode_dir")
+    return problems
+
+
+def runtime_dir(repo_root: Path) -> Path:
+    """resolved task 运行时目录（gitignore）。"""
+    return repo_root / ".futsalmot" / "runtime"
+
+
+def save_resolved_task(resolved: m.ResolvedTask, repo_root: Path) -> Path:
+    """原子写入 .futsalmot/runtime/<task_id>/resolved-task.json。"""
+    out_dir = runtime_dir(repo_root) / resolved.task_id
+    out_dir.mkdir(parents=True, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(prefix=".resolved.", suffix=".json", dir=str(out_dir))
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as f:
+            f.write(resolved.model_dump_json(by_alias=True, indent=2) + "\n")
+        final = out_dir / "resolved-task.json"
+        os.replace(tmp, final)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+    return final
+
+
+def load_resolved_task(path: Path) -> m.ResolvedTask:
+    with open(path, encoding="utf-8") as f:
+        data = json.load(f)
+    if data.get("schema") != _paths.RESOLVED_TASK_SCHEMA:
+        raise ValueError(f"resolved task schema 非法: {data.get('schema')!r}")
+    if data.get("version") != 1:
+        raise ValueError(f"resolved task version 非法: {data.get('version')!r}")
+    return m.ResolvedTask(**data)
+
+
+def sanitize_resolved_task(resolved: m.ResolvedTask) -> Dict:
+    """把 resolved task 转为可移植 provenance 字典（绝对路径 → ${占位符}）。"""
+    repo = Path(resolved.repo_root)
+    ue_root = Path(resolved.ue_project_root)
+    ds_root = Path(resolved.dataset_root)
+
+    def _san(s: str) -> str:
+        return sanitize_path(s, repo, ue_root, ds_root)
+
+    out = resolved.model_dump(by_alias=True)
+    out["source_task_file"] = _san(resolved.source_task_file)
+    out["repo_root"] = _san(resolved.repo_root)
+    out["ue_project_root"] = _san(resolved.ue_project_root)
+    out["dataset_root"] = _san(resolved.dataset_root)
+    out["trajectory_output"] = _san(resolved.trajectory_output)
+    out["dataset_episode_dir"] = _san(resolved.dataset_episode_dir)
+    out["actor_mapping"] = _san(resolved.actor_mapping)
+    return out
+
+
+# ── active task（可选便利）──────────────────────────────────────────────
+
+ACTIVE_TASK_FILENAME = ".futsalmot/active-task.json"
+
+
+def active_task_path(repo_root: Path) -> Path:
+    return repo_root / ACTIVE_TASK_FILENAME
+
+
+def save_active_task(task_file: Path, repo_root: Path) -> Path:
+    """写入 active task（只保存 task 文件路径：仓库内用相对，仓库外用绝对）。"""
+    p = active_task_path(repo_root)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    tf = task_file.resolve()
+    try:
+        rel = tf.relative_to(repo_root.resolve()).as_posix()
+    except ValueError:
+        rel = tf.as_posix()  # task 在仓库外：保存绝对路径
+    with open(p, "w", encoding="utf-8", newline="\n") as f:
+        json.dump({"schema": "futsalmot_active_task", "version": 1, "task_file": rel},
+                  f, ensure_ascii=False, indent=2)
+    return p
+
+
+def load_active_task(repo_root: Path) -> Optional[Path]:
+    """读取 active task 文件路径（不存在返回 None）。"""
+    p = active_task_path(repo_root)
+    if not p.is_file():
+        return None
+    try:
+        with open(p, encoding="utf-8") as f:
+            data = json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return None
+    rel = data.get("task_file")
+    if not rel:
+        return None
+    cand = (repo_root / rel).resolve()
+    if not cand.is_file():
+        return None
+    return cand
+
+
+def clear_active_task(repo_root: Path) -> None:
+    p = active_task_path(repo_root)
+    if p.exists():
+        p.unlink()
