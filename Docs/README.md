@@ -7,6 +7,7 @@
 ## engineering：契约与实现
 
 - [数据契约](engineering/DATA_CONTRACT.md)与[验证和限制](engineering/VALIDATION_AND_LIMITATIONS.md)。
+- [统一仓库目录](engineering/REPOSITORY_LAYOUT.md)：Python、实验、Saved与研究环境的当前边界。
 - [GPU渲染/CPU-LBS](engineering/POSE17_GPU_RENDER_CPU_LBS.md)、[离线蒙皮诊断](engineering/POSE17_OFFLINE_LBS_DIAGNOSTIC.md)及[头部标定来源](engineering/POSE17_HEAD_SURFACE_CALIBRATION.md)。
 - [天气光照系统](engineering/WEATHER_LIGHTING_SYSTEM.md)与[地板随机流](engineering/FLOOR_DIVERSITY.md)。
 - [MCP Python执行范围](engineering/PYTHON_EXECUTION_SCOPE.md)：保持项目内执行边界，不为路径迁移放宽权限。
@@ -16,6 +17,7 @@
 - [v1八组生产记录](production/PRODUCTION_V1.md)、[按seed的数据集结构](production/SEED_DATASET.md)、[连续活跃窗口](production/ACTIVE_TRAJECTORY_QC.md)。
 - [位置试产源序列](production/POSE17_LOCATION_PILOT_SOURCES.md)；位置有效性与可见性分别处理，unknown不升级为COCO visible。
 - [MPFB生产SOP](production/MPFB_PLAYER_PRODUCTION_SOP.md)与[UE资产历史短渲染基线](production/UE_ASSET_BASELINE.md)。短样通过不等于所有长批/姿态/物理碰撞已验。
+- [UE资产目录](production/UE_ASSET_LAYOUT.md)：环境分类及保留重定向器的兼容边界。
 
 ## research：论文问题与控制
 
