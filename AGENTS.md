@@ -11,13 +11,13 @@
 ## 当前入口
 
 - 根README负责快速入口；[文档索引](Docs/README.md)负责技术说明；[任务状态](TASK_STATUS_AND_NEXT_STEPS.md)只记当前进度和下一步。
-- Python当前目录为`Content/FutsalMOT/code`，阶段2迁移完成前不假称已在`python/`。先读其README及[数据契约](Docs/engineering/DATA_CONTRACT.md)、[验证限制](Docs/engineering/VALIDATION_AND_LIMITATIONS.md)。
+- Python代码位于`python/`，研究脚本位于根`experiments/sim2real/`。先读Python README及[数据契约](Docs/engineering/DATA_CONTRACT.md)、[验证限制](Docs/engineering/VALIDATION_AND_LIMITATIONS.md)。
 - 工程规则集中在本文件；Python局部规则不重复Git、存储及运行状态。旧版本的流水和候选计划不覆盖当前状态。
 
 ## 存储与生命周期
 
-- 生成完成的数据集仅保存在`G:/FutsalMOT_Dataset`。UE工作文件最终位于项目原`Saved/`物理目录；研究输入、权重、检查点和结果最终位于实际`D:/projects/FutsalMOT_Research`。
-- 当前D恢复迁移只按任务状态中的精确清单/收据继续；未知partial不重放。解除旧junction前必须确认全部本轮训练与追踪完成、真实进程身份退出。
+- 生成完成的数据集仅保存在`G:/FutsalMOT_Dataset`。UE工作文件位于项目原`Saved/`物理目录；研究输入、权重、检查点和结果位于实际`D:/projects/FutsalMOT_Research`。
+- D恢复迁移已完整结束，G盘旧Research/Workspace根已移除；不重放旧迁移驱动。P1运行数据位于`Saved/P1/`，运行收据位于`Saved/`，历史协议原路径通过独立relocation解释。
 - 统计、复制和清理不跟随junction；不对DataSet目标递归删/搬。冻结协议、源码绑定、轨迹、native、校准和关键收据保留原bytes/SHA，另记relocation映射，不伪造历史路径可运行。
 - G盘或D项目外写删按具体范围申请工具自动审批，不能通过junction绕过；拒绝时说明实际动作与原因。
 - 23013份冗余媒体已删除638.191GiB，其中7961份EXR的深度/Cryptomatte不再保留；不能据已发布RGB/mask/Pose声称原EXR或物理遮挡证据仍存在。

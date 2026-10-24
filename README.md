@@ -7,7 +7,7 @@
 - [文档索引](Docs/README.md)：工程契约、生产、研究与运维说明。
 - [当前任务](TASK_STATUS_AND_NEXT_STEPS.md)：实际阶段与下一步，不以历史命令代替当前状态。
 - [Agent规则](AGENTS.md)：Git、存储、UE生命周期及研究边界。
-- [Python入口](Content/FutsalMOT/code/README.md)：阶段2迁移完成前仍使用当前目录；不预先声称已在python/。
+- [Python入口](python/README.md)：轨迹、后处理和UE Python脚本的统一入口。
 
 ## 代码和环境
 
@@ -15,9 +15,9 @@
 | --- | --- | --- |
 | UE运行时 | Source/FutsalMOT | C++ / UE5.8 |
 | UE插件与MCP | Plugins/FutsalMOTMCP | 真实Editor Python |
-| 轨迹与后处理 | Content/FutsalMOT/code/src | 固定Python3.9的P1环境 |
-| 渲染脚本 | Content/FutsalMOT/code/ue | UE Python，不能在P1执行 |
-| 训练与评价 | Content/FutsalMOT/code/experiments | 独立研究Python3.10 |
+| 轨迹与后处理 | python/src | 固定Python3.9的P1环境 |
+| 渲染脚本 | python/ue | UE Python，不能在P1执行 |
+| 训练与评价 | experiments | 独立研究Python3.10 |
 
 P1与UE之间通过JSON/JSONL交换数据；UE不导入NumPy/OpenEXR依赖的P1模块。GPU训练与UE渲染串行。默认地图保持`/Game/FutsalMOT/Maps/L_FutsalCourt`，资产移动通过UE API修引用。
 
@@ -35,7 +35,7 @@ P1与UE之间通过JSON/JSONL交换数据；UE不导入NumPy/OpenEXR依赖的P1�
 
 均为原生3840×2160、10FPS。按seed/manifest解析，不硬编码旧clips/clip_000层级。v2保留逐机位world、unknown及原诊断标记，不冒充正式可见性或遮挡标签；地板配对world约0.068mm差异保留原值，不称exact。
 
-工作文件最终恢复到本项目原Saved物理目录；研究输入/权重/结果恢复到实际`D:/projects/FutsalMOT_Research`。数据迁移是否完整结束看当前收据。Saved、缓存、虚拟环境、媒体、模型权重不入Git；AutoSave关闭。
+工作文件已恢复到本项目Saved物理目录，研究输入/权重/结果位于实际`D:/projects/FutsalMOT_Research`；G盘仅保留生成后的数据集。Saved、缓存、虚拟环境、媒体、模型权重不入Git；AutoSave关闭。
 
 ## 研究
 

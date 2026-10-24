@@ -11,8 +11,9 @@
 
 ## 正在执行
 
-1. 按最终清单恢复Saved、Research及三个P1数据根为D物理目录。44,007文件约13.889GiB、97个到正式Dataset的引用；执行收据位于`tools/pose17_ops/storage_receipts/restore_D_20261025_045844_4237/`。完成前不重放、不启动新UE/研究作业、不伪造G根已删除。
-2. 四阶段仓库整理已获用户授权：阶段1文档分层及过期说明合并正在收尾；阶段2代码迁移仅影响表已备，阶段3 UE资产整理尚未开始，阶段4路径/入口及规范固化随后进行。
+1. D恢复迁移已完成：44,007文件约13.889GiB，保留97条正式Dataset引用；辅助小证据已归档、可再生夹具已清理，旧G盘Research/Workspace根已删除。原迁移完成收据位于`tools/pose17_ops/storage_receipts/restore_D_20261025_045844_4237/`，辅助收据位于`Saved/CodexMigration/workspace_aux_20261025/`，不重放。
+2. 阶段1文档整理已推送`599e90b`。阶段2代码已移到`python/`，实验提到根`experiments/sim2real/`，P1运行数据位于`Saved/P1/`；没有兼容旧Content的junction。Python3.9环境已离线重装本项目editable，CLI和真实GRF同seed跨进程4步检查通过；路径/CLI/resolved-task针对CPU检查71项通过。Git仅按原blob改名并叠加本轮路径修改，保留未完成号码及其他WIP。
+3. 下一步为阶段3：通过真实UE接口归类资产、修复引用；阶段4随后固化稳定入口、整理源码区运行收据。当前没有UE、MRQ或GPU训练在运行。
 
 ## 数据与存储
 
@@ -20,12 +21,12 @@
 - 位置试产：`v2_pose17_location_pilot_a01`，1920对4K/19200逐视角人物Pose，480源时间样本。
 - 30秒配对：`v2_pose17_longpair_pilot_a01`，4800对4K/48000人物Pose，600源时间样本、2seed×2floor×4cam×300帧，16条30秒序列。world最大配对差约0.068mm，不是exact；unknown/diagnostic/not_training/MRQ_syncfalse保留。
 - 冗余raw清理已完整成功638.191GiB，原EXR深度通道不保留；14份旧日志/tmp已删，AutoSave关闭。不重复清理，不重新审计媒体。
-- 最终仅正式数据集留G盘；Saved和研究工作回D。冻结原内容不改，旧G字面路径通过独立relocation解释，不重建反向G工作区联接。
+- 仅正式数据集留G盘，Saved和研究工作已回D。冻结原内容不改，旧G字面路径通过独立relocation解释，不重建反向G工作区联接。
 
 ## 四阶段整理验收
 
 1. Docs分类、统一索引、清除重复/过时入口，README/AGENTS/本页各司其职；号码文档WIP保留。
-2. `Content/FutsalMOT/code`迁到`python/`，实验代码提到根`experiments/`；统一路径helper，保留包名与环境隔离，核验P1环境。先用Git固化实际运行源码，历史冻结链不搜索替换。
+2. `python/`负责P1包及UE Python，根`experiments/`负责研究；统一stdlib路径helper、包名和环境隔离不变。原实际v4源码已在`9a5cbe9`固化，26/26源SHA一致；新布局不自动获得旧冻结协议准入。
 3. GPU任务结束后通过真实UE整理资产并修引用；保留项目文件名和默认地图，不按Tests/Development文件夹名直接删除共享生产资产。
 4. 固化稳定入口/本机路径配置及小检查；运行收据、临时清单离开源码目录，精确提交各阶段成果。
 

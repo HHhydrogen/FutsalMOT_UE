@@ -1,0 +1,92 @@
+# AGENTS.md
+
+## 当前规范布局与研究边界
+
+- 正式无号码批次8组、八天气、20116对RGB/mask已完成，位于`G:/FutsalMOT_Dataset/v1_no_numbers_4k`。
+- 每seed单片段采用`layout=seed_flat_v1`，相机直接位于seed目录；始终按manifest引用解析，不推断固定祖先层数。旧多片段布局继续兼容读取。
+- `verify_clip`的structure等级复用已发布媒体证据，不能称为full像素审计；迁移只改路径和文本SHA，不重新编码图像。
+- 研究的`--reference-images`通过Windows目录联接读取正式RGB，训练清单必须保留images词法路径以关联labels，不得resolve到G盘rgb目录。
+- 迁移实验固定真实标注预算和优化步数，比较仅真实与真实加合成的真实验证指标，报告正负结果。最终test不用于调参，UE/GPU严格串行。
+- 用户已明确要求的本轮提交/推送为授权；号码工作仍未完成，必须留在工作树、排除提交。生产数据、权重和本机收据不入Git。
+
+## 仓库边界（2026-10-25融合后）
+
+本目录已纳入唯一 `FutsalMOT_UE` 仓库，Git根为 `D:/projects/FutsalMOT_UEDataset`，分支 `master`。不要初始化嵌套Git、恢复submodule或推送旧Python远端。原Python历史已通过双父融合保留。
+
+代码仍位于本目录，P1/P2/研究环境继续隔离。Git操作统一在项目根精确暂存本次文件，标准commit/push，不跳hooks、不force、不使用无选择的 `git add -A`。用户已授权融合与已验阶段成果；未完成号码、数据、权重及其他WIP不得混入。
+
+用户已授权四阶段整理；已结束实验的冻结协议/来源不改写；新代码布局使用显式迁移映射和新运行配置。根AGENTS负责Git、存储和生命周期，本文件只保留Python环境及组件约束。
+
+## 权威技术文档
+
+进入本仓库工作前先阅读：
+
+1. `README.md`：架构、环境、推荐流程和 CLI 入口。
+2. [数据契约](../Docs/engineering/DATA_CONTRACT.md)：轨迹、相机、Mask、MOT、YOLO、Pose 和 12 点肢体格式。
+3. [验证限制](../Docs/engineering/VALIDATION_AND_LIMITATIONS.md)：测试、验证、审计、清理和已知限制。
+
+不要引用已删除的 `CLAUDE.md`、`configs/README.md`、`ue/README.md`、`docs/architecture/` 或 `docs/design/` 文档作为当前实现依据。
+
+## 运行环境隔离
+
+- P1 在 Python 3.9 的 `uv` 环境中运行，版本由 `.python-version` 和 `pyproject.toml` 固定；不要升级到 Python 3.10+。
+- P1 入口是 `uv run grf-ue task ...`，输出轨迹、Mask 后处理、MOT/YOLO、Pose、audit 和 manifest。
+- P2 脚本在外层 UE 5.8 Editor 的真实 Python 环境中运行，入口是 `ue/run_task.py`；绝不能在 P1 `.venv` 中运行依赖 `unreal` 的脚本。
+- UE Python 不应导入依赖 NumPy、OpenEXR 或 OpenCV 的 P1 模块。`instance_mask.py`、`cryptomatte.py` 等 P1 模块只在 Python 环境中运行。
+- P1/P2 之间的磁盘接口是 JSON/JSONL 和渲染文件；不要让 UE Python 依赖 P1 虚拟环境。
+
+## 推荐工作流
+
+对单个 task，优先使用以下顺序：
+
+```powershell
+uv run grf-ue task validate configs/<task>.json
+uv run grf-ue task resolve configs/<task>.json
+uv run grf-ue task export configs/<task>.json
+uv run grf-ue task ue-command configs/<task>.json
+# 在外层 UE Editor 中执行生成的 run_task.py --mode full
+# MRQ 异步结束后，在 UE Editor 中执行 run_task.py --mode pose-finalize（启用 Pose 时）
+uv run grf-ue task postprocess configs/<task>.json
+uv run grf-ue task audit configs/<task>.json --validation-level quick
+uv run grf-ue task manifest configs/<task>.json
+uv run grf-ue task cleanup configs/<task>.json
+```
+
+`task ue-command` 只生成 UE 命令，不执行 UE。MRQ 是异步流程，不能在 Editor 主线程中使用阻塞等待。`task cleanup` 默认 dry-run，只有用户明确要求且门禁通过时才使用 `--apply`。
+
+当前 `configs/*.json` 含机器绝对路径，换机器必须检查 `dataset_root`、`ue_project_root`、UE 地图、Actor mapping、相机和 Sequence。不要把所有配置都视为当前有效；先运行 `task validate`。
+
+## Unreal MCP 执行规则
+
+UE 相关任务优先使用外层项目已配置的 Unreal MCP：
+
+1. 完整 UE Python 文件使用 `FutsalMOTTools.run_python_file`，例如 `ue/run_task.py`、渲染、导入和导出脚本。
+2. 小型查询使用 `FutsalMOTTools.run_python_code`，例如 `import unreal`、查询 Actor、Transform、组件或输出一条日志。
+3. 只查询 Editor 状态时优先使用 Unreal MCP 原生工具：Level、Actor、Transform、Components、Asset、Logs、Sequencer 和 AutomationTest。
+4. 禁止使用受限的 `ProgrammaticToolset.execute_tool_script` 执行 `import unreal` 或本仓库的 UE 脚本。
+5. 脚本失败时先读取工具返回的 `success/result/log`，再读取 UE `LogPython`、`LogBlueprint`、`LogMovieRenderPipeline` 或 `LogModelContextProtocol`，自行定位并重试。
+
+只有在 MCP/API 无法覆盖、需要视觉人工验收、必须点击不可自动化的 UI、需要完整重启 UE，或操作存在破坏风险时，才请求用户手动操作。
+
+## 正式入口与 Legacy 代码
+
+- 正式 P2 总入口：`ue/run_task.py --resolved-task <path> --mode full`。
+- `--mode pose-finalize` 在 MRQ 完成后导出含 13 骨的 raw Runtime Pose、12 点肢体最终 Pose 和 `pose_keypoints.jsonl`。
+- `--mode annotations` 仍可调用旧的逐帧 `pose_export.py`，属于 Legacy，不要与 Runtime Pose 结果混写或混称。
+- `ue/import_grf_episode.py` 及 `ue/archive_c4_diag/` 中的旧导入、构建和诊断脚本不是默认正式入口。
+- 当前正式 UE 资产路径位于 `/Game/FutsalMOT/Blueprints/Pose/`；若旧脚本仍引用 `/Game/FutsalMOT/Blueprints/` 根路径，先核验资产是否已迁移，不能直接假设脚本可用。
+
+## 测试与文档
+
+默认测试会跳过 GRF 集成测试：
+
+```powershell
+uv run pytest
+uv run pytest -m grf_integration -q
+```
+
+测试通过不等于 UE Blueprint、地图、MRQ、相机标定或 RGB/Mask/Pose 像素对齐已验收。涉及 UE 的工作必须按 MCP 闭环执行，并把静态代码证据和实际 Editor 结果区分记录。
+
+代码注释、文档字符串和技术文档使用简体中文。技术说明集中于项目根Docs的engineering/production/research/operations分类；本目录仅保留组件README与环境规则，不再新建平行docs体系。
+
+不要提交 `__pycache__/`、`*.pyc`、`.venv/`、`.external/`、`outputs/`、`.futsalmot/`、UE `Saved/`/`Intermediate/`/`DerivedDataCache/` 或本地日志和临时文件。

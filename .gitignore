@@ -51,3 +51,7 @@ Content/FutsalMOT/Generated/SpeedTrials/
 /tools/git_migration/.fixture/
 /tools/git_migration/local/
 /tools/maintenance/local/
+
+# 本机Agent设置不属于源码；Python环境仍由python/.gitignore管理。
+/python/.claude/settings.local.json
+/python/.claude/scheduled_tasks.lock
