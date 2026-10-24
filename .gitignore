@@ -11,10 +11,9 @@ Build/
 *.opendb
 *.sdf
 *.sln
+*.slnx
 *.suo
 *.user
-*.suo
-*.sln
 
 # UE 5 auto-generated build files
 *.target.cs
