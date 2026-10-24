@@ -33,6 +33,7 @@
 - [UE与MCP工作流](operations/UNREAL_MCP_WORKFLOW.md)：资产API、dirty、切图和安全重启约定。
 - [统一运行与维护](operations/RUNNING_AND_MAINTENANCE.md)：本机路径、启动器和历史入口边界。
 - [严格存储与EXR清理](operations/STORAGE_POLICY.md)：G盘媒体边界、D研究执行bundle及成功后定向清理。
+- [后续训练性能](operations/TRAINING_PERFORMANCE.md)：实际吞吐观察、有界预取、硬件余量及新协议边界。
 - [根目录文件用途](operations/ROOT_FILES.md)：必须保留的入口、旧OpenCode配置和可再生IDE索引。
 - [UE手动启动修复](operations/UE_STARTUP_REPAIR_20261025.md)：最近项目自动恢复导致的模块搜索问题与明确项目启动入口。
 - [单仓库迁移记录](operations/SINGLE_REPOSITORY_MIGRATION_20261025.md)。原双仓库/备份建议为历史，不授权补建用户已删除的备份。
