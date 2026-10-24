@@ -9,47 +9,13 @@
 - 迁移实验固定真实标注预算和优化步数，比较仅真实与真实加合成的真实验证指标，报告正负结果。最终test不用于调参，UE/GPU严格串行。
 - 用户已明确要求的本轮提交/推送为授权；号码工作仍未完成，必须留在工作树、排除提交。生产数据、权重和本机收据不入Git。
 
-## 仓库边界
+## 仓库边界（2026-10-25融合后）
 
-本目录是 `FutsalMOT_Dataset` 独立 Git 仓库，远程为 `git@github.com:HHhydrogen/FutsalMOT_Dataset.git`，当前分支为 `main`。外层 UE 仓库通过 submodule gitlink 引用本仓库；外层只记录本仓库 commit，不跟踪这里的 Python 文件内容。
+本目录已纳入唯一 `FutsalMOT_UE` 仓库，Git根为 `D:/projects/FutsalMOT_UEDataset`，分支 `master`。不要初始化嵌套Git、恢复submodule或推送旧Python远端。原Python历史已通过双父融合保留。
 
-修改本目录的代码、配置或文档时，在本目录执行 Git 命令。完成内层 commit 后，回到外层仓库单独更新 `Content/FutsalMOT/code` 的 submodule 指针。不要混淆两个仓库的工作树、分支或 commit；未经用户明确确认，不得自动 commit 或 push。
+代码仍位于本目录，P1/P2/研究环境继续隔离。Git操作统一在项目根精确暂存本次文件，标准commit/push，不跳hooks、不force、不使用无选择的 `git add -A`。用户已授权融合与已验阶段成果；未完成号码、数据、权重及其他WIP不得混入。
 
-### 本仓库提交与推送
-
-本仓库是子仓库本身，提交只影响 Python 仓库，不会自动更新外层 UE 仓库的 gitlink。提交前执行：
-
-```powershell
-git status --short --branch
-git diff --check
-uv run pytest
-git diff -- <本次目标文件>
-git add <仅限本次目标文件>
-git diff --cached --stat
-git commit -m "<简体中文提交说明>"
-git push origin main
-git rev-parse HEAD
-```
-
-内层 commit 必须先成功推送到 `origin/main`，外层才可以记录它。完成内层 push 后，外层仓库的更新顺序是：
-
-```powershell
-git -C D:\projects\FutsalMOT_UEDataset status --short --branch
-git -C D:\projects\FutsalMOT_UEDataset add Content/FutsalMOT/code
-git -C D:\projects\FutsalMOT_UEDataset diff --cached --submodule=short -- Content/FutsalMOT/code
-git -C D:\projects\FutsalMOT_UEDataset commit -m "<简体中文提交说明>"
-git -C D:\projects\FutsalMOT_UEDataset push origin master
-```
-
-注意事项：
-
-- 不要在内层仓库等待或创建“外层指针 commit”；外层指针只能由外层仓库提交。
-- 不要在外层执行 `git add -f`、复制内层文件或提交内层 `.git` 目录；外层只应看到 mode `160000` 的 gitlink。
-- 不要无选择地运行 `git add -A`，避免把用户或其他任务的改动带入本次 commit。推送前分别检查内层和外层的 `git status --short --branch`、`git log --oneline -10`。
-- 如果当前 checkout 是 detached HEAD，先确认目标分支后执行 `git switch main`；外层 submodule 默认以记录的 commit checkout，日常修改前应切到 `main`。
-- 如果 `origin/main` 有新提交，先执行 `git fetch origin`，确认历史后使用 `git pull --ff-only origin main`；不要 force-push 覆盖远程历史。
-- 外层 clone 后需要在外层执行 `git submodule update --init --recursive`，不能只依赖内层目录是否物理存在。
-- 内层 push 失败时不得继续让外层引用该新 commit；外层 push 失败时保留两边工作树，先 fetch/检查历史，不得强推。
+文档及目录重组方案待用户确认后分阶段实施；当前训练绑定路径/源码不得因整理而改变。根AGENTS负责Git、存储和生命周期，本文件只保留Python环境及组件约束。
 
 ## 权威技术文档
 

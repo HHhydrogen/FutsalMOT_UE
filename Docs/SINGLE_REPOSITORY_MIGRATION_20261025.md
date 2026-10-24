@@ -8,7 +8,7 @@
 - Python父提交：`861d83082b65a2e7a3f26b60c41ce715b8793037`，原148个提交。
 - 使用标准 `git merge -s ours --no-commit --no-ff --allow-unrelated-histories` 建立双父关系，再仅在索引中将gitlink替换为Python原提交树，最后标准commit；不squash、重写旧提交或跳过hooks。
 - 文档修改前，导入子树OID与Python原树均为 `4d58bc1172ea229f89b560d47e5659258cc90cfb`，完整452文件及mode一致。融合提交另外更新根/代码README和AGENTS，说明新的工作方式。
-- 本机备份：`D:/projects/FutsalMOT_GitBackup_20261025_0430`。两仓所有refs的bundle均已验证，另保存索引、配置、二进制patch及311份未提交/未跟踪文件。原内层 `.git` 整个移动至备份 `inner/original_git_directory`，未删除。
+- 融合前在 `D:/projects/FutsalMOT_GitBackup_20261025_0430` 创建并验证了两仓bundle、索引、配置、patch及311份WIP，原内层 `.git` 也先移至该处。用户随后说明已主动删除该外部备份，并明确授权删除额外补建副本；两份现均不保留，不自动重建。融合历史已正常推送，当前WIP仍原位存在。
 
 未提交的研究开发、UE资产和号码代码继续留在原工作区。融合只导入Python旧HEAD及明确的说明文件，不把WIP当作已验功能提交；虚拟环境、数据联接和忽略文件原位保留。原 `FutsalMOT_Dataset` GitHub仓库保留历史用途，本次不删除或归档它。
 

@@ -87,7 +87,7 @@ git commit -m "<简体中文提交说明>"
 git push origin master
 ```
 
-即使cwd在 `Content/FutsalMOT/code`，Git根也应解析到本项目根。不要重新初始化内层Git或恢复历史gitlink。提交前检查暂存区，数据集、权重、Saved、虚拟环境、缓存及未完成号码均不提交；不force-push或跳过hooks。完整备份在 `D:/projects/FutsalMOT_GitBackup_20261025_0430`，含两仓已验证bundle、原索引、WIP和原内层Git目录。它不是日常工作仓库。
+即使cwd在 `Content/FutsalMOT/code`，Git根也应解析到本项目根。不要重新初始化内层Git或恢复历史gitlink。提交前检查暂存区，数据集、权重、Saved、虚拟环境、缓存及未完成号码均不提交；不force-push或跳过hooks。融合前已验证历史及WIP备份；用户随后主动删除外部备份，并明确授权删除额外补建副本。当前不保留独立备份，不再自动重建；历史在统一远端可达，未提交WIP仍留本机。
 
 ## Python 代码目录：先读当前技术文档
 
