@@ -15,15 +15,15 @@
 
 代码仍位于本目录，P1/P2/研究环境继续隔离。Git操作统一在项目根精确暂存本次文件，标准commit/push，不跳hooks、不force、不使用无选择的 `git add -A`。用户已授权融合与已验阶段成果；未完成号码、数据、权重及其他WIP不得混入。
 
-文档及目录重组方案待用户确认后分阶段实施；当前训练绑定路径/源码不得因整理而改变。根AGENTS负责Git、存储和生命周期，本文件只保留Python环境及组件约束。
+文档及目录重组方案待用户确认后分阶段实施；已结束实验的冻结协议/来源不改写；新代码布局使用显式迁移映射和新运行配置。根AGENTS负责Git、存储和生命周期，本文件只保留Python环境及组件约束。
 
 ## 权威技术文档
 
 进入本仓库工作前先阅读：
 
 1. `README.md`：架构、环境、推荐流程和 CLI 入口。
-2. `docs/DATA_CONTRACT.md`：轨迹、相机、Mask、MOT、YOLO、Pose 和 12 点肢体格式。
-3. `docs/VALIDATION_AND_LIMITATIONS.md`：测试、验证、审计、清理和已知限制。
+2. [数据契约](../../../Docs/engineering/DATA_CONTRACT.md)：轨迹、相机、Mask、MOT、YOLO、Pose 和 12 点肢体格式。
+3. [验证限制](../../../Docs/engineering/VALIDATION_AND_LIMITATIONS.md)：测试、验证、审计、清理和已知限制。
 
 不要引用已删除的 `CLAUDE.md`、`configs/README.md`、`ue/README.md`、`docs/architecture/` 或 `docs/design/` 文档作为当前实现依据。
 
@@ -87,6 +87,6 @@ uv run pytest -m grf_integration -q
 
 测试通过不等于 UE Blueprint、地图、MRQ、相机标定或 RGB/Mask/Pose 像素对齐已验收。涉及 UE 的工作必须按 MCP 闭环执行，并把静态代码证据和实际 Editor 结果区分记录。
 
-代码注释、文档字符串、Pydantic 字段说明和技术文档使用简体中文。新增或修改文档时只使用根 `README.md` 或平铺的 `docs/*.md`，不要重新创建文档子目录。
+代码注释、文档字符串和技术文档使用简体中文。技术说明集中于项目根Docs的engineering/production/research/operations分类；本目录仅保留组件README与环境规则，不再新建平行docs体系。
 
 不要提交 `__pycache__/`、`*.pyc`、`.venv/`、`.external/`、`outputs/`、`.futsalmot/`、UE `Saved/`/`Intermediate/`/`DerivedDataCache/` 或本地日志和临时文件。

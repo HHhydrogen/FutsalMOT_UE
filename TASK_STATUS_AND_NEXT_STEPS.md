@@ -1,129 +1,36 @@
-# FutsalMOT 当前任务
+# 当前任务与下一步
 
-更新：2026-10-23
+更新：2026-10-25。历史过程见Git及对应运行收据；本页不保留过期PID流水。
 
-### 最新联合阶段
+## 当前主线结果
 
-**2026-10-23晚收尾已完成：用户要求结束今日任务；UE已正常退出，持续跟进已暂停。** 所有本项目数据已实际迁到G盘，研究根为`G:/FutsalMOT_Research`，UE/P1工作数据根为`G:/FutsalMOT_Workspace`，正式发布根仍为`G:/FutsalMOT_Dataset`；旧D路径通过兼容联接保留。最终收据`G:/FutsalMOT_Workspace/migration_20261023/end_day_receipt.json`：D盘可用319.17GiB，项目实际占用4.575GiB（不含联接目标）；复制时逐文件校验并核对完整迁移记录，无全媒体hash复扫。研究34798文件/64联接、Saved19661文件、首个独立raw984文件及P1工作目录均已迁移；清理1个失效旧目录联接。目录属性可能统计联接所指的G盘数据，不能据此认定D盘仍占近300GB。
+- v4六训练/官方200张COCO开发评价及六臂固定检测真实追踪均完整结束，优化器重放0，test116/187未使用。
+- 相同3000R曝光：混合臂平均AssA +0.26444035个百分点、HOTA +0.12183663、IDF1 +0.18911788；仅1/3训练seed为正，未达到登记的0.5点/至少2seed门槛。
+- 混合臂与预训练Pose的追踪登记指标差为0。COCO AP均差仅+0.03878669点，两臂均低于预训练参考；不能宣称已证明稳定的合成收益。
+- 权威训练收据为研究根`pose/poseonly_v4/recovery_cim_a01`，追踪为`pose/association_dev_a01/v4_association_path_a02`；原CIM/路径门禁失败attempt仍保留。完整结果见[结果说明](Docs/research/POSE_V4_RESULTS.md)。
 
-本次长窗首1048蓝a01因D盘满失败，未形成新可用数据；已安全清理自有回调、恢复地板并正常退出Editor，无新退出fatal。按用户允许直接删除无用数据的要求，已清理该失败attempt的1983份PNG/EXR，原始约89.22GiB，native/计划/日志/失败证据保留。原四seed120帧Pose试产与v1八组不变。不要自动恢复或重提这个失败attempt。
+## 正在执行
 
-下次明确获准继续后的优先级：
+1. 按最终清单恢复Saved、Research及三个P1数据根为D物理目录。44,007文件约13.889GiB、97个到正式Dataset的引用；执行收据位于`tools/pose17_ops/storage_receipts/restore_D_20261025_045844_4237/`。完成前不重放、不启动新UE/研究作业、不伪造G根已删除。
+2. 四阶段仓库整理已获用户授权：阶段1文档分层及过期说明合并正在收尾；阶段2代码迁移仅影响表已备，阶段3 UE资产整理尚未开始，阶段4路径/入口及规范固化随后进行。
 
-1. 确认所有输入/临时数据/checkpoint的实际路径为G；优先复用迁移后Saved的数据结构，一次验证路径门禁，不为切盘无必要重写稳定流程。MCP执行代码必须仍在D盘项目真实路径内，必需Saved辅助入口先整理到`tools/`，数据留G，不扩大任意文件执行权限。30秒范围需要独立新attempt，失败a01不覆盖；现有G直接入口及完整G后处理仍未完成。
-2. 完成并冻结v4等真实曝光R3/R3+S对照，固定1000实际更新、同一3张R/顺序和独立R/S损失归一化；数学核心5项CPU通过，完整`train_pose_location_separate_v4.py`仍为未测试草稿。构造Dataset前先验证所有媒体实际位于G，不读final test。
-3. 扩充连续交互与同运动地板配对，再加入独立真实比赛开发验证；不把三个训练seed当三个比赛，不把相对R退化减轻写成稳定超过预训练。UE与GPU实验继续串行。
-4. 论文聚焦受控合成姿态监督对固定检测身份连续性的边际作用，检验交互信息量与视觉多样性；4K、Pose格式、四视角和换地板本身不是独立创新点。完整遮挡仍unknown，号码仍未完成且不提交。
+## 数据与存储
 
-30秒新范围已开始真实采集：全部GPU实验结束后安全启动Editor（当前PID40292，明确日志`Saved/Pose17Development/editor_long_window30_a01.log`），8个全新源Sequence保存且原场景/canonical不变。首`longpair_s00001048_sport_blue_v1_a01_gpu_lbs`已完成真实prepare、WorldDepth配置、地板事务和异步MRQ提交；提交不等于完成。计划1048 train源[0,300)、1102 synthetic_dev源[20,320)，各蓝/红棕×四机位300帧，合计4800对4K RGB/mask；visibility保持unknown，原120帧试产与v1不变。GPU训练继续等待UE批次结束。v4等真实曝光与分域损失归一化核心已完成5项CPU验证，尚未GPU执行或签新准入。
+- v1：`G:/FutsalMOT_Dataset/v1_no_numbers_4k`，8seed、32相机序列、20116对原生4K RGB/mask，保持不变。
+- 位置试产：`v2_pose17_location_pilot_a01`，1920对4K/19200逐视角人物Pose，480源时间样本。
+- 30秒配对：`v2_pose17_longpair_pilot_a01`，4800对4K/48000人物Pose，600源时间样本、2seed×2floor×4cam×300帧，16条30秒序列。world最大配对差约0.068mm，不是exact；unknown/diagnostic/not_training/MRQ_syncfalse保留。
+- 冗余raw清理已完整成功638.191GiB，原EXR深度通道不保留；14份旧日志/tmp已删，AutoSave关闭。不重复清理，不重新审计媒体。
+- 最终仅正式数据集留G盘；Saved和研究工作回D。冻结原内容不改，旧G字面路径通过独立relocation解释，不重建反向G工作区联接。
 
-v3真实身份关联也已全部完成：相同450帧raw检测、唯一lambda0.1下，三seed的RS−R AssA平均+0.5524点、HOTA+0.2556点、IDF1+0.3961点，三seed均正，事前登记开发门槛通过。RS前两seed与原预训练轨迹相同，RS平均AssA仅比预训练高0.0236点；主要是减少R继续训练退化，仍需等真实曝光控制及独立比赛，不能称已稳超预训练或真实五人制有效。实际汇总`D:/projects/FutsalMOT_Research/pose/association_dev_a01/v3_paired_association_summary_a01.json`。两个v3驱动都已完成，不重启；下一步CPU准备30秒两seed地板配对新契约及更严格训练控制，GPU完成后才可进入新UE采集。后续“正在执行”段落为阶段历史。
+## 四阶段整理验收
 
-位置对照新增完成：独立v3六臂1000实际更新及dev200评价均已结束，R平均46.9748 AP、RS47.4309 AP，配对差+0.2107/+0.7140/+0.4435点，均低于预训练49.1896；medium AP下降、large上升及全部负结果保留。root收据`Saved/Pose17Development/poseonly_v3_complete_root_a01.json`。当前唯一GPU任务已切换为`run_poseonly_v3_association_a01.py`，实际state=`poseonly_v3_association_driver_a01.json`（启动实际PID38208），串行执行六个last1000 EMA的固定真实检测Pose附件、关联与TrackEval。原训练驱动已完成，不得重启；UE继续关闭，最终test封存。
+1. Docs分类、统一索引、清除重复/过时入口，README/AGENTS/本页各司其职；号码文档WIP保留。
+2. `Content/FutsalMOT/code`迁到`python/`，实验代码提到根`experiments/`；统一路径helper，保留包名与环境隔离，核验P1环境。先用Git固化实际运行源码，历史冻结链不搜索替换。
+3. GPU任务结束后通过真实UE整理资产并修引用；保留项目文件名和默认地图，不按Tests/Development文件夹名直接删除共享生产资产。
+4. 固化稳定入口/本机路径配置及小检查；运行收据、临时清单离开源码目录，精确提交各阶段成果。
 
-2026年10月23日新增构建与真实执行：原v2六臂已全部结束，R平均29.735 AP、RS30.742 AP（配对差+2.239/−0.721/+1.503点），全部低于预训练49.190，不能宣称合成有效；禁止重启原训练/恢复驱动。独立v3 Trainer、显式COCO sigma、Pose-only冻结及官方评价经root一次21项CPU通过，新协议`Saved/Pose17Development/poseonly_v3_frozen_a01/protocol.json`及准入已冻结；新后台状态入口为`poseonly_v3_driver_a01.json`，以实际state为准，不能把下文旧驱动当当前任务。
+## 后续研究
 
-真实固定检测关联已首次执行：151/152/153共450帧、6901个官方raw检测，lambda0与标准ByteTrack输出/状态逐值一致。看结果前固定lambda=0.1，预训练Pose相对bbox-only的AssA为71.358→72.121、HOTA65.373→65.727、IDF1为81.163→81.719，IDSW28→25。该结果只证明预训练Pose在同game9开发片段的边际关联作用，**不是合成数据训练收益**。1675/6901检测具有可用几何Pose，5226回退bbox，unknown不变。完整输出`D:/projects/FutsalMOT_Research/pose/association_dev_a01`，不按GT删预测、不读最终test。
+整理完成后，为30秒配对数据另冻结实验：优先分离小人物尺度/姿态附件覆盖与交互信息量，再比较同运动地板因素。所有臂保持相同真实曝光及固定检测，合成额外计算单列；不通过继续筛比例/seed来制造提升。
 
-交互窗口工具已完成并实际读取现有JSON/JSONL：四组共48秒独立源时长、最长12秒、640框高中位27.33px；100个有完整前后分离context的视角重叠proxy（同队47），不是100次独立真实遮挡恢复。GT驱动6秒候选保持split与四视角共享窗口，不读媒体/模型结果。root新增10项CPU通过；报告`Saved/ResearchDiagnostics/interaction_windows_pilot_a01`。下一批应增加更长连续交互，不能只堆贴图或四机位数量。论文目标见`Docs/CVPR_2027_PAPER_PLAN.md`。以下旧执行段落保留历史，状态以最新收据及驱动为准。
-
-最新执行：四seed×120帧×4相机已全部完成，实际产出1920张4K RGB、1920张实例mask、19200条人物Pose记录，驱动已正常结束，不再启动采集。完成收据为`Saved/Pose17Development/location_pilot_capture_complete_a01.json`。前三组1042/1044/1048为train、1102为synthetic_dev；固定蓝地板与七模型roster，不冒称复现原seed天气/外观。源仍保留diagnostic/not_training、unknown及MRQ_sync_verified=false；下一步通过独立限定位置监督入口接入研究，不能改源标志绕过。
-
-四组均已释放自有回调，地板槽恢复且非地板状态不变、dirty为空。本轮Editor26244在09:54UTC正常quit后出现Exiting和Log file closed，进程已消失，没有新fatal；收据`location_pilot_shutdown_a01.json`。这证明本次退出通过，不证明历史Python GC根因已修复。UE保持关闭，研究代码和协议准备完成后串行GPU训练。
-
-四组已复制到独立`G:/FutsalMOT_Dataset/v2_pose17_location_pilot_a01`，3968文件、18,812,362,393字节；不重编码或复扫媒体hash，原诊断标志保留。当前v1八组不变，新目录是位置研究试产，不宣称完整正式遮挡Pose发布。
-
-真实COCO位置监督子集已完成：1000张train、200张公开pose-dev，分别3184/729人物框、25417/5439有效点，全缺点人物框保留。精确采样表、独立研究Trainer和官方COCO评价入口已经接通，新鲜36项定向CPU检查通过。root限定位置准入与协议已冻结，协议SHA为`577f3d1e1233ce7df5d110279d7dda5af186ef2fa573b7860c761caf8a779e07`。当前唯一后台为`resume_location_control_after_io_a01.py`，权威状态`Saved/Pose17Development/location_control_recovery_driver_a01.json`；原`run_location_control_a01.py`已因Windows文件替换失败退出，不得重新启动。
-
-首个seed完整对照：R AP28.80、RS25 AP31.04，混合相对R提高2.24个点，但都低于预训练参考49.19，不能宣称已证明合成数据有效。已确认v2的17×2头使上游loss使用统一sigma=1/17，改变原COCO17关节容差；全部点定位退化的原因尚不能全归于这一项。独立v3显式sigma及pose-only/固定BN核心已CPU验证，尚未GPU运行，当前v2六臂数值设置保持不变。
-
-第二seed在完整临时checkpoint落盘后发生WinError5；核对实际模型/优化器/EMA和曝光链后已提升真实265步状态并补齐曝光，重放0步。恢复驱动只增加有界Windows原子替换重试，原数值Trainer SHA/协议/数据/总预算不变。收据`control_atomic_recovery_receipt_a01.json`，原last备份保留，不能将旧驱动停止状态当当前GPU停机。
-
-官方checkpoint已经COCO预训练，实验是有限子集继续训练，不是总共只用1000真实标注。R为4000真实曝光，RS25为3000真实加1000合成曝光，独立真实ID和实际更新相同、真实曝光不同。同640 LetterBox后真实框高中位138.27px、选中S为27.33px；S每图有效点170、R25.417，25%合成图像不是25%位置监督量。这些数字已预先记录，不据此重新筛选；COCO AP仅姿态代理，真实足球固定检测的Pose辅助AssA/HOTA仍需后续独立对照。尚无本轮训练提升结论。
-
-已新增七模型基础蒙皮真实导出、400条历史矩阵SHA精确离线重建和480个十二关节支持候选；所有visibility仍unknown。已落实旧CPU渲染submit禁用、MCP PRIVATE作用域/新鲜错误日志防护。故障归为两次CPU-skin/Lumen、一次PIE后悬空回调、四次Python退出GC；退出AV具体对象仍未定位，不称根治。定时任务以构建性产出优先，复用已验方法、减少重复审查。后续段落属于历史证据，不能覆盖本段四组完成和Editor已关闭状态。
-
-004已完成真实网格切换、三近景RGB/头点深度及恢复验收。按用户加速要求取消005–009逐角色近景复验，已直接完成`joint_seed1048_a01_gpu_lbs`：七模型十球员、真实GRF源100..109、四机位各10帧4K，共40RGB/40EXR/400实体采样，队列34.510秒。原生身份/骨架/fence/恢复和帧相机配对通过，主agent仅看四张源105全员叠图。十实体均有去平移后的姿态变化。
-
-独立机位重放的世界点最大差4.274e-6m；不平均或伪装严格相同，v2诊断导出保留每机位原world。visibility仍unknown，MRQ_sync_verified=false，未升级正式Pose/训练准入。当前继续完整mask/bbox导出与蓝/红棕地板配对；v1不变、最终test116/187封存、不重启旧R5。最新收据`Saved/Pose17Development/joint_seed1048_a01_root_review.json`；以下带旧时间和“下一步”的段落为历史证据，不能覆盖本段当前状态。
-
-本阶段后续已完成：独立`Saved/Pose17Development/diagnostic_pose17_export_a01`含40RGB/40实例mask/400人物Pose2D与每机位原始world，6800点仍unknown，全部world与native逐值一致。蓝色/红棕各四机位×3帧配对也已完成：相同机位/源帧2040对world点精确一致，源101四mask差0像素，相机标定一致；主agent已看四机位并列图，地板变化清楚、白线保留。原地板恢复、非地板状态不变、dirty为空。收据`Saved/floor_pair_root_metrics_a01.json`及独立root目视收据；这不证明泛化收益，也不升级unknown。内层本阶段472项CPU回归通过，Git提交`88dec26`已推送；未完成号码和Saved媒体排除。下一阶段是关节遮挡证据与多seed位置监督试产准入，之后再冻结真实对照协议。
-
-### 当前执行补充（2026-10-23 14:00）
-
-最新：`player003_closeup_a07_gpu_lbs`已真实完成三机位×3帧原生4K，保持GPU蒙皮、Lumen skeletal cards=1及8帧预热，14.825秒完成队列；所有采样/恢复、独立Editor postflight与会话释放通过。相同源帧跨相机世界点差0m，正面鼻眼9点最大残差0.1292mm，两侧近耳6点最大0.0912mm。固定5mm下22个表面候选、11个自身较近表面候选、12个边界unknown，最终仍全部unknown。三机位frame1原图/头点及全身裁图已独立检查，未见此前腰髋破碎，但新旧warmup/骨姿态不同，不能当同pose CPU/GPU A/B或完整衣裤修复。源0→1姿态相同，1→2去平移变化0.03699m，长动作门槛仍待完成。收据`Saved/Pose17Development/player003_gpu_lbs_dynamic_head_review_a07.json`；Editor16052保留且clean/released/noMRQ，下一项为GPU-LBS与004 PIE override组合，新构建前不调用开发中的新scope。
-
-Player003近景动态头点方法已通过独立三视图复核：正面鼻/双眼9点深度残差最大0.327mm，两侧近耳6点最大0.056mm；其余边界及遮挡候选仍保留unknown，不是正式可见性标注。证据见`Saved/Pose17Development/player003_dynamic_head_review_a04.json`。衣裤腰髋出现不规则露肤区域，外观质量未通过；实际衣裤材质为OPAQUE且源纹理alpha全1，尚需同姿态CPU/GPU蒙皮A/B定位。
-
-Player004仅PIE网格切换代码已构建成功、原生测试1 passed、针对CPU回归73 passed，但首次`player004_closeup_a01`在8帧预热末尾发生RHI错误（Lumen MeshCardCapture期望LocalVF缓冲却收到View缓冲）。Editor19344自然退出、无有效RGB/EXR或恢复收据，失败已封存，不能视为角色004验收通过；当前正在调查渲染状态生命周期，下一次必须用新attempt。
-
-随后`player003_closeup_warmup_a06`保留原003且不切网格，只设同样8帧预热，也复现LocalVF/View错误，Editor31908自然退出且零有效帧。因此004切网格不是必要条件，不能将失败归咎于角色004；CPU渲染与Lumen缓存仍是源码和反证支持的待验证原因。接下来用显式新opt-in保持GPU渲染，CPU只按当前骨变换/实际权重计算位置；新计划`player003_closeup_a07_gpu_lbs.json`已准备，仍须新构建和真实RGB/depth证明，不能直接批产。
-
-训练准备阶段已发布：内层`1a94717`、外层`a82a17e`。保留COCO预训练容量的17×2位置头通过11项针对测试；自绘toy CPU Trainer执行首次及续载各一次更新并核对279个优化器状态张量。没有GPU研究训练、真实收益结论或封存测试集读取。实际逐点location_valid加载器与固定检测Pose关联接口继续独立开发，候选实验参数未冻结。
-
-后续缺点监督工程阶段也已发布：内层`a7d99b8`、外层`e60d561`，真实语义夹具部分/全缺点人物与synthetic unknown经实际JSONL图像加载、LetterBox、loss、SGD更新和resume通过，主agent新鲜28项测试通过；这是toy CPU兼容收据，不是研究效果。世界17点按时间去重的独立诊断适配器及关联导出69项CPU回归通过，尚未正式发布或迁移媒体。论文计划现已统一为FutsalPoseTrack主线，旧R5保持中断。
-
-以下12:30记录作为已完成历史保留；实时状态以`Saved/Pose17Development/progress.json`及最新attempt为准。
-
-### 历史执行记录（2026-10-23 12:30）
-
-后续修复已通过真实运行：`player003_mrq_a02`两机位×3帧4K已完整输出，原生Pose采样/恢复及独立Editor postflight均通过；配对工具逐帧核对实际EXR相机/源帧/CPU fence，两机位世界点差0m，姿态去平移变化0.081m、0.143m。相关CPU回归69 passed。新增float32深度层两个机位共424个平面像素标定R为前向Z厘米，最大误差2.84mm。仍待近景头部语义、动态表面深度和关节可见性验收，不启用正式Pose批量生产。当前Editor30108保持打开、dirty空、MRQ结束，无GPU训练。运动覆盖阶段另已推送内层`2bcd18a`、外层`29ac753`。
-
-四地板材质、可分发纹理源、独立seed颜色因子及只读UE验收入口已完成阶段发布：内层`d72c1b7`、外层`401bdf3`均已推送。19项针对CPU测试通过，真实UE已有资产读回及静态场景切换/恢复通过；尚未证明MRQ地板配对或泛化收益。
-
-动态Pose诊断`Saved/Pose17Development/smoke/player003_mrq_a01`首机位输出3帧3840×2160 RGB和Object-ID EXR，但PIE结束后的延迟Python回调访问pipeline导致Editor崩溃，Pose收据未保存，不能视为通过。引擎源码确认该回调在PIE清理后一tick执行；正在把采样与恢复收据改为C++ pipeline生命周期内落盘，Python回调只读取文件。失败attempt与媒体保留，下一次使用独立attempt；v1未变，GPU训练未启动。实际EXR无深度通道，可见性仍为unknown，后续需独立深度/表面证据。
-
-## 当前研究主线
-
-本聊天持续跟进已启用（id=futsalposetrack），按独立功能验收节点汇报，不重复报告未完成状态。七个实际生产角色003–009已完成各自源形态/FBX/UE静态映射候选，主agent独立核验7mesh/35锚点的三角、重心、身份及SHA；动态/可见性仍未验。四地板颜色已在正式球场临时切换、同相机姿势预览并恢复原槽，非地板Actor/材质/灯光上下文未变、dirty为空；仅静态预览，不是严格MRQ配对或生产准入。证据见Saved/Pose17Development/root_landmark_integrity_a01.json及Saved/FloorDiversity/v1/scene_preview_a02。
-
-用户已明确将重心转为Pose数据和姿态跟踪。主计划见[Pose研究路线](Docs/POSE_RESEARCH_ROADMAP.md)：逐mesh校准COCO17头部点，统一3D/2D Pose、mask及持续身份，研究密集交互中的遮挡与身份恢复，地板/光照作为独立可控因素。
-
-10月23日核查旧R5 PID30956已不存在、状态末次停在seed20261025添加合成训练中；没有完整六模型结论。历史产物保留，不自动重启旧bbox参数搜索。下文第五轮启动记录是历史，不能据此认为当前仍在训练。
-
-已通过真实MCP核实正式Level；角色存在隐藏驱动mesh和实际MPFBVisual两套组件，Pose采样必须绑定实际可见模型。Pose17、头部锚点、几何对应、旧Pose兼容及地板随机化针对回归98 passed。新增C++采样接口与独立MRQ pass均构建并反射加载成功，当前C++测试1 passed；Player_003已完成静态源/FBX/UE映射与一次真实17点诊断采样，动态、遮挡和RGB/mask同步尚待验证。四个地板实例已创建保存、参数读回和缩略图核验，世界XY/200cm纹理图已保存，尚未应用到地图。新Pose17批次尚未输出，不覆盖已有v1。当前Editor保持打开，dirty为空、MRQ未运行；GPU训练未启动。
-
-## 已完成
-
-- 正式无号码4K批次8seed、八天气、32个相机序列，20,116 RGB及同数mask，含逐帧bbox。
-- 10FPS、每机位连续414–952帧；8组保持原train归属。原16/32组目标终止，持续跟进已删除。
-- 正式目录G:/FutsalMOT_Dataset/v1_no_numbers_4k平铺为groups/seed_XXXXXXXX/cameras/，去掉clips/clip_000，修正引用及文本SHA，媒体未复制或重编码。
-- 生产调度器结束；Editor核对自有checkpoint后正常退出。164个无外部引用的临时Sequence通过UE API删除。
-- UE AutoSave关闭，默认地图指向正式球场。G盘旧staging/work/速度试验、过时文档及UE可再生缓存已清理；关键生产来源和未完成号码开发保留。
-- 基准full，其余quick/basic如实保留，不声称全部逐帧像素审计。
-
-## 已完成的代码发布与GPU试验
-
-本轮数据结构、生产优化、研究入口和文档已推送：内层main为63b197c，外层master为120c55b，排除未完成号码实现。独立无号码发布树1710项Python测试通过；干净UE工程构建成功，4项PNG输出自动化测试通过。
-
-GPU实验明确检验“合成数据能否在固定真实标注和计算预算下，提高真实足球的检测与多目标追踪”。A预训练、B仅真实、C真实加合成，统一GPU和检测/追踪协议，最终test保留。
-
-研究目录D:/projects/FutsalMOT_Research。B已完成，C用300真实＋300合成，600样本/epoch、5epochs、750次更新；保留全部旧结果，不预设收益。图像从正式G盘引用，不重复复制4K数据。
-
-GPU执行入口为内层experiments/sim2real/run_serial_pilot.ps1的Gpu阶段；实时输出及启动凭证保存在研究目录comparison，不把启动描述为已经取得增益结论。600张C训练图像的派生标签路径已按实际Ultralytics读入规则核验。
-
-A/B/C同GPU检测、ByteTrack和TrackEval已完成。C首次训练在第1轮后被Windows重启中断，System事件1074与日志终点一致；未完成运行已封存在研究目录runs/incomplete_attempts。最终C使用冻结输入及原始预训练权重，完整执行750次更新，不接续残缺预算。研究目录comparison/gpu_production8_retry_state.json终态complete；旧comparison摘要已归档history/pre_production8。
-
-C相对B：AP50–95下降4.29个百分点、HOTA下降1.57个百分点；AP50上升1.20个百分点、IDF1上升0.19个百分点，IDSW由5降为2。不能声称整体提升或统计显著性。详细结果及证据边界见[首轮试验结果](Docs/PRODUCTION8_PILOT_RESULTS.md)。该首轮已结束，后续GPU研究正在继续；最终test未使用，UE保持关闭。
-
-## 历史GPU研究（完整保留，当前主线已转Pose）
-
-- 全部300张选中合成训练图的框转换与正式可见框一致，最大归一化误差约5e-9。训练框形状、重叠、真实曝光及裁判误检存在域差异，不能归因于简单坐标bug。
-- 第二轮比例/框五臂已完成。25%扩展框使HOTA/IDF1提高但AP下降，未通过预定整体门槛；全部失败臂保留在D:/projects/FutsalMOT_Research/round2。
-- 第三轮三seed已完成：相对阶段纯真实平均AP +0.08pp、HOTA +0.35pp，HOTA仅1/3正向；未通过登记门槛。排除发现seed后的两seed也没有确认整体收益，不能只报告发现seed的67.61/77.33。
-- SNMOT-152/153额外开发验证及16模型统一评估已完成。相对阶段真实，候选三seed平均AP +1.21pp但HOTA −1.22pp；局部身份收益没有推广。与151同比赛9，不能冒充跨比赛验证，test116/187继续封存。
-- 第四轮及九模型联合450帧评估均已完成。添加合成相对等810更新真实控制，原151平均AP −1.499pp/HOTA −1.038pp；联合450帧AP −0.096pp/HOTA −0.240pp。primary及secondary均失败，不宣称整体进步，全部结果保留。
-- 第五轮已按失败条件显式登记并启动：同一person保留头内比较head_real810/head_additive810，固定seed20261024/25/26、每模型360＋450＝810更新，六模型完整运行后统一450帧验证。换头本身的收益不能归因于合成数据，64到80通道也存在容量变化。
-- 活动状态：研究目录round5/driver_state.json，日志comparison/round5_run.log（启动driver PID30956，以实际状态为准）；同一串行入口在六模型结束后执行round5_combined_eval，日志comparison/round5_combined_run.log，勿重复启动。前轮round2/3/4及其联合评估均已complete，UE保持关闭。新研究代码尚未另行Git提交，号码开发仍排除。
-- 新增round5/round4/round2针对回归56 passed。CPU person助手另有前向、SGD及EMA磁盘加载证据；这些不能替代完整GPU训练或收益验证。
-
-当前完整诊断与负结果见[迁移诊断及消融](Docs/TRANSFER_DIAGNOSIS_AND_ABLATIONS.md)。论文目标为2026年11月投稿CVPR 2027；最近邻论文、候选贡献、证据缺口及官方截止日期见[论文定位与计划](Docs/CVPR_2027_PAPER_PLAN.md)。现有八天气与八seed绑定，不能独立归因天气作用；当前多视角是数据属性，尚无融合效用评测。
-
-## 后续
-
-1. 完成实际角色COCO17锚点的源形态、UE LOD0及动画映射；先小样验证RGB/mask/Pose时序与可见性。
-2. 冻结独立Pose17试产批次与配对视觉因素，研究姿态质量和遮挡后的身份恢复，见Pose路线文档。
-3. 固定真实Pose标注与计算预算后再检验合成监督效用，最终test继续封存；不自动重启旧检测器搜索。
-4. 号码开发作为独立未完成事项保留，不纳入当前Pose已完成贡献或提交。
-
-入口：[README](README.md)、[Python README](Content/FutsalMOT/code/README.md)、[研究协议](Docs/RESEARCH_PROTOCOL.md)。本机证据位于Saved/Production、Saved/DatasetMaintenance和Saved/Archives，不纳入Git。
+未完成号码继续保留、不纳入当前数据或提交。没有新渲染/训练已启动的声明；以实际新运行收据为准。

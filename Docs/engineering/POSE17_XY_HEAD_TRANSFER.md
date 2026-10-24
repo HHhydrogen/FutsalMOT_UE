@@ -25,7 +25,7 @@ adapted = map_pose_xy(actual_pose_model)
 trainer_type = pose_xy_trainer_class()
 ```
 
-`pose_xy_trainer_class().get_model` 只接受实际完整PoseModel权重，拒绝weights=None，避免标准PoseTrainer依据二维YAML重建。后续自绘toy夹具已通过单进程CPU完整Trainer、SGD两次分阶段更新及真实resume验证，范围和限制见[CPU兼容小样](POSE17_XY_TRAINER_CPU_SMOKE.md)；未验证真实数据训练、增强、GPU或DDP。自定义索引层有稳定模块名与延迟类解析，已验证新进程通过官方YOLO loader加载独立派生checkpoint。
+`pose_xy_trainer_class().get_model` 只接受实际完整PoseModel权重，拒绝weights=None，避免标准PoseTrainer依据二维YAML重建。后续自绘toy夹具已通过单进程CPU完整Trainer、SGD两次分阶段更新及真实resume验证，范围和限制见[CPU兼容小样](../research/POSE_CONTROL_PROTOCOL.md)；未验证真实数据训练、增强、GPU或DDP。自定义索引层有稳定模块名与延迟类解析，已验证新进程通过官方YOLO loader加载独立派生checkpoint。
 
 ## 随机模型与实际官方权重验证
 

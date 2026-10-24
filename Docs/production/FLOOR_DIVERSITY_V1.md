@@ -22,7 +22,7 @@
 
 ## UE 导入与安全门禁
 
-可分发入口是内层`ue/create_floor_assets_v1.py`（[使用说明](../Content/FutsalMOT/code/docs/FLOOR_DIVERSITY.md)）：直接创建世界XY/200cm图，不依赖下文历史Saved收据。六个目标已全部存在时只读验收，不覆盖；部分存在拒绝隐式补齐；目标不存在且显式apply才创建。脚本不更换地图绑定。下文build/resume/preview属于本机开发历史，未作为阶段发布接口。
+可分发入口是内层`ue/create_floor_assets_v1.py`（[使用说明](../engineering/FLOOR_DIVERSITY.md)）：直接创建世界XY/200cm图，不依赖下文历史Saved收据。六个目标已全部存在时只读验收，不覆盖；部分存在拒绝隐式补齐；目标不存在且显式apply才创建。脚本不更换地图绑定。下文build/resume/preview属于本机开发历史，未作为阶段发布接口。
 
 1. 等 GPU 训练停止，按 AGENTS 执行 UE/MCP 重连与只读场景检查。主 agent 本次 MCP 确认正式地板 Actor label `SM_FutsalCourt_Floor`，component `StaticMeshComponent0`，mesh `/Engine/BasicShapes/Cube.Cube`，唯一 slot `WorldGridMaterial`，当前材质 `/Game/FutsalMOT/Materials/MI_Futsal_Field_Grass_Matte_v1.MI_Futsal_Field_Grass_Matte_v1`。每次执行脚本仍须重新核验，不以本文代替新鲜状态。
 2. 查询场地 Actor 的 StaticMesh、各 slot 名称、材质 class/path、UV 和标线表达方式。`M_MPFB_TestFloor` 是测试资产，不能直接当正式场地主材质。若标线与底色烘焙在同一个贴图，必须先拆解线层，不能用无标线纹理覆盖线。

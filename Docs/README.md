@@ -1,0 +1,35 @@
+# 技术文档索引
+
+项目当前状态与执行授权以[根README](../README.md)、[AGENTS](../AGENTS.md)及[任务状态](../TASK_STATUS_AND_NEXT_STEPS.md)为入口。本目录按工程、生产、研究、运维集中技术说明；历史验收、候选和本机结果不能替代当前准入。
+
+以下主要入口来自已跟踪文档的整理基线；实际是否已提交或推送以Git commit为准。正文中的历史命令、G/D旧路径和收据按当时版本理解，不能据此自动重启旧任务。未提交草稿移入分类目录不等于远端已交付。
+
+## engineering：契约与实现
+
+- [数据契约](engineering/DATA_CONTRACT.md)与[验证和限制](engineering/VALIDATION_AND_LIMITATIONS.md)。
+- [GPU渲染/CPU-LBS](engineering/POSE17_GPU_RENDER_CPU_LBS.md)、[离线蒙皮诊断](engineering/POSE17_OFFLINE_LBS_DIAGNOSTIC.md)及[头部标定来源](engineering/POSE17_HEAD_SURFACE_CALIBRATION.md)。
+- [天气光照系统](engineering/WEATHER_LIGHTING_SYSTEM.md)与[地板随机流](engineering/FLOOR_DIVERSITY.md)。
+- [MCP Python执行范围](engineering/PYTHON_EXECUTION_SCOPE.md)：保持项目内执行边界，不为路径迁移放宽权限。
+
+## production：批次、资产与输出
+
+- [v1八组生产记录](production/PRODUCTION_V1.md)、[按seed的数据集结构](production/SEED_DATASET.md)、[连续活跃窗口](production/ACTIVE_TRAJECTORY_QC.md)。
+- [位置试产源序列](production/POSE17_LOCATION_PILOT_SOURCES.md)；位置有效性与可见性分别处理，unknown不升级为COCO visible。
+- [MPFB生产SOP](production/MPFB_PLAYER_PRODUCTION_SOP.md)与[UE资产历史短渲染基线](production/UE_ASSET_BASELINE.md)。短样通过不等于所有长批/姿态/物理碰撞已验。
+
+## research：论文问题与控制
+
+- [CVPR论文计划](research/CVPR_2027_PAPER_PLAN.md)。
+- [控制协议与历史兼容证据](research/POSE_CONTROL_PROTOCOL.md)、[COCO公开开发评价口径](research/POSE_COCO_EVALUATION.md)。
+- [固定检测Pose附件](research/POSE_FIXED_DETECTION_ATTACHMENT.md)、[关联评价细节](research/POSE_ASSOCIATION_TRACKEVAL.md)及[交互窗口候选](research/INTERACTION_WINDOW_CANDIDATE.md)。
+- [本轮v4真实结果](research/POSE_V4_RESULTS.md)：本次根据已结束元数据新增；同真实曝光平均AssA仅+0.26444035pp、1/3 seed为正，未过登记门槛；混合臂未超过预训练关联结果。不预设合成收益。
+- [原Pose路线历史](research/POSE_PIPELINE_HISTORY.md)保存原阶段独有决策，不能当作今天的恢复命令。
+
+## operations：维护与历史
+
+- [UE与MCP工作流](operations/UNREAL_MCP_WORKFLOW.md)：资产API、dirty、切图和安全重启约定。
+- [单仓库迁移记录](operations/SINGLE_REPOSITORY_MIGRATION_20261025.md)。原双仓库/备份建议为历史，不授权补建用户已删除的备份。
+- [UE崩溃调查](operations/UE_CRASH_FINDINGS_20261023.md)：一次正常退出不等于历史GC崩溃已根治。
+- 本机执行候选、清理清单和历史交接说明同样放在operations，是否已验证/执行以各正文和真实收据为准。
+
+未完成号码两份设计文档仍受保护，保留在原开发目录，不因本次文档整理提交号码实现或资产。P1 Python3.9、研究Python3.10及UE Python环境继续隔离。final116/187封存。

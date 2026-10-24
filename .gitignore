@@ -50,3 +50,4 @@ Content/FutsalMOT/Generated/SpeedTrials/
 # Git结构融合的本机演练与收据；不纳入项目版本。
 /tools/git_migration/.fixture/
 /tools/git_migration/local/
+/tools/maintenance/local/

@@ -1,50 +1,50 @@
-# FutsalMOT Unreal Engine 项目
+# FutsalMOT / FutsalPoseTrack
 
-基于 Unreal Engine 5.8 和 Google Research Football 生成五人制足球多目标追踪数据；包含UE资产、C++运行时和Python代码，统一由一个Git仓库管理。
+使用Unreal Engine 5.8和Google Research Football生成五人制足球时序数据，并研究合成姿态监督对真实身份关联的作用。UE资产、C++、Python和实验代码统一由本仓库管理。
 
-## 当前数据集
+## 从这里开始
 
-无号码正式批次已完成：8个seed、八天气各一组、32个相机序列，原生3840×2160、10FPS，共20,116张RGB和同数实例mask，包含逐帧球员可见像素bbox。每机位连续414–952帧（41.4–95.2秒），不拼接或补静止尾段；8组保留原train归属。
+- [文档索引](Docs/README.md)：工程契约、生产、研究与运维说明。
+- [当前任务](TASK_STATUS_AND_NEXT_STEPS.md)：实际阶段与下一步，不以历史命令代替当前状态。
+- [Agent规则](AGENTS.md)：Git、存储、UE生命周期及研究边界。
+- [Python入口](Content/FutsalMOT/code/README.md)：阶段2迁移完成前仍使用当前目录；不预先声称已在python/。
 
-正式根目录：`G:/FutsalMOT_Dataset/v1_no_numbers_4k`。每seed仅一个连续片段，已去掉clips/clip_000两层：
+## 代码和环境
 
-```text
-groups/seed_XXXXXXXX/
-  group.json
-  clip.json
-  trajectory.jsonl
-  checksums.json
-  cameras/CineCam_01/{view.json,annotations.jsonl,rgb/,mask/}
-```
+| 内容 | 当前入口 | 执行环境 |
+| --- | --- | --- |
+| UE运行时 | Source/FutsalMOT | C++ / UE5.8 |
+| UE插件与MCP | Plugins/FutsalMOTMCP | 真实Editor Python |
+| 轨迹与后处理 | Content/FutsalMOT/code/src | 固定Python3.9的P1环境 |
+| 渲染脚本 | Content/FutsalMOT/code/ue | UE Python，不能在P1执行 |
+| 训练与评价 | Content/FutsalMOT/code/experiments | 独立研究Python3.10 |
 
-入口为dataset.json；group保存一次外观、天气和实体，clip保存连续时间窗及准入证据，标定和catalog通过shared共享。基准组full审计，其余组按明确授权为quick/basic；不能把全部组描述为像素审计通过。
+P1与UE之间通过JSON/JSONL交换数据；UE不导入NumPy/OpenEXR依赖的P1模块。GPU训练与UE渲染串行。默认地图保持`/Game/FutsalMOT/Maps/L_FutsalCourt`，资产移动通过UE API修引用。
 
-## 工程与代码
+用户已授权四阶段整理：文档/产物→Python与实验代码→UE资产→入口与规范固化。阶段完成情况以任务状态为准，号码WIP保留且不纳入成果提交。
 
-- 正式地图和默认启动地图：`/Game/FutsalMOT/Maps/L_FutsalCourt`。
-- C++：AFutsalPlayerBase、UFutsalPlayerAnimInstance及FinalImage PNG输出过滤。
-- 动画蓝图负责AnimGraph、状态机和FootIK，新增运行时逻辑优先C++。
-- P1固定Python3.9，导出轨迹及后处理；P2仅在真实UE Python执行，通过JSON/JSONL交换数据。
-- 生产复用Editor/场景、逐机位释放executor，使用6进程CPU后处理。正式数据集保存在G盘，工作文件按当前存储策略恢复D盘；GPU训练与渲染串行。
+## 数据集
 
-入口：[Python README](Content/FutsalMOT/code/README.md)、[MPFB生产SOP](Docs/MPFB_PLAYER_PRODUCTION_SOP.md)、[任务状态](TASK_STATUS_AND_NEXT_STEPS.md)。UE任务优先Unreal MCP原生工具；完整Python文件使用FutsalMOTTools.run_python_file，不使用受限sandbox代替import unreal。
+正式数据集根为`G:/FutsalMOT_Dataset`：
 
-## 研究目的
+| 版本 | 数量 | 限制 |
+| --- | --- | --- |
+| v1_no_numbers_4k | 8seed、32相机序列、20116对4K RGB/mask | 有bbox，无Pose，保留原train归属 |
+| v2_pose17_location_pilot_a01 | 1920对4K、19200逐视角人物Pose | 480源时间样本，限定位置研究候选 |
+| v2_pose17_longpair_pilot_a01 | 4800对4K、48000逐视角人物Pose | 600源时间样本，16条30秒相机序列 |
 
-当前主线为合成COCO17姿态监督对固定检测输入下身份关联的边际作用，详见[论文计划](Docs/CVPR_2027_PAPER_PLAN.md)。v3三训练seed的合成臂相对真实继续训练平均AssA提高0.5524点，但相对预训练仅提高0.0236点，尚不能确认跨比赛或真实五人制收益。最终测试保持封存。
+均为原生3840×2160、10FPS。按seed/manifest解析，不硬编码旧clips/clip_000层级。v2保留逐机位world、unknown及原诊断标记，不冒充正式可见性或遮挡标签；地板配对world约0.068mm差异保留原值，不称exact。
 
-最新存储目标：正式数据集仅在 `G:/FutsalMOT_Dataset`，UE工作目录恢复实际 `D:/projects/FutsalMOT_UEDataset/Saved`，研究输入、权重及实验结果恢复实际 `D:/projects/FutsalMOT_Research`。当前v4与追踪尚依赖G盘兼容联接，待两阶段安全完成后统一恢复；在此之前不解除联接或删除活动训练输入。当前状态见[任务状态](TASK_STATUS_AND_NEXT_STEPS.md)。
+工作文件最终恢复到本项目原Saved物理目录；研究输入/权重/结果恢复到实际`D:/projects/FutsalMOT_Research`。数据迁移是否完整结束看当前收据。Saved、缓存、虚拟环境、媒体、模型权重不入Git；AutoSave关闭。
 
-30秒Pose地板配对试产已独立发布：`G:/FutsalMOT_Dataset/v2_pose17_longpair_pilot_a01`，4800对4K RGB/mask和48000逐视角人物Pose。仍为限定位置研究候选，unknown与原诊断限制保留；不等于正式遮挡标签或已证明训练收益。
+## 研究
 
-号码系统未完成，本次数据和提交均不包含号码实现，保留为后续任务。
+主问题是固定真实检测输入时，合成Pose监督能否改善身份连续性。[本轮v4](Docs/research/POSE_V4_RESULTS.md)在相同真实曝光下AssA均差+0.2644个百分点、仅1/3训练seed提高，未达到登记门槛；混合臂未超过预训练关联结果。全部负结果保留，不以格式、4K、四机位或地板变化单独宣称创新。最终SNMOT116/187保持封存。
 
-## Git与本机产物
-
-唯一 `master` 同时记录UE资产、配置、C++和 `Content/FutsalMOT/code/` Python代码。两边旧历史完整保留，后续只需一次提交和推送。首次克隆：
+## Git
 
 ```powershell
-git clone git@github.com:HHhydrogen/FutsalMOT_UE.git
+git clone https://github.com/HHhydrogen/FutsalMOT_UE.git
 ```
 
-无需初始化submodule；不重新创建内层Git。融合及备份说明见[迁移记录](Docs/SINGLE_REPOSITORY_MIGRATION_20261025.md)。不使用无选择的git add -A。约束见[AGENTS.md](AGENTS.md)。Saved、Intermediate、DerivedDataCache不提交；临时uasset必须通过UE API删除，不能按零引用清理共享角色/材质。默认关闭AutoSave，按Git维护保存后的代码和资产；生产来源、原始轨迹和关键回执仍保留本机归档。
+唯一master保留原UE和Python提交历史；新clone无需submodule初始化。在Python目录运行Git也定位本项目根。精确选择已验文件，一次commit/push，不add-A或force；迁移经过见[单仓库记录](Docs/operations/SINGLE_REPOSITORY_MIGRATION_20261025.md)。用户已主动删除备份，不自动重建。

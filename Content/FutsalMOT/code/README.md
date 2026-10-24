@@ -30,25 +30,25 @@ uv run pytest
 
 ## 权威文档
 
-- [DATA_CONTRACT.md](docs/DATA_CONTRACT.md)：轨迹、相机和标注字段。
-- [VALIDATION_AND_LIMITATIONS.md](docs/VALIDATION_AND_LIMITATIONS.md)：验证与限制。
-- [SEED_DATASET.md](docs/SEED_DATASET.md)：平铺发布结构和迁移。
-- [PRODUCTION_V1.md](docs/PRODUCTION_V1.md)：本轮规模、生产优化及来源。
-- [ACTIVE_TRAJECTORY_QC.md](docs/ACTIVE_TRAJECTORY_QC.md)：连续活跃窗口。
-- [FLOOR_DIVERSITY.md](docs/FLOOR_DIVERSITY.md)：独立seed地板因子与UE资产只读验收入口。
+- [DATA_CONTRACT.md](../../../Docs/engineering/DATA_CONTRACT.md)：轨迹、相机和标注字段。
+- [VALIDATION_AND_LIMITATIONS.md](../../../Docs/engineering/VALIDATION_AND_LIMITATIONS.md)：验证与限制。
+- [SEED_DATASET.md](../../../Docs/production/SEED_DATASET.md)：平铺发布结构和迁移。
+- [PRODUCTION_V1.md](../../../Docs/production/PRODUCTION_V1.md)：本轮规模、生产优化及来源。
+- [ACTIVE_TRAJECTORY_QC.md](../../../Docs/production/ACTIVE_TRAJECTORY_QC.md)：连续活跃窗口。
+- [FLOOR_DIVERSITY.md](../../../Docs/engineering/FLOOR_DIVERSITY.md)：独立seed地板因子与UE资产只读验收入口。
 - [实验协议](experiments/sim2real/README.md)：真实足球检测和追踪对照。
 
 基准full，其余quick/basic如实记录；全部生成mask/bbox不等于全部做像素审计。号码尚未验收，正式数据关闭号码和Pose。
 
 ## Pose研究开发
 
-四seed位置试产已完成并独立发布至G:/FutsalMOT_Dataset/v2_pose17_location_pilot_a01：1920对4K RGB/mask、19200逐视角人物Pose，480个源时间样本；采用显式[120帧契约及独立源序列](docs/POSE17_LOCATION_PILOT_SOURCES.md)。unknown保留，限定位置研究准入不等于正式遮挡标签。已有[真实40图位置损失接入](experiments/sim2real/POSE17_LOCATION_CPU_CHECK.md)、[严格矩阵SHA离线重建](docs/POSE17_OFFLINE_LBS_DIAGNOSTIC.md)及[十二关节表面支持候选](docs/POSE17_JOINT_SUPPORT_DIAGNOSTIC.md)，不再重复小样或媒体审计。
+四seed位置试产已完成并独立发布至G:/FutsalMOT_Dataset/v2_pose17_location_pilot_a01：1920对4K RGB/mask、19200逐视角人物Pose，480个源时间样本；采用显式[120帧契约及独立源序列](../../../Docs/production/POSE17_LOCATION_PILOT_SOURCES.md)。unknown保留，限定位置研究准入不等于正式遮挡标签。已有[真实40图位置损失接入](../../../Docs/research/POSE17_LOCATION_CPU_CHECK.md)、[严格矩阵SHA离线重建](../../../Docs/engineering/POSE17_OFFLINE_LBS_DIAGNOSTIC.md)及[十二关节表面支持候选](../../../Docs/engineering/POSE17_JOINT_SUPPORT_DIAGNOSTIC.md)，不再重复小样或媒体审计。
 
-七模型十实体四机位联合短诊断已完成40张4K RGB/40份EXR/400条采样，完整[诊断导出](docs/POSE17_DIAGNOSTIC_RELEASE.md)包含实例mask、bbox、Pose2D与逐机位原始world17。见[联合入口](docs/POSE17_JOINT_DIAGNOSTIC.md)和[七角色校准快照](calibration/diagnostic/pose17_head_surface_v1/README.md)。472项针对CPU回归及真实MRQ证据通过；所有visibility仍unknown，输出不是正式训练数据，不能称已证明合成收益。
+七模型十实体四机位联合短诊断已完成40张4K RGB/40份EXR/400条采样，完整[诊断导出](../../../Docs/production/POSE17_DIAGNOSTIC_RELEASE.md)包含实例mask、bbox、Pose2D与逐机位原始world17。见[联合入口](../../../Docs/engineering/POSE17_JOINT_DIAGNOSTIC.md)和[七角色校准快照](../../../Docs/engineering/POSE17_HEAD_SURFACE_CALIBRATION.md)。472项针对CPU回归及真实MRQ证据通过；所有visibility仍unknown，输出不是正式训练数据，不能称已证明合成收益。
 
-新Pose17与v1分开，当前尚无正式遮挡Pose批次。原位置对照六臂完整保留；独立[Pose-only v3训练](experiments/sim2real/POSE_LOCATION_POSEONLY_V3.md)修正COCO sigma、固定共享检测与BN，并由[独立评价器](docs/POSE_COCO_DEV_EVALUATION_V3.md)复用相同官方COCO数值。新实验需新冻结协议，不能混改原结果或把优化更新自动重放。
+新Pose17与v1分开，当前尚无正式遮挡Pose批次。原位置对照六臂完整保留；独立[Pose-only v3训练](../../../Docs/research/POSE_LOCATION_POSEONLY_V3.md)修正COCO sigma、固定共享检测与BN，并由[独立评价器](../../../Docs/research/POSE_COCO_EVALUATION.md)复用相同官方COCO数值。新实验需新冻结协议，不能混改原结果或把优化更新自动重放。
 
-[真实固定检测入口](experiments/sim2real/POSE_ASSOCIATION_DEV_CANDIDATE.md)、[Pose附件](docs/POSE_FIXED_DETECTION_ATTACHMENT.md)、[ByteTrack接入](docs/POSE_BYTETRACK_CANDIDATE.md)及[完整TrackEval结果](docs/POSE_ASSOCIATION_TRACKEVAL.md)已接通。预训练Pose在同game9开发片段相对bbox的有限关联收益不等于合成训练收益，下降片段保留；官方det.txt是GT框副本，未作检测器使用。[交互窗口工具](docs/INTERACTION_WINDOW_CANDIDATE.md)只用GT元数据生成候选，不读媒体或依据模型成败筛选。
+[真实固定检测入口](../../../Docs/research/POSE_ASSOCIATION_DEV_CANDIDATE.md)、[Pose附件](../../../Docs/research/POSE_FIXED_DETECTION_ATTACHMENT.md)、[ByteTrack接入](../../../Docs/research/POSE_BYTETRACK_CANDIDATE.md)及[完整TrackEval结果](../../../Docs/research/POSE_ASSOCIATION_TRACKEVAL.md)已接通。预训练Pose在同game9开发片段相对bbox的有限关联收益不等于合成训练收益，下降片段保留；官方det.txt是GT框副本，未作检测器使用。[交互窗口工具](../../../Docs/research/INTERACTION_WINDOW_CANDIDATE.md)只用GT元数据生成候选，不读媒体或依据模型成败筛选。
 
 unknown可见性与位置有效性分开，全缺点人物仍保留框。P1不安装Torch，研究依赖独立；GPU研究训练与UE渲染串行，最终test116/187封存。
 

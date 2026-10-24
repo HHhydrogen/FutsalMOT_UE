@@ -1,282 +1,46 @@
 # AGENTS.md
 
-## 最新 Git 决策（2026-10-25）
-
-- 用户确认继续以命令行 Git 管理。UE Git Provider 不自动启用，不初始化新仓库。
-- 用户已明确授权“开始git仓库融合”。本次采用标准双父合并保留两仓历史，代码路径不变；内层 `.git` 已移到D盘独立备份，未删除原历史。迁移说明见 `Docs/SINGLE_REPOSITORY_MIGRATION_20261025.md`。不丢弃WIP、不重写已发布历史、不归档或删除旧远端。
-- Git融合只改变仓库边界和文档，不修改正在运行的v4绑定源码、数据路径或预算。未完成号码及其他WIP留在原位，不纳入融合提交。
-
-## 最新存储与并行整理要求（2026-10-25，覆盖下方旧G盘规则）
-
-- 旧日志/tmp 独立整理已完成：14 文件共 19,884,096 字节，项目/本机 AutoSave 均为 False；见 `Docs/UE_SAVED_MAINTENANCE_20261025.md`。精确 raw 媒体清理已完整成功：23013 文件/638.191GiB，其中7961个EXR；前后1936个活动引用检查一致。实际收据 `tools/pose17_ops/storage_receipts/raw_media_20261025_041634_0487/completion_receipt.json`，不重放。活动四个 export/号码/所有非媒体及 Dataset 未删除；原EXR深度/Cryptomatte已丢弃，不能声称仍保留。
-- 用户明确要求：生成完成的数据集只保存在`G:/FutsalMOT_Dataset`；G盘不再作为UE工作区。UE `Saved`最终恢复为`D:/projects/FutsalMOT_UEDataset/Saved`实际目录，研究输入/权重/检查点/实验结果恢复实际`D:/projects/FutsalMOT_Research`（用户已选择）。清理外部失败/重复生成媒体，必要计划/native/冻结收据保留，不能把全部659GiB原始媒体搬D。
-- 当前v4六臂和随后真实追踪还在运行，D Saved/DResearch均是到G的junction；旧冻结链比较实际resolve且合成1440训练图仍读取Saved下四个原始诊断导出RGB。必须等当前六训练及六追踪安全结束再整体解除这些联接/迁移依赖；此前只可清理经清单确认不被使用的raw媒体，不能把当前四个`diagnostic_location_pilot_*_export_a01`目录当废弃产物删除。具体只读清单`tools/pose17_ops/storage_cleanup_actions_candidate_20261025.json`，研究评估`STORAGE_SWITCH_READONLY_20261025.md`。不改运行中的绑定源码/协议，不重放数学更新。
-- 用户另开独立聊天任务“整理UE仓库、清理Saved并核验AutoSave”（thread `01a16f81-ba8f-7cd2-aa5c-18f2ef77f89f`）处理Saved无用旧日志/tmp/Autosaves与配置；该任务不处理raw媒体或目录联接迁移，主聊天负责大数据存储调整。两边不要竞争写同一批文件。保持本轮退出日志、finalize_longpair_a04、冻结协议和实验收据。Config项目默认已有AutoSave=False，仍核验本机有效配置；Git不保护未保存Editor内存。
-- 路径迁移完成前，以下历史状态中的G路径仍是现行实验的真实依赖；完成后须更新新默认入口/路径映射，不伪造旧来源或删除唯一原始轨迹证据。当前权限为受限workspace；G盘或D项目外写删需按实际范围申请工具自动审批，禁止绕过或使用junction逃逸。自动审批若拒绝，说明具体动作和理由并保留未完成状态。
-
-## 最新运行状态（2026-10-25）
-
-- 原训练18976及交接7936因受限CIM权限查询失败而停止，历史state/锁/日志保留，不能改为成功。第五R3_seed20261026已完整1000步/3000R、exit0；root实际对照确认普通隔离环境CIM拒绝、批准环境同查询成功。新独立恢复 `tools/pose17_ops/recover_v4_after_cim_a01.py` 已限域审批启动，权威 `G:/FutsalMOT_Research/pose/poseonly_v4/recovery_cim_a01/driver_state.json`；只补第五评价、第六原训练/评价，优化器重放0。新交接权威 `handoff_recovery_tracking_a01/state.json`，自动等恢复完成后关联。真实PID/命令行为准，旧18976已发生RuntimeBroker复用，绝不按旧PID结束进程。Saved/Research迁移须消费显式新恢复完成链，而非修改旧failed状态。
-- 本轮a04四stage与发布均已真实完成：`G:/FutsalMOT_Dataset/v2_pose17_longpair_pilot_a01`，4800RGB/4800mask/48000人物Pose，2seed×2floor×4camera×300帧4K。仅G同卷variant移动，原stage小索引保留；完成收据`_publication_a04/complete.json`。一次地板配对metadata通过，world不完全exact，最大差6.809602211279827e-5m，原值/unknown/diagnostic/not_training/MRQ_syncfalse保留，不冒称正式遮挡或逐像素验收。
-- Editor26836本次clean/idle/own-release门禁通过，2026-10-25 03:38:02正常Exiting/closed且PID消失，真实最终收据`G:/FutsalMOT_Workspace/UE/Saved/Pose17Development/finalize_longpair_a04/root_final_shutdown.json`。渲染驱动6036及协调器2332均已完成退出，禁止重启。
-- v4已在该真实退出后冻结`G:/FutsalMOT_Research/pose/poseonly_v4/frozen_a01`（协议dfab1c73c2815fe2690446a616e3f07d50452376f3b40593cdb43860e6e3c583，准入160704f9205bd7d3ba87ee2a9b09f755a8b762aff3faedd79ed05cc9d034078d），六文本上下文/COCO200dev链与无UE/GPU预飞实际通过。唯一`tools/pose17_ops/run_poseonly_v4_a01.py`已启动，实际driver18976（launcher21684，以真实state为准），权威`G:/FutsalMOT_Research/pose/poseonly_v4/control_a01/driver_state.json`。当前首R3_seed20261024.train，禁止重复启动/改绑定源码协议或重放预算；UE继续关闭。
-- v4为保持公平使用原120帧试产的固定R/S选择，新30秒配对是独立发布候选，不偷偷替换训练表。三seed各R3后R3S1、1000更新，两臂相同3000R，同序；混合另1000S/独立loss归一alpha1/3。评价last1000 FP32 EMA，所有负结果保留。之后原450帧固定raw/.1足球关联；test116/187继续封存。
-- q8交接已真实完成：首1048蓝stage为1200RGB/1200mask/12000人物Pose，保留diagnostic/not_training/visibility unknown。旧driver18864在首stage完成后按授权source门禁退出；idle实际队列4→8、线程12保持、dirty空，收据`resume_20261024_a04_q8/queue_adjustment.json`。同Editor26836上接续driver6036已运行1048红棕；权威为q8目录`driver_state.json`，协调器2332正常等待该driver。禁止重启旧driver或再改已绑定源码/队列，全部渲染结束后才v4。
-- q8安全交接协调器`tools/pose17_ops/coordinate_queue8_a04.py`已由root后台启动，PID2332（以后以实际状态为准），权威`G:/FutsalMOT_Workspace/UE/Saved/Pose17Development/resume_20261024_a04_q8/coordinator_state.json`。当前等待首CPU导出及旧driver自然退出；它会单次真实MCP调整idle队列至8、验证后唯一启动剩余三组driver。不要重复启动协调器/接续driver，不要修改其冻结源码；3文件SHA在同目录coordinator_launch.json，4项CPU候选收据在G Workspace/tests/remaining_q8_a04_candidate_cpu.json。
-- 用户最新要求首组后处理结束后适当提高队列。首1048蓝a04的1200RGB/EXR及恢复/release已完成，CPU导出仍运行；root已在旧queue收据追加显式handoff请求，原bytes保存在`resume_20261024_a04/write_queue_preflight_original_q4.json`，实际队列仍4。这是有意绑定变更：旧driver在首stage完成、下一UE动作前因source绑定变化退出，禁止误当程序故障撤销配置或重启旧driver。由独立q8接续driver验证首stage真实完成与旧PID退出，idle门禁通过后仅将队列4→8，线程12不变，在`resume_20261024_a04_q8`记录新权威状态并接续原剩余3个a04；不重复首组后处理、不打断活动CPU/MRQ。
-- 用户已关闭游戏并再次明确继续。启动前实际系统commit余量37.4GiB，G可用约1.14TiB；a04 Editor26836已真实MCP确认规范地图、dirty空和写队列12/4。唯一驱动`tools/pose17_ops/run_longpair_batch_a04.py`已启动（18864，后续以真实state/PID为准），首1048蓝a04已submitted并处于`rendering_no_interference`，不是已完成。
-- 权威状态为`G:/FutsalMOT_Workspace/UE/Saved/Pose17Development/resume_20261024_a04/driver_state.json`，启动/队列/预飞收据同目录。正常时不重复启动、不修改已绑定源码/计划，不干预MRQ。仍是四组4800对4K及48000逐视角人物Pose，unknown/诊断限制保留。
-- 四stage完成后由root发布及安全退出UE，再冻结v4六臂真实曝光对照准入并训练；不得提前GPU训练。旧a01/a02/a03失败记录保留、驱动不可重启。持续跟进已按a04更新并启用，下方历史暂停/游戏占用不再是当前状态。
-
-## 最新恢复执行（2026-10-24）
-
-- 用户已明确继续昨日工作，撤销下方暂停要求：先确认G路径，恢复30秒Pose地板配对，期间仅CPU完善v4，全部渲染结束且UE安全退出后才训练；每完成独立阶段汇报。
-- G读写和三条主要迁移映射已实际通过，初始G空闲约1200GiB，本批保守预留600GiB。a02因Windows提交内存不足崩溃；a03队列12/8仍受系统提交余量不足影响，root已通过自有MRQ正常取消、恢复地板、核验clean并释放失败会话，随后正常quit。二者均失败，不复用媒体、不启动其批次驱动。额外StarRail进程私有内存约11.7GiB，已请用户自行关闭，禁止擅自结束。
-- 下一独立a04仍为两seed×两地板×四机位×300帧、合计4800对4K，目标写队列12线程/容量4，提交前至少16GiB系统commit余量、运行中低于6GiB正常取消自有MRQ。必须读取新launch和队列收据，禁止用a03旧PID或直接重启旧Saved驱动。全部渲染结束且本次UE安全退出后才训练。
-- 当前项目内MCP辅助代码在`tools/pose17_ops/`，请求/收据实际写G盘Saved的本轮独立目录；原8源Sequence/P2来源证据复用，只换新attempt，不覆盖旧失败记录。v4独立Trainer5项及评价适配9项CPU已通过，候选`G:/FutsalMOT_Research/pose/poseonly_v4/candidate_a02`；尚未冻结准入或GPU执行。
-
-## 最新停止与存储约束（2026-10-23晚）
-
-- 用户要求迁移完数据后结束今日任务；定时任务`futsalposetrack`已暂停。未经用户重新要求继续，不启动渲染、训练、恢复驱动或新研究开发。
-- 今后所有数据实际写入G盘：正式数据`G:/FutsalMOT_Dataset`，研究输入/权重/检查点/结果`G:/FutsalMOT_Research`，UE与P1工作数据`G:/FutsalMOT_Workspace`。D盘只保留代码、UE资产与必需构建缓存；新代码先核验实际resolve路径，禁止默认回落D盘存数据。
-- `D:/projects/FutsalMOT_Research`、项目`Saved`及P1数据目录保留为迁移后的兼容目录联接；清理/统计必须不跟随联接，不重复复制其G盘目标。迁移收据位于`G:/FutsalMOT_Workspace/migration_20261023`。
-- MCP仍只执行项目根内的真实代码路径。Saved移到G后，不直接用`run_python_file`执行解析后位于G盘的Saved辅助脚本；恢复时将必需入口代码放到D盘项目`tools/`或`ue/`，从G读写数据，不扩大Toolset任意文件执行权限。旧Saved驱动不能直接重启。
-- v3六臂训练和固定真实检测关联已全部结束，不重启旧驱动。30秒长窗首1048蓝a01因磁盘满失败，不能声称完成；失败记录保留。v4数学核心已验，完整Trainer仍为未测试草稿，不具备训练准入。
-
-## 当前研究方向（2026-10-23）
-
-- 用户最新执行偏好：以实现、导出和实验为主；已通过方法直接复用，只对新功能做一次必要测试/真实执行，后续seed自动检查帧/身份/失败状态。不重复逐模型近景、媒体hash、全量像素审计或无变化复查。
-- 四seed位置监督试产已由`Saved/Pose17Development/run_location_pilot_a01.py`串行执行，状态看`location_pilot_driver_a01.json`，正常时不重复启动。显式120帧契约仅1042/1044/1048 train及1102 synthetic_dev，四机位4K；未知visibility与位置有效性分开，试产不冒充正式COCO可见性数据。v1不变、真实final test封存。
-- 旧CPU渲染蒙皮路径已在submit前禁用，以免再次进入Lumen LocalVF/View崩溃。MCP文件PRIVATE/字面代码独立globals已在真实Editor热替换验证；显式sys.modules会话保留。退出期另有Py_FinalizeEx→PyGC_Collect崩溃，具体坏对象未定位；批次内复用Editor，不为复验频繁重启，正常收尾再观察退出终态。见`Docs/UE_CRASH_FINDINGS_20261023.md`。
-
-- 用户最新加速要求：004通过后直接复用各模型，不反复逐角色校验。004组合GPU-LBS短诊断现已通过真实切换/三机位配对/头深度及独立目视，收据`Saved/Pose17Development/player004_gpu_lbs_dynamic_head_review_a02.json`。不再运行005–009逐角色三机位近景，改一次十人覆盖003–009的四机位联合小样；保留必要自动身份/骨架/manifest/同步/恢复门禁，抽样仅四张全员总览，不把抽样当全像素审计。
-
-- 用户已将论文重心调整为COCO17姿态数据与姿态跟踪，执行路线见`Docs/POSE_RESEARCH_ROADMAP.md`。旧bbox试验保留证据，不自动继续扫描比例或重启已中断R5。
-- v1八组没有Pose；新Pose17必须独立输出，不能把历史12点文件补名为17点或事后伪造同帧采样。
-- 鼻眼耳需要绑定实际角色几何的校准。场景中隐藏驱动CharacterMesh0与可见MPFBVisual并存，必须核实实际渲染mesh后采样。
-- 地板独立seed随机流，不扰动运动/天气/角色；同运动不同地板配对保持同split。地板颜色丰富度属于实验因素，不直接当作已证明的泛化收益。
-- 真实UE采样和遮挡标签未验证前不得启用正式Pose17批量生产；CPU单测不替代MRQ同步和视觉验收。
-- 当前诊断限制：`player004_closeup_a01`及无网格切换的`player003_closeup_warmup_a06`均在8帧预热/Lumen MeshCardCapture阶段出现LocalVF/View缓冲绑定崩溃，零有效帧。不要自动重复相同CPU渲染配置或把失败归因于004角色资产；默认旧CPU路径不具备正式批产准入。
-- GPU-render/CPU-LBS已完成003/004近景及`joint_seed1048_a01_gpu_lbs`七模型十人四机位联合短动作诊断：真实GRF源100..109、40张4K RGB/40份EXR/400实体记录，采样、场景恢复及四张全员总览通过。收据`Saved/Pose17Development/joint_seed1048_a01_root_review.json`。这不是正式Pose批次；visibility保持unknown，长动作和关节遮挡证据尚待完成。独立重放机位世界点最大差4.274e-6m，导出保留各机位原始world，不平均或放宽严格共享去重。不再逐005–009重复近景，不套用旧CPU override回退。
-
-## 当前批次与清理边界（2026-10-22）
-
-- 无号码4K正式批次已完成8组、八天气、32相机序列，20116 RGB及同数mask。旧16/32组计划不再执行。
-- 正式数据仅位于`G:/FutsalMOT_Dataset/v1_no_numbers_4k`，布局为`groups/seed_XXXXXXXX/cameras/`；读取group的clip引用，不硬编码`clips/clip_000`或父目录深度。
-- 研究代码在内层`experiments/sim2real`，数据和GPU结果实际在`G:/FutsalMOT_Research`；旧D盘同名路径仅保留兼容联接。研究images目录联接到正式RGB，禁止递归跟随联接清理源数据。
-- UE渲染与GPU训练串行；全部本轮完成、Editor安全退出后才能启动GPU实验。比较固定真实标注及更新预算的真实/真实加合成对照，不预设提升。
-- AutoSave通过项目DefaultEditorPerProjectUserSettings和本机配置关闭；默认地图为L_FutsalCourt。
-- 删除临时资产先核对引用，再通过UE API执行；不从文件系统删除uasset。删除Saved、缓存或数据根其他目录时先核验绝对边界，不跟随junction；保留生产轨迹、冻结代码、关键收据及未完成号码开发。
-- 已结束持久生产会话可保留其自有dirty包，但后续操作必须匹配checkpoint且无范围外改动，不能将retained伪装成restored。
-- 用户当前明确要求的提交/推送视为本轮授权，不重复索要确认；未授权时仍遵循下方默认限制。未完成号码实现与资产不纳入本轮提交。
-
-## 仓库结构：统一 Git 仓库
-
-唯一工作仓库为本目录 `D:/projects/FutsalMOT_UEDataset`，分支 `master`，远端 `git@github.com:HHhydrogen/FutsalMOT_UE.git`。`Content/FutsalMOT/code/` 是同仓库中的普通Python代码目录，不再是submodule，也不保留嵌套 `.git`。
-
-历史融合保留外层原69提交及Python原148提交，融合提交有两个父节点；旧Python远端保留为历史来源，不再作为本项目日常推送目标。代码路径、Python3.9/Python3.10/UE三环境边界不变。新克隆无需 `git submodule update`：
-
-```powershell
-git clone git@github.com:HHhydrogen/FutsalMOT_UE.git
-cd FutsalMOT_UE
-git status --short
-# 仅选择本次已验收文件；不要git add -A。
-git add <明确文件列表>
-git diff --cached --stat
-git commit -m "<简体中文提交说明>"
-git push origin master
-```
-
-即使cwd在 `Content/FutsalMOT/code`，Git根也应解析到本项目根。不要重新初始化内层Git或恢复历史gitlink。提交前检查暂存区，数据集、权重、Saved、虚拟环境、缓存及未完成号码均不提交；不force-push或跳过hooks。融合前已验证历史及WIP备份；用户随后主动删除外部备份，并明确授权删除额外补建副本。当前不保留独立备份，不再自动重建；历史在统一远端可达，未提交WIP仍留本机。
-
-## Python 代码目录：先读当前技术文档
-
-`Content/FutsalMOT/code/README.md` 是 Python 数据集代码仓库的入口说明；`Content/FutsalMOT/code/docs/DATA_CONTRACT.md` 记录数据格式，`Content/FutsalMOT/code/docs/VALIDATION_AND_LIMITATIONS.md` 记录验证入口和当前限制。进入该目录工作前应先阅读这些文档。要点：
-
-- 推荐入口是 dataset task 单 config（`configs/*.json` 含机器路径并直接入库）：
-  ```powershell
-  uv run grf-ue task validate configs/pose_smoke_3frames_1cam.json
-  uv run grf-ue task export configs/pose_smoke_3frames_1cam.json
-  uv run pytest                  # 默认跳过 GRF 集成
-  uv run pytest -m grf_integration -q   # 真实 GRF 集成测试
-  ```
-- **环境隔离**：P1 导出在 Python `.venv`（Python 3.9 固定，勿升级）；P2 导入/渲染脚本在 Unreal Editor Python 内运行，**绝不在 .venv 中运行**，且绝不 import numpy 依赖的模块。JSONL 是两环境唯一接口。
-- 当前权威技术文档：`README.md`、`docs/DATA_CONTRACT.md`、`docs/VALIDATION_AND_LIMITATIONS.md`；不再使用 `CLAUDE.md`、`configs/README.md`、`ue/README.md` 或 `docs/` 下的历史设计子目录。
-- 提交规范（内层）：未经用户明确确认，不得自动提交或推送；commit message、代码注释、文档字符串和技术文档使用简体中文。
-
-## 外层 UE 项目（本层工作）
-
-### MPFB Player_N 生产 SOP
-
-新增或维护 MPFB Player_N 时，必须先阅读并遵循 [MPFB Player Production SOP](Docs/MPFB_PLAYER_PRODUCTION_SOP.md)。该文档固化了已通过验收的 Player_002 流程：每个角色可独立使用身高、体型和外观设计，但所有角色共享 MPFB Core v1 的 `SKEL_MPFB_Base`、`IKR_MPFB_Base`、`RTG_FutsalPlayerBase_To_MPFB` 和 `ABP_MPFB_RuntimeRetarget`。
-
-生产流程的固定边界是：源 Blender 使用 `METRIC / METERS / 1.0`；原始 Human/Rig 保持 `1,1,1`；只在临时 Export Copy 对 Mesh、Armature Data 和 Shape Keys 做厘米坐标转换；FBX wrapper 必须为 `Human_rig`；实际使用纹理必须显式复制到 `export/Textures/` 并在 UE 中单独导入。不要把 Player_002 的 Average 体型或固定身高当作后续角色的兼容性标准。
-
-SOP 中标记为 `NOT VERIFIED` 的 UE Import Data 或 Blender Axis/Apply Transform 参数不得凭经验猜测；使用最后一次人工验证的导入预设。UE 5.8 同一类 Python/MCP API 连续失败两次后停止并转为 `MANUAL_REQUIRED`，不要继续尝试反射 API。
-
-- **C++ 优先项目**：项目使用 Unreal Engine 5.8，已有 `Source/` runtime module、`AFutsalPlayerBase` 和 `UFutsalPlayerAnimInstance`。后续新增运行时逻辑、稳定的数据契约、跨 Blueprint 复用的行为和需要自动化测试的功能，优先使用 C++ 实现；只有在 C++、Python 或 MCP 无法覆盖，或功能明确属于资产编排/视觉配置时，才使用 Blueprint。AnimGraph、BlendSpace、状态机、Control Rig、材质参数和一次性资产配置仍可保留在资产侧。
-- 启用的插件：ModelingToolsEditorMode、GameplayStateTree、MovieRenderPipeline、MoviePipelineMaskRenderPass、ModelContextProtocol、AllToolsets、FutsalMOTMCP。
-- 当前资产地图及Editor/Game默认地图均为 `/Game/FutsalMOT/Maps/L_FutsalCourt`；执行UE任务前仍须显式核验当前Level。
-- **地图切换与 UWorld 生命周期**：地图切换必须通过 Unreal MCP 原生 `SceneTools.load_level`。切勿在切图期间通过 `unreal.load_asset()` 或 `unreal.load_object()` 取得或保留 `UWorld`；UE 5.8 在该 World 引用仍存活时调用 `EditorLoadingAndSavingUtils.load_map()` 可能触发 `World Memory Leaks` 断言并崩溃。`load_level` 返回后，另发一个独立的只读调用核验当前 Level 和所需 Actor。若原生 `load_level` 不可用，停止并报告 `MANUAL_REQUIRED`，不得猜测 Python 切图回退方案。
-- **episode appearance 前置门禁**：执行 apply 或 restore 前，必须先运行只读 appearance 诊断，并确认当前 Level 精确为 `/Game/FutsalMOT/Maps/L_FutsalCourt`、十名映射球员各自唯一且存在、Actor/资产 package clean、关键资产存在且 class 符合。诊断未通过或信息不完整时，不得开始外观 apply/restore、Task 7 mutation 或 MRQ。
-- **Fab 资产目录 `Content/Fab/` 被 gitignore 忽略**——不要在仓库里提交下载的资产；要把资产真正纳入项目，应在 UE 内容浏览器中移动到 Fab 之外（如 `Content/FutsalMOT/`），UE 会自动修引用。不要用文件资源管理器剪切（会断引用）。
-- `Saved/`、`Intermediate/`、`DerivedDataCache/` 均为本地生成物，被忽略，不要提交。
-
-## git 约定（整个仓库都遵循）
-
-- 未授权时不自动commit/push；用户已授权本轮仓库融合及已验阶段成果提交推送，不重复请求同一授权。精确暂存本次文件，不提交其他WIP。
-- **commit message 使用简体中文**。
-- 唯一工作分支为 `master`；旧Python的 `main` 仅存在于已导入历史和独立备份。
-
-## Unreal Engine MCP Automation Workflow
-
-**目标**：后续所有 Agent 在处理本项目 UE5.8 相关任务时，**优先通过已配置好的 Unreal MCP 自动操作 Unreal Editor**，而不是要求用户手动回 UE 执行 Python、查日志或读取 Actor 状态。
-
-### 已验证事实
-
-- 当前项目使用 **Unreal Engine 5.8**（见 `.uproject`）。
-- 官方 **Unreal MCP** 已启用并运行在本机 UE Editor 中；OpenCode 已通过项目级 MCP 配置（`.mcp.json`）成功连接。
-- 已验证可通过 Unreal MCP：
-  - 列出 toolsets；
-  - 查询当前 Level；
-  - 查找 Actor；
-  - 读取 Actor Transform；
-  - 读取 Actor Components；
-  - 读取 UE Output Log。
-- 项目已新增自定义 MCP Toolset：**`futsalmot_tools.FutsalMOTTools`**，已验证提供：
-  - `run_python_code`
-  - `run_python_file`
-- 这两个工具运行在**真实 Unreal Python 环境**，可正常 `import unreal`，**不是** `ProgrammaticToolset.execute_tool_script` 的受限 Python sandbox。
-- 已验证：
-  - `run_python_code` 能执行真实 UE Python（`unreal.log` 正常写日志）；
-  - `run_python_file` 能执行项目内 Python 文件，例如 `Content/FutsalMOT/code/ue/*.py`。
-- UE 日志可通过 Unreal MCP 的 **Logs Toolset** 查询，重点类别：`LogPython`、`LogBlueprint`、`LogMovieRenderPipeline`、`LogModelContextProtocol`。
-
-### Agent 行为规范
-
-### UE 自动重启与 MCP 重连
-
-- 当 UE 5.8 因 C++ module、插件、Python Toolset 或 Editor 状态必须重启时，Agent 应优先自行完成重启闭环，不要默认要求用户手动关闭、重新打开或复制命令。
-- 重启前必须只读检查当前 Level、PIE/Simulate 状态、MRQ 是否运行、dirty packages、打开的关键资产和未完成的 appearance rollback/application report。存在未保存用户改动、运行中的 MRQ 或无法确认的高风险状态时，停止并报告 `MANUAL_REQUIRED`，不得强制结束 Editor。
-- 可安全重启时，按以下顺序执行：停止可停止的 PIE/MRQ 会话；关闭 Unreal Editor；使用当前项目绑定的 UE 5.8 工具链重新编译所需 target；从项目 `.uproject` 启动 Editor；等待项目插件和 `FutsalMOTMCP` 初始化；通过 MCP 重新连接并继续任务。
-- 重启后的成功条件必须用新鲜状态核验：`FutsalMOT` module 在 UE 日志中成功加载；没有 `Incompatible or missing module`、`Still incompatible or missing module`、`different engine version` 或编译失败；MCP toolset 可列出；`FutsalMOTTools.run_python_code` 或 `run_python_file` 可执行；当前 Level、关键 Actor 和 dirty package 状态符合任务门禁。
-- MCP 会话重启后可能需要等待并重试连接。重试期间读取新的 UE `LogModuleManager`、`LogPython`、`LogModelContextProtocol` 和相关构建日志；不得用历史日志替代本次启动证据。连接无法恢复或同一类启动/API 操作连续失败两次时，停止并报告 `MANUAL_REQUIRED`，不要继续猜测重连方式。
-- 重启验证只证明 Editor/module/MCP 生命周期恢复，不等于地图、Blueprint、Sequence、资产、MRQ 或视觉契约已经通过；恢复后仍必须重新执行对应的只读诊断。
-
-### 截图与多模态视觉验收
-
-- UE 视觉验收应优先由 Agent 通过 Unreal MCP 获取当前视口或编辑器截图，并使用模型多模态能力检查；不要默认要求用户手工逐张查看或手动执行截图命令。
-- 截图验收必须绑定明确的 Level、camera、Sequence、frame index、分辨率和渲染状态。对 RGB、Instance-ID mask、jersey-number mask 或 Pose overlay，优先获取同一 camera/frame 的配对截图或对应本地图像文件。
-- 球衣号码至少检查：背面号码可见；正面号码为空；身体或其他 Actor 遮挡时号码 mask 正确消失；号码位置、朝向、缩放和背部贴合合理；号码跟随 `spine_03` 或等效共享骨骼运动；十名球员号码与 manifest 唯一且一致。
-- 多模态截图只能证明可见的视觉现象，不能单独证明数据契约。必须同时读取 PNG/EXR 可用的像素统计、`annotations.jsonl`、`render_summary.json`、manifest、frame index 和 UE 日志，程序化核验 mask 非零像素、号码 bbox tight bounds、帧集合、分辨率以及 RGB/mask/pose 同步。
-- 截图与像素/JSON/日志证据不一致、截图缺失、画面无法判断遮挡或帧身份、或截图接口失败时，验收保持 fail-closed；不得据此创建正式号码资产、执行 appearance mutation、提交正式 MRQ 或切换 v2 smoke config。
-- 视觉验收通过后仍需重新执行 appearance preflight、资产 class/package clean、restore 和 MRQ 完整性检查。截图通过不替代 `task audit`、annotation validator、manifest 校验或 restore evidence。
-
-### C++ 优先决策规则
-
-- 新增运行时系统、Actor/Component 行为、动画数据采集、轨迹播放适配、状态同步、输入契约和可复用工具时，先设计 C++ API 和自动化测试边界，再决定是否需要 Blueprint 暴露属性或事件。
-- 现有 Blueprint 只有在满足以下条件之一时才继续扩展：UE API 只通过 Blueprint 暴露；功能是 AnimGraph、BlendSpace、状态机、Control Rig、材质/镜头/Sequence 配置；或必须由设计资产直接编辑才能完成。
-- 不要为了“纯 C++”重写已经稳定且适合资产表达的 Pose 组装图、状态机、动画资源引用、FootIK Control Rig 或相机关键帧。
-- 当 C++ 与 Blueprint 都可实现时，优先 C++，并把 Blueprint 限制为数据配置、资产引用和必要的编辑器暴露层。
-- C++ 改动必须先验证 module/build、反射属性名称、Blueprint parent/接口兼容性和现有资产引用；未经验证不得直接重设 canonical Blueprint parent 或删除旧变量。
-- C++ 编译、UE Editor reload、Blueprint compile 和运行时验证是不同门槛；一个通过不代表其它门槛自动通过。
-
-### Unreal MCP 调用规范（已验证）
-
-以下规则用于避免 MCP 工具路由和 Unreal Python API 兼容性错误：
-
-- **工具名必须使用注册后的短名称**。`unreal_describe_toolset` 返回的 schema 中可能显示带模块前缀的描述名，但 `unreal_call_tool` 的 `tool_name` 使用短名称。例如：`IsPIERunning`、`get_current_level`、`find_actors`、`get_actor_transform`、`get_components`、`find_assets`、`load_asset`、`get_properties`、`run_python_code`、`run_python_file`。不要把 `EditorToolset.EditorAppToolset.IsPIERunning`、`editor_toolset.toolsets.scene.SceneTools.get_current_level` 或 `futsalmot_tools.FutsalMOTTools.run_python_code` 作为 `tool_name` 传入。
-- `toolset_name` 仍使用 `unreal_list_toolsets` / `unreal_describe_toolset` 返回的完整名称，例如 `EditorToolset.EditorAppToolset`、`editor_toolset.toolsets.scene.SceneTools`、`editor_toolset.toolsets.asset.AssetTools`、`editor_toolset.toolsets.object.ObjectTools`、`futsalmot_tools.FutsalMOTTools`。
-- 调用新工具前，先用 `unreal_describe_toolset` 确认该 toolset 的 schema；实际调用时区分 `toolset_name`（完整名）和 `tool_name`（短名）。
-- **资产路径不是 UObject 引用**。`/Game/FutsalMOT/Sequences/LS_Cam_01` 这样的字符串可用于 `AssetTools.exists`、`find_assets`、`get_asset_class` 和 `load_asset`，但不能直接作为需要对象引用的参数（例如 Sequencer 的 `sequence`）。先调用 `load_asset`，再把返回的 `{ "refPath": "..." }` 对象原样传给后续工具；不要手工把普通资产路径包装成 `refPath` 来冒充已解析对象。
-- **Sequencer 查询流程**：先用 `find_assets` 查找序列，再用 `load_asset` 取得 `LevelSequence` 对象引用，最后将该引用传给 Sequencer 工具。若只需确认绑定名称，也可在真实 Unreal Python 中加载序列并读取 `seq.get_bindings()`；绑定显示名可通过 `binding.get_display_name()` 读取。
-- **Actor 查询流程**：使用 `SceneTools.find_actors` 按名称/标签查找，返回的 Actor `{ "refPath": "..." }` 可直接传给 `ActorTools.get_actor_transform`、`get_components` 和 `ObjectTools.get_class`。`find_actors.name` 对应 Actor label 的包含匹配；如果需要精确核对规范对象名，应使用真实 Unreal Python 对 `get_name()` 和 `get_actor_label()` 分别比较。
-- **CineCamera 属性读取**：当前 UE 5.8 MCP 原生 `ObjectTools.get_properties` 可能无法序列化 `CineCameraComponent` 的 `current_focal_length`、`field_of_view` 和 `aspect_ratio`，即使属性存在。需要这些字段时，优先使用 `FutsalMOTTools.run_python_code` 的小型诊断，通过 `component.get_editor_property("current_focal_length")`、`component.get_editor_property("filmback")` 和 `component.get_editor_property("field_of_view")` 读取；传感器尺寸从 `filmback.sensor_width` / `sensor_height` 读取。
-- **UE 5.8 Python API 兼容性**：本项目已验证 `unreal.EditorLevelLibrary.get_editor_world()` 和 `get_all_level_actors()` 可用但会产生弃用警告。不要未经验证地假设 `unreal.UnrealEditorSubsystem` 等 Subsystem 类型名在当前环境可用；切换 API 前先用 `run_python_code` 做最小存在性检查。失败时优先回退到已验证 API，不要把 API 名称猜测混入大型脚本。
-- Python 诊断脚本应保持小而单一用途，并对单个属性/绑定查询使用 `try/except`，避免一个兼容性问题导致整段验证结果丢失。输出结构化 JSON，便于读取 `returnValue.log`。
-- 只读验证不得调用 `add_to_scene_from_*`、`remove_from_scene`、`set_actor_transform`、`set_properties`、`save_assets`、`delete`、`move`、`duplicate` 或其他写操作工具。
-
-### UE MCP 使用细节与已验证限制
-
-- **先描述再调用**：新工具必须先调用 `unreal_describe_toolset` 确认 schema。`toolset_name` 使用完整注册名，`tool_name` 使用 schema 中的短名；不要把显示名称中的模块前缀直接传给 `unreal_call_tool`。
-- **资产路径和 UObject 引用分离**：`AssetTools.exists/find_assets/get_asset_class/get_asset_tags/get_dependencies/get_referencers` 接收字符串路径；需要对象引用的参数必须先 `load_asset`，再把返回的 `{ "refPath": ... }` 原样传递。不要手工构造 `refPath`。
-- **地图状态先核验**：`SceneTools.get_current_level` 是只读首选。地图切换只使用原生 `SceneTools.load_level`；切换调用返回后，在独立调用中重新核验 `get_current_level` 和 Actor。禁止在切图过程中持有由 `unreal.load_asset()` / `unreal.load_object()` 获得的 `UWorld`，禁止用 `EditorLoadingAndSavingUtils.load_map()` 猜测回退。若原生加载不可用，停止并报告 `MANUAL_REQUIRED`。地图未加载并独立核验成功前不得修改关卡资产。
-- **地图/Actor 外部包**：关卡中的 External Actors 会作为 `/Game/__ExternalActors__/...` 反向引用出现。角色 Blueprint、AnimBP、Mesh 或 Sequence 的 referencer 不能只看主 `.umap` 路径，必须同时检查 External Actors。
-- **Sequencer 查询**：先 `find_assets` 查找 `LevelSequence`，再 `load_asset`。真实 UE Python 可读取 `seq.get_bindings()`、`binding.get_display_name()`、`binding.get_possessed_object_class()`、`binding.get_tracks()` 和播放范围。验证正式序列时，要求球员绑定数量、名称、class、相机绑定、Camera Cut、播放帧率/范围和关键轨道都通过。
-- **Sequencer 重绑限制**：当前 UE 5.8 Python `SequencerBindingProxy` 暴露读取、添加轨道、移动绑定内容和删除绑定等能力，但没有可靠的“原位重绑现有 possessable 并保留 GUID/全部轨道”的通用接口。若需要更换绑定 class，优先复制新 Sequence、迁移轨道到当前 Actor、逐项对比相机/轨道后再替换旧资产；不得未经验证删除并重建绑定。
-- **相机属性读取**：CineCamera 的 `current_focal_length`、`field_of_view`、`aspect_ratio` 可能无法由原生 ObjectTools 正确序列化。使用真实 UE Python 的 `get_editor_property` 读取；Filmback 通过 `filmback.sensor_width/sensor_height` 核对。相机位置/旋转、焦距、Filmback、分辨率和关键帧应分别记录。
-- **AssetTools 删除限制**：`AssetTools.delete`、`EditorAssetLibrary.delete_asset` 或 `EditorAssetSubsystem.delete_loaded_asset` 返回 `false` 时，不得改用文件系统删除 `.uasset`。先检查 `can_edit_asset/is_checked_out/is_dirty/get_referencers`、打开的资产编辑器和 UE 日志；如果仍无法删除，保留资产并报告 Editor API 限制。
-- **移动/重命名闭包**：项目自有资产必须通过 AssetTools move/rename，让 UE 更新引用；移动后重新查询新路径的 referencers、Blueprint/AnimBP 加载状态和代码/配置软路径。不要用文件管理器剪切 `.uasset`。
-- **模板和共享资产保护**：`/Game/Characters/Mannequins/**`、贴图、材质、网格、骨架、物理资产和共享 Pose/MRQ 依赖不能因零引用统计而自动删除。全项目减重必须结合硬引用、软引用、管理引用、搜索名称和文本配置扫描。
-- **真实 UE Python 与 sandbox 隔离**：`FutsalMOTTools.run_python_code/run_python_file` 才能执行 `import unreal`；`ProgrammaticToolset.execute_tool_script` 只用于组合 MCP 工具，禁止在其中运行项目 UE Python。
-- **诊断脚本保持单一用途**：小型诊断输出结构化 JSON，并对单个属性/绑定使用 `try/except`。完整流程写入项目内 `.py` 文件后使用 `run_python_file`，不要把多步骤资产迁移塞进 `run_python_code`。
-- **失败闭环**：任何 UE Python/MCP 调用失败，先读 `success/result/log`，再查询 `LogPython`、`LogBlueprint`、`LogMovieRenderPipeline`、`LogModelContextProtocol`；修复后重试。不要把第一次异常直接转交用户。
-- **验证结果新鲜性**：声称编译、测试、资产存在、绑定正确或删除成功前，必须在当前状态重新执行对应命令/查询，并记录实际返回结果。历史日志只能作为背景，不能替代当前验证。
-- **自定义日志路径**：通过`-abslog`启动Editor时，当前`FutsalMOTTools`失败返回的`log`可能仍摘取默认日志目录中的旧会话。失败后必须核对时间戳，优先使用原生`LogsToolset.GetLogEntries`的当前会话记录或本次启动收据中的明确abslog；不得按返回的历史异常反复修改已经修复的代码。
-
-**UE 任务默认执行顺序**：对任何 Unreal Engine 相关开发、调试、验证任务，默认按以下闭环执行：
-
-```
-修改代码 → 通过 FutsalMOTTools.run_python_file 在当前 UE Editor 执行
-→ 读取返回结果 → 通过 Unreal MCP 读取相关 UE Logs
-→ 自动分析错误 → 修改代码 → 重新执行
-```
-
-**不要默认让用户**（只要 Unreal MCP 已提供对应能力，就应由 Agent 自己调用）：
-
-- 手动打开 Python 控制台；
-- 手动执行 `.py`；
-- 手动复制 Output Log；
-- 手动查询 Actor / 查看 Transform / 确认组件。
-
-**什么时候使用 `run_python_file`**：已有或新建的是完整 UE Python 文件（如 `Content/FutsalMOT/code/ue/build_*.py`、`read_*.py`、`export_*.py`、`render_*.py`），默认使用 `FutsalMOTTools.run_python_file`，**不要让用户复制代码到 UE Python Console**。
-
-**什么时候使用 `run_python_code`**：仅用于小型诊断和快速状态查询，例如 `import unreal`、查询一个对象、打印一个属性、验证某个 API 是否存在、输出一条 UE log。**不要把大型多步骤逻辑塞进 `run_python_code`**。
-
-**什么时候使用 Unreal MCP 原生工具**：如果只是查询 Editor 状态，优先使用 Unreal MCP 原生 Toolset（Level 查询、Actor 查找、Transform、Components、Asset 查询、Logs、Sequencer / AutomationTest 等），而不是写 Python。
-
-**原则**：
-- 已有 MCP 原生 Tool → **优先原生 Tool**；
-- 需要真实 Unreal Python → **`FutsalMOTTools`**；
-- **禁止误用 `ProgrammaticToolset`**。
-
-### 禁止误用 ProgrammaticToolset
-
-`ProgrammaticToolset.execute_tool_script` 是**受限 sandbox**，不能替代真实 Unreal Python。它适合组合 MCP Tools，但**不要**用它执行依赖 `import unreal` 的项目 UE Python 脚本。
-
-### 自动诊断要求
-
-当 `run_python_file` 或 `run_python_code` 失败时：
-
-1. 先读取工具返回的 `success/result/log`；
-2. 再读取相关 UE Output Log；
-3. 优先自行定位：Python exception、Blueprint compile error、Movie Render Pipeline error、MCP error；
-4. 自动修复并重试。
-
-**不要在第一次报错后立即把问题转交给用户。**
-
-### 只有这些情况才要求用户手动操作 UE
-
-- 新插件 / 新 Python Toolset 必须**完整重启 Unreal Editor**；
-- API 没有 Blueprint / Python / MCP 暴露；
-- 必须进行视觉人工验收（例如最终 RGB / Pose overlay 是否美观、是否肉眼对齐）；
-- 必须点击某个无法自动化的 Editor UI；
-- 操作存在较高破坏风险，需要用户确认。
-
-如果只是普通脚本执行或读取日志，**不属于人工操作范围**。
-
-### 当前 MCP 基础设施位置
-
-记录：`Plugins/FutsalMOTMCP/`，其中至少包括：
-
-- `Content/Python/init_unreal.py`
-- `Content/Python/futsalmot_tools.py`
-
-**不要随意删除或重构该插件。** 若修改 `futsalmot_tools.py` 后新代码没有生效，要意识到 Unreal Python 模块可能已经缓存；必要时明确要求**完整重启 UE**，而不是反复调用 `RefreshTools` 假设模块已热重载。
-
-### Git 注意事项
-
-- **不要提交** `__pycache__/`、`*.pyc`（已在根 `.gitignore` 补充忽略）。
-- UE资产、C++、插件及 `Content/FutsalMOT/code/` 统一由根Git管理；不重新建立submodule或嵌套Git。
-
-> For Unreal Engine tasks in this project, do not ask the user to manually run UE Python unless MCP automation has been attempted and an actual API/tooling limitation has been confirmed.
+## 协作与版本管理
+
+- 项目只有一个Git根：`D:/projects/FutsalMOT_UEDataset`，分支`master`，远端`HHhydrogen/FutsalMOT_UE`。Python目录不再是submodule，不初始化嵌套Git。
+- 使用命令行Git精确暂存；不使用`git add -A`、force-push或跳过hooks。提交说明、注释及技术文档使用简体中文。
+- 用户已授权四阶段仓库整理和已验阶段成果提交推送；不重复申请同一授权。号码WIP与其他无关改动保留且不混入提交。
+- 用户主动删除融合备份，并明确授权删除补建副本；不再自动重建备份。旧历史在统一仓库可达，未提交内容仍是本机WIP。
+- 以实现、导出和实验为主。已验方法直接复用，每个新功能做一次必要针对检查；不逐模型重复近景、不重复媒体hash/全像素审计、不为无变化反复报告。
+
+## 当前入口
+
+- 根README负责快速入口；[文档索引](Docs/README.md)负责技术说明；[任务状态](TASK_STATUS_AND_NEXT_STEPS.md)只记当前进度和下一步。
+- Python当前目录为`Content/FutsalMOT/code`，阶段2迁移完成前不假称已在`python/`。先读其README及[数据契约](Docs/engineering/DATA_CONTRACT.md)、[验证限制](Docs/engineering/VALIDATION_AND_LIMITATIONS.md)。
+- 工程规则集中在本文件；Python局部规则不重复Git、存储及运行状态。旧版本的流水和候选计划不覆盖当前状态。
+
+## 存储与生命周期
+
+- 生成完成的数据集仅保存在`G:/FutsalMOT_Dataset`。UE工作文件最终位于项目原`Saved/`物理目录；研究输入、权重、检查点和结果最终位于实际`D:/projects/FutsalMOT_Research`。
+- 当前D恢复迁移只按任务状态中的精确清单/收据继续；未知partial不重放。解除旧junction前必须确认全部本轮训练与追踪完成、真实进程身份退出。
+- 统计、复制和清理不跟随junction；不对DataSet目标递归删/搬。冻结协议、源码绑定、轨迹、native、校准和关键收据保留原bytes/SHA，另记relocation映射，不伪造历史路径可运行。
+- G盘或D项目外写删按具体范围申请工具自动审批，不能通过junction绕过；拒绝时说明实际动作与原因。
+- 23013份冗余媒体已删除638.191GiB，其中7961份EXR的深度/Cryptomatte不再保留；不能据已发布RGB/mask/Pose声称原EXR或物理遮挡证据仍存在。
+- AutoSave在项目和本机配置均为False。Git只管理磁盘中的文件，不能恢复尚未保存的Editor内存。
+- `Saved/`、`Intermediate/`、`DerivedDataCache/`、虚拟环境、权重和本机运行收据不提交Git。
+
+## 研究与数据边界
+
+- 当前主线为合成COCO17位置监督在固定检测下对身份关联的边际作用，见[论文计划](Docs/research/CVPR_2027_PAPER_PLAN.md)。最终SNMOT116/187封存，不调测试集、不筛seed/best/比例，不预设提升。
+- v1八组数据保持不变。Pose试产独立输出；不能将历史12点重命名成17点或事后伪造同帧采样。
+- 鼻眼耳按实际渲染mesh校准；可见MPFBVisual与隐藏驱动mesh必须区分。unknown不冒充COCO visible，限定位置准入不等于正式遮挡监督。
+- 独立机位world差异保留原值，不平均或用容差冒充逐值exact。地板随机流独立于运动/天气/外观，同运动配对保持同split。
+- UE渲染与GPU训练串行；本轮渲染、发布和本次安全退出真正完成后才训练。人工取消遵循最新用户要求，不当软件故障自行重启。
+- 活动`started_not_committed`是正常事务；只有真实退出/报错才诊断。硬崩溃超过last的数学更新不猜测重放，不把PID复用误判为旧训练，绝不按旧PID盲目kill。
+
+## UE与MCP必须遵守
+
+- UE5.8，默认地图`/Game/FutsalMOT/Maps/L_FutsalCourt`；实际操作前核验当前Level、PIE/MRQ和dirty包。
+- 新增运行时行为、动画采样及稳定数据契约优先C++；适合资产表达的AnimGraph、Control Rig和材质配置不强行重写。
+- UE操作先读[完整自动化工作流](Docs/operations/UNREAL_MCP_WORKFLOW.md)，优先真实Unreal MCP，先describe完整toolset再用短tool_name。完整脚本必须在真实UE Python执行，不用sandbox冒充`import unreal`。
+- 切图只用原生SceneTools.load_level；切换期间不加载或保留UWorld引用。原生工具不可用或同类API连续失败两次时停止并报告具体限制，不猜测反射回退。
+- appearance apply/restore前只读确认规范地图、十人唯一、资产class与package clean。资产移动/删除通过UE API，不从文件系统剪切或删除uasset。
+- 重启/退出前核验dirty、PIE/MRQ、关键资产与自有回调。未知未保存改动或活动MRQ不得强杀；安全时自行正常quit、编译、启动、重连并用新鲜日志闭环。
+- 旧CPU-render/Lumen蒙皮路径保持submit禁用，使用已验GPU-render/CPU-LBS。native在teardown前落盘，回调只读文件；MCP PRIVATE/独立globals保留，不reload Toolset UClass。
+- 历史Py_FinalizeEx→PyGC_Collect退出崩溃具体坏对象仍未知；一次正常退出不称根治，不危险复现。
+- 维护MPFB角色先读[生产SOP](Docs/production/MPFB_PLAYER_PRODUCTION_SOP.md)；未验证导入参数不凭经验猜测。Fab目录不提交，资产转入项目须通过UE内容工具修引用。
