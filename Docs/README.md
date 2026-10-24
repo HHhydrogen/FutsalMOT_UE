@@ -33,6 +33,7 @@
 - [UE与MCP工作流](operations/UNREAL_MCP_WORKFLOW.md)：资产API、dirty、切图和安全重启约定。
 - [统一运行与维护](operations/RUNNING_AND_MAINTENANCE.md)：本机路径、启动器和历史入口边界。
 - [根目录文件用途](operations/ROOT_FILES.md)：必须保留的入口、旧OpenCode配置和可再生IDE索引。
+- [UE手动启动修复](operations/UE_STARTUP_REPAIR_20261025.md)：最近项目自动恢复导致的模块搜索问题与明确项目启动入口。
 - [单仓库迁移记录](operations/SINGLE_REPOSITORY_MIGRATION_20261025.md)。原双仓库/备份建议为历史，不授权补建用户已删除的备份。
 - [UE崩溃调查](operations/UE_CRASH_FINDINGS_20261023.md)：一次正常退出不等于历史GC崩溃已根治。
 - 本机执行候选、清理清单和历史交接说明同样放在operations，是否已验证/执行以各正文和真实收据为准。
