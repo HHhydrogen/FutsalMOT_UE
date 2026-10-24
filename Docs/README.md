@@ -26,6 +26,7 @@
 - [固定检测Pose附件](research/POSE_FIXED_DETECTION_ATTACHMENT.md)、[关联评价细节](research/POSE_ASSOCIATION_TRACKEVAL.md)及[交互窗口候选](research/INTERACTION_WINDOW_CANDIDATE.md)。
 - [本轮v4真实结果](research/POSE_V4_RESULTS.md)：本次根据已结束元数据新增；同真实曝光平均AssA仅+0.26444035pp、1/3 seed为正，未过登记门槛；混合臂未超过预训练关联结果。不预设合成收益。
 - [30秒数据后续实验](research/LONGPAIR_NEXT_EXPERIMENT.md)：先尺度/附件覆盖，再做同运动地板控制；当前执行口径见[v5协议](research/POSE_LONGPAIR_V5.md)。
+- [v5完整结果](research/POSE_V5_RESULTS.md)：九臂训练及真实追踪完整结束，蓝相对R3平均AssA仅+0.2644点、1/3 seed为正，红均差0；均未过登记门槛或超过预训练。含低姿态覆盖线索及下一轮方案。
 - [原Pose路线历史](research/POSE_PIPELINE_HISTORY.md)保存原阶段独有决策，不能当作今天的恢复命令。
 
 ## operations：维护与历史
