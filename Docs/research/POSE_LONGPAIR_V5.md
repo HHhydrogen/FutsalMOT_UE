@@ -35,3 +35,7 @@ v4只在一个训练seed出现小幅关联改善，混合臂没有超过预训�
 协议：`D:/projects/FutsalMOT_Research/pose/poseonly_v5/frozen_a01`；来源/采样表：`candidate_a04`；运行：`control_a01`。实际执行源码仅来自`D:/projects/FutsalMOT_Research/code/7e5b7a7500919a0088bb443b0d002560a2d47ef104276aee285dede052237c28`，统一Git仍是UE项目根，不初始化研究子仓库。
 
 唯一九臂入口为该bundle中的`tools/research_ops/run_longpair_v5_control.py`；默认只读，明确新准入及driver SHA才启动。所有训练/评价保持UE关闭，不改活动协议与源码。结果未出之前不宣称合成有效。
+
+真实追踪通过独立`v5_association_*`入口接续：`DResearch/pose/association_dev_a01/v5_association_frozen_a01/config.json`绑定原检测、lambda0和几何规则；执行bundle为`code/556448be9671c41f33bfb19913b36a988535183c78b0585c7eb97ffb12465989`。等待器检查九臂完整终态、全部报告SHA及训练/评价/launcher实际退出后，先做只读预飞，再唯一启动九臂附件→关联→TrackEval。等待期间不加载模型或使用GPU；终态文件先落盘不等于进程已退出，PID复用也不按旧PID误杀。停止或失败保留现场，不自动重放。
+
+附件显式加载各臂实际last1000 FP32 EMA，复用v5独立评价器核验身份；原数值追踪及评价代码保持SHA。旧YAML路径只登记单文件同SHA重定位，不重建旧G工作区别名，不修改旧协议。四项定向CPU与450帧/6901检测只读预飞已通过，尚不等于真实GPU附件或追踪结果已完成。关联输出为`DResearch/pose/association_dev_a01/v5_association_a01`，等待器状态为`v5_association_handoff_a01/state.json`。
