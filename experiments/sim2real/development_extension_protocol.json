@@ -1,0 +1,14 @@
+{
+  "id": "soccernet_development_extension_v1",
+  "purpose": "降低只看单个150帧片段的偶然性；扩展开发验证而不接触封存test",
+  "official_split": "train",
+  "sequences": ["SNMOT-152", "SNMOT-153"],
+  "expected_game_id": "9",
+  "selection": "按原验证SNMOT-151之后的两个官方序列顺序预先选择，不按任何模型结果选片段",
+  "frame_limit_each": 150,
+  "training_use": false,
+  "model_population": "发现阶段全部10个模型，以及连续纯真实/阶段纯真实/已选候选的两个额外seed，共16个；不得用扩展片段重新选候选或调整参数。",
+  "limitations": "与原val是同一比赛的另外两个片段，不是新的独立比赛，不能声称跨比赛验证；不作为封存最终test的替代。所有已登记模型统一报告，不能只公布有利片段。",
+  "sealed_test_sequences": ["SNMOT-116", "SNMOT-187"],
+  "sealed_test_read": false
+}

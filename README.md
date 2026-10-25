@@ -42,7 +42,9 @@ UE配置、轨迹与收据位于本项目Saved物理目录；渲染媒体（含�
 
 主问题是固定真实检测输入时，合成Pose监督能否改善身份连续性。[本轮v4](Docs/research/POSE_V4_RESULTS.md)在相同真实曝光下AssA均差+0.2644个百分点、仅1/3训练seed提高，未达到登记门槛；混合臂未超过预训练关联结果。全部负结果保留，不以格式、4K、四机位或地板变化单独宣称创新。最终SNMOT116/187保持封存。
 
-[v5配对对照](Docs/research/POSE_LONGPAIR_V5.md)使用30秒数据的固定虚拟裁剪，比较纯真实、加蓝地板合成、加红棕地板合成；真实曝光保持相同，并独立比较共同预训练参考。[九臂训练及真实追踪](Docs/research/POSE_V5_RESULTS.md)已完整结束：蓝相对R3的平均AssA仅+0.2644点、1/3训练seed提高，红均差0；均未过登记门槛或超过预训练。有效Pose只覆盖约24.3%的固定检测，下一轮优先检验接入瓶颈。实际进度以任务状态和D研究运行收据为准。
+[v5配对对照](Docs/research/POSE_LONGPAIR_V5.md)使用30秒数据的固定虚拟裁剪，比较纯真实、加蓝地板合成、加红棕地板合成；真实曝光保持相同，并独立比较共同预训练参考。[九臂结果](Docs/research/POSE_V5_RESULTS.md)蓝相对R3平均AssA仅+0.2644点、1/3训练seed提高，红均差0，未过门槛或超过预训练。[v6](Docs/research/POSE_FIXED_CROP_V6.md)提升Pose接入覆盖、[v7](Docs/research/POSE_QUALITY_TEMPORAL_V7.md)检验质量/敏感度/短时预测后，轨迹仍无改善。
+
+当前[v8](Docs/research/LEARNED_ASSOCIATION_V8.md)固定共享预训练检测/Pose，单独学习困难候选的身份连续性；三比赛留一开发、motion/pose×R/RS四单元，同3000R窗口、混合另1000S窗口。新增数据和窗口正在准备，尚无v8训练结果。窗口不等于图像曝光、检测断档代理不等于物理遮挡；实际进度以任务状态和D研究收据为准。
 
 ## Git
 

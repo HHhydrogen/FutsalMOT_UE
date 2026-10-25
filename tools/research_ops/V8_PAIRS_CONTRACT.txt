@@ -1,0 +1,54 @@
+v8身份窗口构建候选（只读共享预测缓存；不训练/不运行GPU）
+
+配置schema=v8_pair_build_config_v1，gate_source_sha256绑定实际
+python/src/grf_ue_bridge/learned_association_features_v8.py。
+sources总7项：3个real（060/game4、097/game6、151/game9），4个synthetic1048蓝相机。
+每项domain,sequence,game,fps,first_frame,last_frame,cache:{path,sha256}。
+real另带gt/gameinfo/seqinfo三个{path,sha256}；index0..749/frame_number1..750@25fps。
+synthetic另带seed=1048,floor=sport_blue_v1,camera=CineCam_01..04,
+annotations:{path,sha256}，指正式该cam pose2d.jsonl；帧0..299@10fps。
+合成每cam必须独立sequence，例如S1048_blue_CineCam_01；不能重复sequence。
+
+缓存一帧一JSONL：sequence/game/role/fps/frame_index/frame_number/timestamp_sec/width/height/detections。
+frame_index统一0-based，frame_number必须index+1；真实GT只用frame_number连接。
+timestamp_sec=frame_index/fps，不能用GT编号冒充缓存index。
+每det uid（sequence内唯一）、bbox_xywh_px、score、timestamp_sec、image_wh、
+xy_px长度17×2、geometry_valid长度17bool；缺姿态保留全零+False，仍保留检测。
+不能用GT Pose补输入。来源审计可另存，包括shared PT raw/cropPose SHA与151旧150帧复用来源。
+det时间和image_wh必须与frame完全一致。帧全集包括零检测帧，索引/时间不重复且递增。
+
+窗口JSONL字段：window_uid/domain/sequence/game/fps/gap_requested_sec/gap_actual_sec，
+history（三条白名单预测记录），history_frame_indices/candidate_frame_index，
+candidates:[{prediction:<白名单预测记录>,label:0|1|null,label_reason:...}]，
+supervision:{query_gt_id,teacher_forced_history:true,positives,unknown}，difficulty/stratum。
+features只读history与candidate.prediction，不传supervision；unknown不入BCE/Normalizer。
+真实gameinfo仅player/goalkeeper tracklet；官方det.txt绝不读取。
+IoU>=.5双向唯一才匹配，冲突宁unknown；不足.5但与任意playerGT IoU>=.1时
+记unknown_low_overlap，不能因visible/amodal框差异充作硬负。仅所有GT IoU<.1的
+远离未匹配检测可作为特定query negative。唯一匹配其他身份仍为负。
+GT只生成身份标签/选择teacher-forced历史，不读GT关节点，不用于heldout自由追踪。
+
+最终请求gap固定0/.2/.4/.8/1.2秒；0明确代表native-next-frame，
+以max(1,floor(seconds*fps+.5))取当前与history末条的源帧间隔。
+history固定(last-2,last-1,last)三条连续原始帧actual预测，和自由Tracker最近三actual的native cadence一致。
+只用对应目标帧实际预测；缺任何可信同ID记录则跳过，不造观测。
+25fps实际gap为1/5/10/20/30帧，10fps为1/2/4/8/12帧，时间据缓存实际timestamp披露。
+训练前时间量化检查发现前网格0/.12在10fps都为1帧，故改成上述两fps均不同的整数帧网格；
+这是未训练/未评价前的数据时间契约修正，不是按v8模型结果调方案。
+window_uid只按实际history/current/query/sequence/domain定义，不含requested gap，重复身份直接拒绝。
+当前候选用唯一冻结candidate_gate：CV预测中心距离/面积/时间门控，保留门内全部候选。
+困难定义门内candidate_count>=2或actual_dt>=.12秒；不是物理遮挡真值，也不按模型失败选。
+正例可缺失；至少一个已知0/1候选才进入窗口池。all-unknown窗口在SHA均衡前明确排除，
+source_audit记录filtered_all_unknown_windows；这是标注可用性，不按模型失败选择。
+有已知监督的无正例窗口仍保留，不把全unknown输入充作3000有效R曝光。
+
+每LOGO折R池1000unique，按两train比赛×五gap均分配额100；S共享1000unique，
+按四camera×五gap均衡50，稳定SHA排序选取，某stratum不足直接失败，不重复补足。
+三seed20261024/25/26，每seed R池三轮3000窗口曝光，S池一轮1000窗口曝光。
+所有4臂R同序，RS两臂S同序，候选pair曝光另计；不能称3000张图/独立遮挡事件。
+模型/Normalizer只该fold train_R拟合，heldout一场完整750帧只能自由推理+GT指标评价。
+
+命令：python tools/research_ops/v8_pairs.py --config <显式绑定JSON> --output D:/projects/FutsalMOT_Research/pose/learned_association_v8/<new_build>
+输出必须全新目录，partial不覆盖；仅JSON/JSONL，不复制4K。
+输出synthetic_pool.jsonl、heldout_game4/6/9下real_pool.jsonl和exposures_<seed>.json、complete.json。
+数据构建完成不自动签训练准入，不启动训练；116/187封存。
