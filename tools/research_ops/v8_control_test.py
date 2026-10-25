@@ -7,8 +7,13 @@ import unittest
 ROOT=Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT/'tools/research_ops'))
 from v8_analyze import analyze,GAMES,SEEDS,ARMS
 from v8_train import sha
+from v8_control import own_launcher_chain
 def dump(path,value):path.parent.mkdir(parents=True,exist_ok=True);path.write_text(json.dumps(value),encoding='utf-8')
 class AnalysisTests(unittest.TestCase):
+    def test_only_exact_parent_launcher_exempted(self):
+        script=Path('D:/projects/code/abc/v8_control.py');tail=str(script)+' --config D:/frozen.json --output D:/newrun --execute'
+        records=[dict(ProcessId=10,ParentProcessId=9,Name='python.exe',CommandLine='D:/real/python.exe '+tail),dict(ProcessId=9,ParentProcessId=8,Name='python.exe',CommandLine='D:/venv/python.exe '+tail),dict(ProcessId=8,ParentProcessId=1,Name='python.exe',CommandLine='D:/other/python.exe '+tail.replace('D:/newrun','D:/different')),dict(ProcessId=11,ParentProcessId=1,Name='python.exe',CommandLine='D:/real/python.exe '+tail)]
+        self.assertEqual(own_launcher_chain(records,10,script),{9,10})
     def test_complete_cross_game_matrix_budget_and_negative_baseline(self):
         with tempfile.TemporaryDirectory(dir=ROOT/'Saved/ResearchPlanning') as temp:
             p=Path(temp);config=p/'config.json';dump(config,dict(bundle=str(ROOT)));control=p/'control';protocol=sha(config)

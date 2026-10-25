@@ -29,7 +29,7 @@
 - [v5完整结果](research/POSE_V5_RESULTS.md)：九臂训练及真实追踪完整结束，蓝相对R3平均AssA仅+0.2644点、1/3 seed为正，红均差0；均未过登记门槛或超过预训练。含低姿态覆盖线索及下一轮方案。
 - [v6固定框裁剪Pose](research/POSE_FIXED_CROP_V6.md)：十模型完整结束，覆盖升至77.95%但全部轨迹相同，混合相对R3和同crop预训练均无提升；含实际权重/预测差异证据和下一轮约束。
 - [v7质量与时序关联](research/POSE_QUALITY_TEMPORAL_V7.md)：已知框定位质量、同PT状态成本敏感度及独立短时Pose预测协议；区分几何覆盖、定位精度和关联决策。
-- [v8可学习困难关联](research/LEARNED_ASSOCIATION_V8.md)：固定共享检测/Pose、同真实窗口曝光的四单元对照，三比赛留一开发验证及检测断档恢复代理；当前输入构建中，不预设提升。
+- [v8可学习困难关联](research/LEARNED_ASSOCIATION_V8.md)：固定共享检测/Pose、同真实窗口曝光的四单元对照，三比赛留一开发验证及检测断档恢复代理；输入已齐备、唯一对照已启动，不预设提升。
 - [原Pose路线历史](research/POSE_PIPELINE_HISTORY.md)保存原阶段独有决策，不能当作今天的恢复命令。
 
 ## operations：维护与历史

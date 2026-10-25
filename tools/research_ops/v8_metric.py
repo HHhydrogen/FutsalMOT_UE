@@ -16,6 +16,11 @@ def plain(v):
     if hasattr(v,'tolist'):return plain(v.tolist())
     if hasattr(v,'item'):return v.item()
     return v
+def validate_count(name,count,predicted_rows,GT_rows,sequence):
+    # TrackEval1.3.0的单序列Count有Frames，COMBINED_SEQ汇总仅保留四个integer_fields。
+    require(count['Dets']==predicted_rows and count['GT_Dets']==GT_rows,'评价丢预测/GT行')
+    if name==sequence:require(count['Frames']==750,'实际单序列评价帧数改变')
+    else:require(name=='COMBINED_SEQ','未知汇总scope')
 def evaluate(config,tracking,output):
     cfg=read(config);require(cfg.get('tracking_authorized') is True and cfg.get('approved_by')=='root','需root真实评价授权')
     require(Path(__file__).resolve()==Path(cfg['bundle'])/'tools/research_ops/v8_metric.py','需bundle入口')
@@ -45,7 +50,7 @@ def evaluate(config,tracking,output):
     require(messages['MotChallenge2DBox'][tracking.name]=='Success','评价失败');raw=plain(results['MotChallenge2DBox'][tracking.name]);require(set(raw)=={sequence,'COMBINED_SEQ'},'不可扩大scope')
     summary={}
     for name,classes in raw.items():
-        value=classes['pedestrian'];count=value['Count'];require(count['Frames']==750 and count['Dets']==len(predicted) and count['GT_Dets']==len(gt),'评价丢行/帧')
+        value=classes['pedestrian'];count=value['Count'];validate_count(name,count,len(predicted),len(gt),sequence)
         fraction={}
         for group,keys in [('HOTA',('HOTA','AssA','DetA')),('Identity',('IDF1',)),('CLEAR',('MOTA',))]:
             for key in keys:v=value[group][key];fraction[key]=sum(v)/len(v) if isinstance(v,list) else float(v)

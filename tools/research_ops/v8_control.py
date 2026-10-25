@@ -16,11 +16,25 @@ RESEARCH=Path('D:/projects/FutsalMOT_Research')
 SEEDS=(20261024,20261025,20261026)
 
 def process_snapshot():
-    command="Get-CimInstance Win32_Process | Where-Object {$_.Name -match 'python|UnrealEditor'} | Select-Object ProcessId,Name,CommandLine | ConvertTo-Json -Compress"
+    command="Get-CimInstance Win32_Process | Where-Object {$_.Name -match 'python|UnrealEditor'} | Select-Object ProcessId,ParentProcessId,Name,CommandLine | ConvertTo-Json -Compress"
     result=subprocess.run(['powershell.exe','-NoProfile','-Command',command],capture_output=True,text=True,encoding='utf-8',errors='replace')
     require(result.returncode==0,'CIM查询失败，不把空表冒充无占用:'+result.stderr)
     values=json.loads(result.stdout) if result.stdout.strip() else []
     return values if isinstance(values,list) else [values]
+
+def own_launcher_chain(processes,current_pid,script):
+    """只豁免有实际父子链、相同脚本和完整参数尾串的venv launcher。"""
+    by_pid={p['ProcessId']:p for p in processes};allowed={current_pid};current=by_pid.get(current_pid)
+    def tail(record):
+        text=(record.get('CommandLine') or '').replace('"','').replace('/','\\').casefold();needle=str(script).replace('/','\\').casefold()
+        return text[text.index(needle):] if needle in text else None
+    if current is None:return allowed
+    expected=tail(current)
+    for _ in range(4):
+        parent=by_pid.get(current.get('ParentProcessId'))
+        if parent is None or parent['ProcessId'] in allowed or not str(parent['Name']).lower().startswith('python') or expected is None or tail(parent)!=expected:break
+        allowed.add(parent['ProcessId']);current=parent
+    return allowed
 
 def preflight(config,output):
     cfg=read(config);require(cfg.get('training_authorized') is True and cfg.get('tracking_authorized') is True and cfg.get('approved_by')=='root','需root新冻结训练及追踪准入')
@@ -42,9 +56,10 @@ def preflight(config,output):
         else:require(item['seed']==1048 and item['floor']=='sport_blue_v1','只准1048蓝');checked(item['annotations'])
     output=Path(output).resolve();require(RESEARCH/'pose/learned_association_v8' in output.parents and not output.exists(),'需全新控制目录；partial禁止重放')
     processes=process_snapshot()
-    blocked=[p for p in processes if p['ProcessId']!=os.getpid() and (str(p['Name']).lower().startswith('unrealeditor') or any(word in (p.get('CommandLine') or '') for word in ('v8_control.py','v8_train.py','v8_prediction_cache.py','train_pose_location','run_poseonly_')))]
+    own_pids=own_launcher_chain(processes,os.getpid(),Path(__file__).resolve())
+    blocked=[p for p in processes if p['ProcessId'] not in own_pids and (str(p['Name']).lower().startswith('unrealeditor') or any(word in (p.get('CommandLine') or '') for word in ('v8_control.py','v8_train.py','v8_prediction_cache.py','train_pose_location','run_poseonly_')))]
     require(not blocked,'已有UE/同类自有GPU任务，拒绝重复启动:'+str(blocked))
-    return cfg,dict(status='readonly_v8_preflight',protocol_sha256=sha(config),folds=list(GAMES),seeds=list(SEEDS),arms=list(ARMS),planned_train_runs=36,planned_actual_updates=36000,planned_real_window_exposures=108000,planned_synthetic_window_exposures=18000,processes=processes,test_read=False)
+    return cfg,dict(status='readonly_v8_preflight',protocol_sha256=sha(config),folds=list(GAMES),seeds=list(SEEDS),arms=list(ARMS),planned_train_runs=36,planned_actual_updates=36000,planned_real_window_exposures=108000,planned_synthetic_window_exposures=18000,processes=processes,own_verified_launcher_chain=sorted(own_pids),test_read=False)
 
 def execute(config,output):
     cfg,flight=preflight(config,output);output=Path(output).resolve();output.mkdir(parents=True)
