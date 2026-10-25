@@ -30,6 +30,7 @@
 
 - 论文主线为合成Pose相关监督在固定检测下对身份关联的边际作用，见[论文计划](Docs/research/CVPR_2027_PAPER_PLAN.md)。v5–v7位置微调/覆盖/静态时序未证明稳定增益；当前[v8](Docs/research/LEARNED_ASSOCIATION_V8.md)固定共享预训练Pose，单独学习困难候选身份连续性，采用三比赛留一开发和motion/pose×R/RS四单元。预算明确为同3000R窗口、混合另1000S，不冒充图像曝光。最终SNMOT116/187封存，不调测试集、不筛seed/best/比例，不预设提升。
 - 用户已授权[v9](Docs/research/POSE_QUALITY_RESIDUAL_V9.md)：分析Pose拖累和外观域差，随后同3000R/额外1000S的质量残差、缺点/噪声消融，重点比较同容量motion分支及v8 motion_RS。主对照三seed，探索消融仅事前登记首seed，不根据结果挑seed或把探索当三seed结论。当前关联器没有RGB输入，颜色/纹理可分不等于拟真不足造成退化；新球衣/成像配对另立数据版本，不改冻结数据。运行状态以任务状态和Saved/ProjectStatus为准。
+- 球衣已有appearance v1的独立seed可复现系统；优先[接回原系统](Docs/engineering/POSE_SEEDED_KIT_INTEGRATION.md)，不再另造随机选择器。Pose固定roster只复用其Jersey/Shorts分配，不套原随机模型/肤色；native模型替换会清空材质，必须随后应用并读回。用户已授权v9闭合后开展同运动/相机配对，但CPU候选不等动态通过，不改当前冻结数据或接号码WIP。
 - v1八组数据保持不变。Pose试产独立输出；不能将历史12点重命名成17点或事后伪造同帧采样。
 - 鼻眼耳按实际渲染mesh校准；可见MPFBVisual与隐藏驱动mesh必须区分。unknown不冒充COCO visible，限定位置准入不等于正式遮挡监督。
 - 独立机位world差异保留原值，不平均或用容差冒充逐值exact。地板随机流独立于运动/天气/外观，同运动配对保持同split。

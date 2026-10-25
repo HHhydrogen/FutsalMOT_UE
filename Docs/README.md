@@ -10,6 +10,7 @@
 - [统一仓库目录](engineering/REPOSITORY_LAYOUT.md)：Python、实验、Saved与研究环境的当前边界。
 - [GPU渲染/CPU-LBS](engineering/POSE17_GPU_RENDER_CPU_LBS.md)、[离线蒙皮诊断](engineering/POSE17_OFFLINE_LBS_DIAGNOSTIC.md)及[头部标定来源](engineering/POSE17_HEAD_SURFACE_CALIBRATION.md)。
 - [天气光照系统](engineering/WEATHER_LIGHTING_SYSTEM.md)与[地板随机流](engineering/FLOOR_DIVERSITY.md)。
+- [Pose接回原seed球衣系统](engineering/POSE_SEEDED_KIT_INTEGRATION.md)：复用appearance v1清单；定位独立Pose入口未应用及native清空材质的断点，v9后按同运动/相机验证。
 - [MCP Python执行范围](engineering/PYTHON_EXECUTION_SCOPE.md)：保持项目内执行边界，不为路径迁移放宽权限。
 
 ## production：批次、资产与输出
