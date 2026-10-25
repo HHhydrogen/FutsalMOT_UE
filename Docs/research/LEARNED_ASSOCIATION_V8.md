@@ -45,3 +45,5 @@ GT只提供训练身份标签和评价指标，不提供输入Pose。真实GT使
 当前唯一执行状态为D研究根`pose/learned_association_v8/control_a02/driver_state.json`。a01在零正式优化更新时因TrackEval1.3.0的COMBINED_SEQ Count没有Frames字段而停止；原记录保留。a02只对实际单序列检查750帧，对单序列/汇总均检查未筛预测及GT行数，数学/数据/门槛不变，已实际完成首个750帧评价，优化重放0。a02协议SHA为`779261f168c11b1ae1fd62f21c42cf96c69f2cfb626fff5b325a43bb1adebf27`。
 
 执行入口为`tools/research_ops/v8_prepare.py`准备候选闭包；root独立冻结准入、协议和断档registry后，由不可变bundle内`v8_control.py`默认只读预飞、显式`--execute`串行运行。六项预训练参考追踪和36项已训练追踪均用同一共享cache，总42项完整750帧评价。`v8_analyze.py`只接受36训练/42评价全部完成状态，保留每折/seed/臂、四单元差分、两项预训练参考及全部负结果；不重复推理或搜索阈值。
+
+全部结束后还用独立`v8_budget_audit.py`读取实际曝光链、事务和last，核对九个四组配对的真实UID顺序、已知监督pair数及初始化，并检查两RS的S顺序/已知pair相等。三项针对CPU检查已通过，工具另装独立bundle，未改活动执行代码；当前仍等待36臂全部结束，不能把计划预算写成已完成曝光。
