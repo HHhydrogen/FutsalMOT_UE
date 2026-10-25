@@ -4,10 +4,11 @@
 
 ## 当前主线结果
 
+- [v9完整78臂结果](Docs/research/POSE_V9_RESULTS.md)和实际进程退出/独立预算核对已全部结束：78000实际更新、234000R/39000S窗口，所有同fold/seed的R顺序/pair/初始化及各RS的S一致。主结论维持混合−纯R AssA+0.8867、对同名义参数motion仅+0.1459、对原v8 motion−0.4491点，Pose增量未达门槛；探索仅预登记首seed，drop相对同seed运动+0.6077点不能冒充三seed稳定收益。完整完成链为D研究根`pose/pose_quality_v9/milestone_complete_a01.json`；不重启v9。现在转入原seed球衣native接回及A/B，尚未宣称UE动态修复或新数据通过。
 - [v9主54臂阶段结果](Docs/research/POSE_V9_MAIN54_STAGE.md)已完整汇总，剩余24项预登记探索正常继续。gated混合−纯R宏均AssA/HOTA/IDF1为+0.8867/+0.5787/+0.9551点；较同名义参数motion_RS仅+0.1459 AssA点，较原v8 motion_RS仍−0.4491点，联合Pose增量门槛未达到。较固定PT_bbox参考为+5.4192 AssA点，包含真实监督/学习关联器作用，不能全部算合成收益。最终实际预算核对待78项结束，不热改当前方案，test封存。
 - 用户要求复用已有seed球衣系统。已定位Pose专用runner绕过appearance事务，native模型override清空材质后未重应用球衣；原1048/1102的四类Set分配完整有效。已完成仅Jersey/Shorts的原清单桥接候选及4项CPU检查，未改当前v9/资产、未开UE；此前独立配色选择器已撤回。下一步见[原系统接回及A/B方案](Docs/engineering/POSE_SEEDED_KIT_INTEGRATION.md)：v9全部结束后真实native材质钩子与一次短样，再同运动/相机原默认服装vs原seed球衣配对，同3000R及额外1000S，test封存。
 - [v9只读诊断](Docs/research/POSE_V9_DIAGNOSIS.md)已完成：90项固定模型窗口报告、三场自由motion参考逐字节复现、144个同尺度人物crop域探针。缺点敏感度高于小抖动；颜色和成像域差明显，抽样两队球衣统计高度相似，但不能据此归因拟真不足或称关联器直接学颜色。源GT Pose仅用于合成投影诊断，不进入训练。
-- 新授权的[v9质量残差对照](Docs/research/POSE_QUALITY_RESIDUAL_V9.md)已冻结并唯一后台启动，权威状态为D研究根`pose/pose_quality_v9/control_a01/driver_state.json`。同3000R窗口/RS另1000S；主3分组×3fold×3seed×R/RS=54臂，探索4分组×3fold×事前首seed×R/RS=24臂。预取2和观测缓存，主对照先行；13项针对CPU检查及10次实际诊断更新通过，诊断不计正式预算。不重复启动或热改冻结源，尚无v9完整效果结论。
+- [v9质量残差对照](Docs/research/POSE_QUALITY_RESIDUAL_V9.md)主54及探索24已按原冻结矩阵完整结束，预取2和观测缓存真实闭合，训练收据累计约2081秒；诊断10次更新不计正式预算。完整结果和实际预算已另收尾，保留原冻结源码与全部失败/负结果，不重启控制器。
 - [v8完整结果](Docs/research/LEARNED_ASSOCIATION_V8_RESULTS.md)已收尾：36训练、42追踪/评价、实际进程退出及独立窗口/pair预算核对全部完成。36000更新、108000R/18000S窗口曝光，所有九个四组的实际R顺序/已知pair/初始化相同，两RS的S相同。预取真实闭合；全部训练约852秒。
 - 同真实预算pose_RS−pose_R宏均AssA/HOTA/IDF1为+2.8034/+2.1881/+2.9859点，达到事前门槛；相对预训练ByteTrack为+1.4727/+1.1678/+1.8433点。三个seed和比赛均差正，九单元8正1负，game9第三seed AssA−2.0417点；pose_RS仍在game9比赛均值低于预训练。
 - 关键限制：motion_RS最强，pose_RS相对它AssA低4.3956点；motion_RS−motion_R为+1.6816点。因此当前支持合成身份连续性监督的开发增益，尚不能称Pose特征优于运动线索。断档proxy恢复pose_R40.2371%→pose_RS45.3626%，仍低于motion_RS48.6053%。最终116/187封存，不自动开始新训练。
