@@ -32,6 +32,7 @@
 - [v7质量与时序关联](research/POSE_QUALITY_TEMPORAL_V7.md)：已知框定位质量、同PT状态成本敏感度及独立短时Pose预测协议；区分几何覆盖、定位精度和关联决策。
 - [v8协议](research/LEARNED_ASSOCIATION_V8.md)和[完整结果](research/LEARNED_ASSOCIATION_V8_RESULTS.md)：36臂三比赛留一开发，合成Pose组较纯真实AssA+2.8034点、较预训练ByteTrack+1.4727点，但低于motion_RS 4.3956点；实际窗口/pair预算通过，保留全部负结果。
 - [v9训练前诊断](research/POSE_V9_DIAGNOSIS.md)和[质量残差协议](research/POSE_QUALITY_RESIDUAL_V9.md)：缺点/噪声、自由状态和有限外观域差，继而同R预算检验Pose是否超过强motion参考；主三seed、探索事前首seed，已启动唯一新流程。
+- [v9主54臂阶段结果](research/POSE_V9_MAIN54_STAGE.md)：混合较纯R AssA+0.8867点，但对同名义参数motion仅+0.1459点、对原v8 motion仍−0.4491点；未过Pose增量门槛，24项探索和最终预算核对尚待结束。
 - [原Pose路线历史](research/POSE_PIPELINE_HISTORY.md)保存原阶段独有决策，不能当作今天的恢复命令。
 
 ## operations：维护与历史

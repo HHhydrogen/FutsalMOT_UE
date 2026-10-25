@@ -4,6 +4,7 @@
 
 ## 当前主线结果
 
+- [v9主54臂阶段结果](Docs/research/POSE_V9_MAIN54_STAGE.md)已完整汇总，剩余24项预登记探索正常继续。gated混合−纯R宏均AssA/HOTA/IDF1为+0.8867/+0.5787/+0.9551点；较同名义参数motion_RS仅+0.1459 AssA点，较原v8 motion_RS仍−0.4491点，联合Pose增量门槛未达到。较固定PT_bbox参考为+5.4192 AssA点，包含真实监督/学习关联器作用，不能全部算合成收益。最终实际预算核对待78项结束，不热改当前方案，test封存。
 - 用户要求复用已有seed球衣系统。已定位Pose专用runner绕过appearance事务，native模型override清空材质后未重应用球衣；原1048/1102的四类Set分配完整有效。已完成仅Jersey/Shorts的原清单桥接候选及4项CPU检查，未改当前v9/资产、未开UE；此前独立配色选择器已撤回。下一步见[原系统接回及A/B方案](Docs/engineering/POSE_SEEDED_KIT_INTEGRATION.md)：v9全部结束后真实native材质钩子与一次短样，再同运动/相机原默认服装vs原seed球衣配对，同3000R及额外1000S，test封存。
 - [v9只读诊断](Docs/research/POSE_V9_DIAGNOSIS.md)已完成：90项固定模型窗口报告、三场自由motion参考逐字节复现、144个同尺度人物crop域探针。缺点敏感度高于小抖动；颜色和成像域差明显，抽样两队球衣统计高度相似，但不能据此归因拟真不足或称关联器直接学颜色。源GT Pose仅用于合成投影诊断，不进入训练。
 - 新授权的[v9质量残差对照](Docs/research/POSE_QUALITY_RESIDUAL_V9.md)已冻结并唯一后台启动，权威状态为D研究根`pose/pose_quality_v9/control_a01/driver_state.json`。同3000R窗口/RS另1000S；主3分组×3fold×3seed×R/RS=54臂，探索4分组×3fold×事前首seed×R/RS=24臂。预取2和观测缓存，主对照先行；13项针对CPU检查及10次实际诊断更新通过，诊断不计正式预算。不重复启动或热改冻结源，尚无v9完整效果结论。
