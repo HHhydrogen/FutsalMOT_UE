@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "FutsalPose17Library.h"
+#include "FutsalPose17KitLibrary.h"
 #include "MoviePipelineRenderPass.h"
 #include "Camera/CameraComponent.h"
 #include "FutsalPose17MRQPass.generated.h"
@@ -19,6 +20,10 @@ struct FUTSALMOT_API FFutsalPose17MRQTarget
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="FutsalMOT|Pose17") FString ManifestSHA256;
 	/** 默认空；仅显式PIE逐角色校准可给定新角色mesh，不修改资产或Editor组件。 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="FutsalMOT|Pose17") TObjectPtr<USkeletalMesh> DiagnosticVisualMeshOverride = nullptr;
+	/** 仅使用原appearance v1已选服装，不在native中重新随机。 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="FutsalMOT|Pose17|Kit") FString SeededKitSetID;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="FutsalMOT|Pose17|Kit") TObjectPtr<UMaterialInterface> SeededJerseyMaterial = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="FutsalMOT|Pose17|Kit") TObjectPtr<UMaterialInterface> SeededShortsMaterial = nullptr;
 };
 
 USTRUCT(BlueprintType)
@@ -59,6 +64,7 @@ struct FUTSALMOT_API FFutsalPose17MRQRecord
 	UPROPERTY(BlueprintReadOnly, Category="FutsalMOT|Pose17") int64 OverrideWarmupEngineFramesObserved = -1;
 	UPROPERTY(BlueprintReadOnly, Category="FutsalMOT|Pose17") int64 GpuLbsWarmupEngineFramesObserved = -1;
 	UPROPERTY(BlueprintReadOnly, Category="FutsalMOT|Pose17") bool bSampleSucceeded = false;
+	UPROPERTY(BlueprintReadOnly, Category="FutsalMOT|Pose17") bool bSeededKitReadbackSucceeded = false;
 	UPROPERTY(BlueprintReadOnly, Category="FutsalMOT|Pose17") FString Error;
 	UPROPERTY(BlueprintReadOnly, Category="FutsalMOT|Pose17") FFutsalPose17Sample Sample;
 };
@@ -94,6 +100,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="FutsalMOT|Pose17") bool bHideDriverForDiagnostic = false;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="FutsalMOT|Pose17") bool bAllowPIEVisualMeshOverride = false;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="FutsalMOT|Pose17") bool bAllowJointPose17Diagnostic = false;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="FutsalMOT|Pose17|Kit") bool bApplySeededKitForDiagnostic = false;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="FutsalMOT|Pose17|Kit") FString SeededAppearanceFingerprint;
 	/** 新opt-in：实际渲染保持GPU，只在CPU按真实pose/weights计算坐标。 */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="FutsalMOT|Pose17") bool bUseGpuRenderCpuLbsForDiagnostic = false;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="FutsalMOT|Pose17", meta=(ClampMin="8", ClampMax="120")) int32 MinimumGpuLbsWarmupFrames = 8;
@@ -130,6 +138,8 @@ private:
 	UPROPERTY(Transient) TArray<TObjectPtr<USkeletalMeshComponent>> FrameMeshes;
 	UPROPERTY(Transient) TArray<FFutsalPose17VisualMeshState> PreviousVisualStates;
 	UPROPERTY(Transient) TArray<FFutsalPose17VisualOverrideEvidence> VisualOverrideEvidence;
+	UPROPERTY(Transient) TArray<FFutsalPose17KitState> PreviousKitStates;
+	UPROPERTY(Transient) TArray<FFutsalPose17KitEvidence> SeededKitEvidence;
 	TArray<uint32> FramePoseRevisions;
 	FString FrameCacheError;
 	int64 CacheFenceEngineFrame = -1;
@@ -137,4 +147,5 @@ private:
 	FString CameraSetupError;
 	void PersistNativeReceipt();
 	void RestoreVisualOverrides();
+	void RestoreSeededKits();
 };

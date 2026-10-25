@@ -83,6 +83,7 @@ void UFutsalPose17MRQPass::SetupForPipelineImpl(UMoviePipeline* InPipeline)
 {
 	CameraSetupError.Reset(); PreviousCameraStates.Reset(); bCameraStateRestored = false;
 	PreviousVisualStates.Reset(); VisualOverrideEvidence.Reset(); RestoreErrors.Reset(); bStreamingStateRestartRequired = false;
+	PreviousKitStates.Reset(); SeededKitEvidence.Reset();
 	GPUPreparedEngineFrame = -1;
 	TSet<FName> SeenCameras;
 	if (!GetWorld() || GetWorld()->WorldType != EWorldType::PIE || DiagnosticCameraObjectNames.IsEmpty())
@@ -94,6 +95,14 @@ void UFutsalPose17MRQPass::SetupForPipelineImpl(UMoviePipeline* InPipeline)
 	const bool bJointGPUOverride = bUseGpuRenderCpuLbsForDiagnostic && bAllowPIEVisualMeshOverride && bAllowJointPose17Diagnostic
 		&& DiagnosticScope == TEXT("pose17_gpu_render_cpu_lbs_joint_diagnostic");
 	const bool bAnyGPUOverride = bCombinedGPUOverride || bJointGPUOverride;
+	bool bValidKitFingerprint = SeededAppearanceFingerprint.Len() == 64
+		&& SeededAppearanceFingerprint == SeededAppearanceFingerprint.ToLower();
+	for (TCHAR Character : SeededAppearanceFingerprint) bValidKitFingerprint &= FChar::IsHexDigit(Character);
+	if ((bApplySeededKitForDiagnostic && (!bJointGPUOverride || !bValidKitFingerprint))
+		|| (!bApplySeededKitForDiagnostic && !SeededAppearanceFingerprint.IsEmpty()))
+	{
+		CameraSetupError = TEXT("原seed服装仅限显式joint GPU/LBS opt-in及原appearance fingerprint"); return;
+	}
 	const bool bInvalidGPUConfig = (!bAnyGPUOverride && DiagnosticScope != TEXT("pose17_gpu_render_cpu_lbs")) || bPrepareCPUForDiagnostic
 		|| !bHideDriverForDiagnostic || (bAllowPIEVisualMeshOverride && !bAnyGPUOverride)
 		|| MinimumGpuLbsWarmupFrames < 8 || MinimumGpuLbsWarmupFrames > 120
@@ -147,6 +156,19 @@ void UFutsalPose17MRQPass::SetupForPipelineImpl(UMoviePipeline* InPipeline)
 			if (!UFutsalPose17Library::GetVisualSamplingState(Mesh, CurrentCPUState, CameraSetupError)) return;
 		}
 		USkeletalMesh* Asset = Target.DiagnosticVisualMeshOverride ? Target.DiagnosticVisualMeshOverride.Get() : Mesh->GetSkeletalMeshAsset();
+		if (bApplySeededKitForDiagnostic)
+		{
+			if (!UFutsalPose17KitLibrary::ValidateSeededKitAssets(Target.SeededJerseyMaterial, Target.SeededShortsMaterial,
+				Target.SeededKitSetID, CameraSetupError)) return;
+			TArray<FName> MaterialSlots;
+			for (const auto& Material : Asset->GetMaterials()) MaterialSlots.Add(Material.MaterialSlotName);
+			int32 JerseySlot = INDEX_NONE, ShortsSlot = INDEX_NONE;
+			if (!UFutsalPose17KitLibrary::ResolveSemanticKitSlots(MaterialSlots, JerseySlot, ShortsSlot, CameraSetupError)) return;
+		}
+		else if (Target.SeededJerseyMaterial || Target.SeededShortsMaterial || !Target.SeededKitSetID.IsEmpty())
+		{
+			CameraSetupError = TEXT("服装字段存在但没有原seed服装opt-in，拒绝静默忽略"); return;
+		}
 		if (bJointGPUOverride)
 		{
 			const TCHAR* ExpectedAsset = JointExpectedAsset(Target.EntityID);
@@ -209,6 +231,22 @@ void UFutsalPose17MRQPass::SetupForPipelineImpl(UMoviePipeline* InPipeline)
 			}
 		}
 	}
+	// 模型override会清空材质；必须全部完成后再套服装，且先于GPU/LBS准备与预热。
+	if (bApplySeededKitForDiagnostic)
+	{
+		for (const auto& Target : Targets)
+		{
+			USkeletalMeshComponent* Mesh = FindExactTarget(GetWorld(), Target, CameraSetupError);
+			FFutsalPose17KitState Previous;
+			FFutsalPose17KitEvidence Evidence;
+			const bool bApplied = UFutsalPose17KitLibrary::ApplySeededKit(Mesh, Target.SeededJerseyMaterial,
+				Target.SeededShortsMaterial, Target.SeededKitSetID, SeededAppearanceFingerprint, Previous, Evidence, CameraSetupError);
+			if (Previous.bMutationStarted) PreviousKitStates.Add(Previous);
+			if (bApplied) Evidence.bGpuLbsEligibleAfterKit = UFutsalPose17Library::ValidateGPUVisualLBS(Mesh, CameraSetupError);
+			SeededKitEvidence.Add(Evidence);
+			if (!bApplied || !Evidence.bGpuLbsEligibleAfterKit) { RestoreVisualOverrides(); return; }
+		}
+	}
 	for (const auto& Previous : PreviousCameraStates)
 	{
 		Previous.Component->PostProcessSettings.bOverride_MotionBlurAmount = true;
@@ -220,7 +258,8 @@ void UFutsalPose17MRQPass::SetupForPipelineImpl(UMoviePipeline* InPipeline)
 void UFutsalPose17MRQPass::TeardownForPipelineImpl(UMoviePipeline* InPipeline)
 {
 	// Setup失败/没有进入shot时同样需要恢复自有partial状态并写失败收据。
-	if (!PreparedMeshes.IsEmpty() || !PreparedGPUMeshes.IsEmpty() || !PreviousVisualStates.IsEmpty() || !PreviousDriverStates.IsEmpty()) TeardownImpl();
+	if (!PreparedMeshes.IsEmpty() || !PreparedGPUMeshes.IsEmpty() || !PreviousVisualStates.IsEmpty()
+		|| !PreviousKitStates.IsEmpty() || !PreviousDriverStates.IsEmpty()) TeardownImpl();
 	bCameraStateRestored = true;
 	for (const auto& Previous : PreviousCameraStates)
 	{
@@ -261,6 +300,12 @@ void UFutsalPose17MRQPass::PersistNativeReceipt()
 	for (const auto& Evidence : VisualOverrideEvidence)
 		Overrides.Add(MakeShared<FJsonValueObject>(FJsonObjectConverter::UStructToJsonObject(Evidence)));
 	Object->SetArrayField(TEXT("visual_mesh_overrides"), Overrides);
+	Object->SetBoolField(TEXT("seeded_kit_requested"), bApplySeededKitForDiagnostic);
+	Object->SetStringField(TEXT("seeded_appearance_fingerprint"), SeededAppearanceFingerprint);
+	TArray<TSharedPtr<FJsonValue>> Kits;
+	for (const auto& Evidence : SeededKitEvidence)
+		Kits.Add(MakeShared<FJsonValueObject>(FJsonObjectConverter::UStructToJsonObject(Evidence)));
+	Object->SetArrayField(TEXT("seeded_kit_bindings"), Kits);
 	TArray<TSharedPtr<FJsonValue>> Errors, Rows;
 	for (const FString& Error : RestoreErrors) Errors.Add(MakeShared<FJsonValueString>(Error));
 	for (const auto& Record : Records)
@@ -364,10 +409,20 @@ void UFutsalPose17MRQPass::OnFrameStartImpl()
 	for (const auto& Previous : PreviousVisualStates)
 	{
 		USkeletalMeshComponent* Mesh = Previous.Component;
+		// 原默认材质已在模型override时严格核验。服装事务会合法新增两个override，
+		// 此处改为逐slot核对其快照/球衣/短裤；其他材质、mesh及动画仍必须全部匹配。
+		bool bMaterialsStable = IsValid(Mesh) && Mesh->GetNumOverrideMaterials() == 0;
+		if (bApplySeededKitForDiagnostic)
+		{
+			const auto* KitState = PreviousKitStates.FindByPredicate([Mesh](const auto& Row) { return Row.Component == Mesh; });
+			FString KitError;
+			bMaterialsStable = KitState && UFutsalPose17KitLibrary::VerifySeededKit(*KitState, KitError);
+			if (!bMaterialsStable) { FrameCacheError = KitError.IsEmpty() ? TEXT("预热后缺少精确服装事务") : KitError; return; }
+		}
 		if (!IsValid(Mesh) || Mesh->GetSkeletalMeshAsset() != Previous.AppliedMesh
 			|| Mesh->GetAnimClass() != Previous.AnimationClass || Mesh->GetAnimInstance() != Previous.AnimationInstance
 			|| Mesh->LeaderPoseComponent != Previous.Leader || Mesh->GetAttachParent() != Previous.AttachParent.Get()
-			|| Mesh->GetNumOverrideMaterials() != 0)
+			|| !bMaterialsStable)
 		{
 			FrameCacheError = TEXT("角色override后的mesh/共享动画/材质绑定在warmup后发生变化"); return;
 		}
@@ -426,6 +481,7 @@ void UFutsalPose17MRQPass::TeardownImpl()
 
 void UFutsalPose17MRQPass::RestoreVisualOverrides()
 {
+	RestoreSeededKits();
 	for (int32 Index = PreviousVisualStates.Num()-1; Index >= 0; --Index)
 	{
 		FString Error;
@@ -437,6 +493,20 @@ void UFutsalPose17MRQPass::RestoreVisualOverrides()
 		if (!Evidence->bStreamingStateMatched) bStreamingStateRestartRequired = true;
 	}
 	PreviousVisualStates.Reset();
+}
+
+void UFutsalPose17MRQPass::RestoreSeededKits()
+{
+	for (int32 Index = PreviousKitStates.Num()-1; Index >= 0; --Index)
+	{
+		const auto& Previous = PreviousKitStates[Index];
+		const FString Path = Previous.Component ? Previous.Component->GetPathName() : TEXT("");
+		auto* Evidence = SeededKitEvidence.FindByPredicate([&Path](const auto& Row) { return Row.ComponentPath == Path; });
+		FString Error;
+		if (!Evidence || !UFutsalPose17KitLibrary::RestoreSeededKit(Previous, *Evidence, Error))
+			RestoreErrors.Add(Evidence ? Error : TEXT("服装恢复缺少对应真实apply证据"));
+	}
+	PreviousKitStates.Reset();
 }
 
 void UFutsalPose17MRQPass::RenderSample_GameThreadImpl(const FMoviePipelineRenderPassMetrics& State)
@@ -454,6 +524,18 @@ void UFutsalPose17MRQPass::RenderSample_GameThreadImpl(const FMoviePipelineRende
 		if (Records.Num() >= MaxRecords) { bRecordLimitReached = true; return; }
 		FFutsalPose17MRQRecord& Record = Records.AddDefaulted_GetRef();
 		Record.EntityID = Target.EntityID;
+		if (bApplySeededKitForDiagnostic)
+		{
+			USkeletalMeshComponent* Mesh = FindExactTarget(GetWorld(), Target, SetupError);
+			const auto* Previous = PreviousKitStates.FindByPredicate([Mesh](const auto& Row) { return Row.Component == Mesh; });
+			FString KitError;
+			Record.bSeededKitReadbackSucceeded = Previous && UFutsalPose17KitLibrary::VerifySeededKit(*Previous, KitError);
+			if (!Record.bSeededKitReadbackSucceeded)
+			{
+				SetupError = KitError.IsEmpty() ? TEXT("实际输出帧缺少原seed服装状态") : KitError;
+				Record.Error = SetupError; return;
+			}
+		}
 		Record.OutputFrame = State.OutputState.OutputFrameNumber;
 		Record.SequenceSourceFrame = State.OutputState.SourceFrameNumber;
 		Record.ShotIndex = State.OutputState.ShotIndex;

@@ -4,9 +4,11 @@
 
 ## 当前主线结果
 
+- 原seed球衣a02短样已真实验收：两seed×A/B×四机位×3帧，48RGB/48mask/480人物Pose；服装原生应用/逐帧读回/恢复与会话释放通过，根agent已看配色及四机位并列图。同源world逐值相同；8对中帧mask中一对差61像素，其余0。48份EXR已精确清理约3.992GiB，原生/校准/收据保留。当前实际有15套服装资产，旧v1抽样目录仅Set01–05，不能称项目只有5套。下一步是全新a02的4800帧完整配对，逐变体正常退出UE后6CPU导出并清EXR，之后另冻结同3000R/额外1000S训练；测试集封存。入口和限制见[接回方案](Docs/engineering/POSE_SEEDED_KIT_INTEGRATION.md)。
+
 - [v9完整78臂结果](Docs/research/POSE_V9_RESULTS.md)和实际进程退出/独立预算核对已全部结束：78000实际更新、234000R/39000S窗口，所有同fold/seed的R顺序/pair/初始化及各RS的S一致。主结论维持混合−纯R AssA+0.8867、对同名义参数motion仅+0.1459、对原v8 motion−0.4491点，Pose增量未达门槛；探索仅预登记首seed，drop相对同seed运动+0.6077点不能冒充三seed稳定收益。完整完成链为D研究根`pose/pose_quality_v9/milestone_complete_a01.json`；不重启v9。现在转入原seed球衣native接回及A/B，尚未宣称UE动态修复或新数据通过。
 - [v9主54臂阶段结果](Docs/research/POSE_V9_MAIN54_STAGE.md)已完整汇总，剩余24项预登记探索正常继续。gated混合−纯R宏均AssA/HOTA/IDF1为+0.8867/+0.5787/+0.9551点；较同名义参数motion_RS仅+0.1459 AssA点，较原v8 motion_RS仍−0.4491点，联合Pose增量门槛未达到。较固定PT_bbox参考为+5.4192 AssA点，包含真实监督/学习关联器作用，不能全部算合成收益。最终实际预算核对待78项结束，不热改当前方案，test封存。
-- 用户要求复用已有seed球衣系统。已定位Pose专用runner绕过appearance事务，native模型override清空材质后未重应用球衣；原1048/1102的四类Set分配完整有效。已完成仅Jersey/Shorts的原清单桥接候选及4项CPU检查，未改当前v9/资产、未开UE；此前独立配色选择器已撤回。下一步见[原系统接回及A/B方案](Docs/engineering/POSE_SEEDED_KIT_INTEGRATION.md)：v9全部结束后真实native材质钩子与一次短样，再同运动/相机原默认服装vs原seed球衣配对，同3000R及额外1000S，test封存。
+- 用户要求复用已有seed球衣系统。原1048/1102的四类Set分配和独立seed算法保留，Pose固定模型/肤色不随原manifest重抽，不接号码WIP。native材质钩子及一次短样现已通过，原v9/资产不改；此前独立配色选择器已撤回。
 - [v9只读诊断](Docs/research/POSE_V9_DIAGNOSIS.md)已完成：90项固定模型窗口报告、三场自由motion参考逐字节复现、144个同尺度人物crop域探针。缺点敏感度高于小抖动；颜色和成像域差明显，抽样两队球衣统计高度相似，但不能据此归因拟真不足或称关联器直接学颜色。源GT Pose仅用于合成投影诊断，不进入训练。
 - [v9质量残差对照](Docs/research/POSE_QUALITY_RESIDUAL_V9.md)主54及探索24已按原冻结矩阵完整结束，预取2和观测缓存真实闭合，训练收据累计约2081秒；诊断10次更新不计正式预算。完整结果和实际预算已另收尾，保留原冻结源码与全部失败/负结果，不重启控制器。
 - [v8完整结果](Docs/research/LEARNED_ASSOCIATION_V8_RESULTS.md)已收尾：36训练、42追踪/评价、实际进程退出及独立窗口/pair预算核对全部完成。36000更新、108000R/18000S窗口曝光，所有九个四组的实际R顺序/已知pair/初始化相同，两RS的S相同。预取真实闭合；全部训练约852秒。

@@ -206,13 +206,24 @@ def inactive(consumer):
     # 仅检查直接消费这些EXR的独立进程，不阻塞只用RGB的训练或其他attempt的Editor。
     require(isinstance(consumer.get('raw_exr_consumer_process_ids'), list), '必须登记EXR独立消费进程列表')
     kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+    kernel.OpenProcess.argtypes = [ctypes.c_ulong, ctypes.c_int, ctypes.c_ulong]
     kernel.OpenProcess.restype = ctypes.c_void_p
     kernel.CloseHandle.argtypes = [ctypes.c_void_p]
+    kernel.GetExitCodeProcess.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_ulong)]
+    kernel.GetExitCodeProcess.restype = ctypes.c_int
     for pid in consumer['raw_exr_consumer_process_ids']:
         handle = kernel.OpenProcess(0x1000, False, int(pid))
         if handle:
-            kernel.CloseHandle(handle)
-            raise ValueError(f'消费PID仍存在（含重用），拒绝清理: {pid}')
+            try:
+                # Windows可因外部持有句柄而保留已退出进程对象；存在对象不等于仍能消费EXR。
+                # 活动/活动PID重用仍拒绝；读取失败仍视为未知，不据空进程表放行。
+                code = ctypes.c_ulong()
+                require(kernel.GetExitCodeProcess(handle, ctypes.byref(code)) != 0,
+                        f'消费PID退出状态未知: {pid}')
+                require(code.value != 259, f'消费PID仍活动（含重用），拒绝清理: {pid}')
+            finally:
+                kernel.CloseHandle(handle)
+            continue
         require(ctypes.get_last_error() == 87, f'消费PID状态未知: {pid}')
 
 

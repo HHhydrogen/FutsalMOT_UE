@@ -6,7 +6,7 @@
 
 原系统已经实现，不需要再造随机配色器：
 
-- `python/src/grf_ue_bridge/appearance.py`的`build_appearance_manifest`使用`meta.randomness.ue_visual_seed`，独立派生model/skin/kit随机流。五套现有服装中确定性选择四个不同Set，分别分配双方外场球员及双方守门员；序列内不重抽。
+- `python/src/grf_ue_bridge/appearance.py`的`build_appearance_manifest`使用`meta.randomness.ue_visual_seed`，独立派生model/skin/kit随机流。旧版v1目录限定Set_01–05，从中确定性选择四个不同Set，分别分配双方外场球员及双方守门员；序列内不重抽。**这不是现有资产总数：当前已有Set_01–15，真实UE已确认15套共60份球衣/短裤材质及贴图资产存在。**
 - 标准`python/ue/run_task.py`准备、应用并恢复`provenance/appearance.json`，`episode_appearance.py`通过Jersey/Shorts语义slot绑定材质并读回。
 - 1048原清单实际为左外场03、右外场04、左门将05、右门将01；1102为左外场04、右外场02、左门将03、右门将05。两份原清单、visual seed和轨迹摘要均存在，原系统未失效。
 - Pose长窗入口`python/ue/pose17_long_window_p2.py`调用独立`pose17_smoke_runner.prepare/submit`，并未走标准appearance事务。其scope本就记为固定roster、不是原天气/外观复现。
@@ -26,11 +26,23 @@
 
 本轮只读CPU桥接已经消费1048/1102真实输入，原四类Set分配完全保留；四项针对检查通过：原分配/输入不变、篡改轨迹或kit拒绝、错误/重复实体拒绝、号码scope拒绝。运行清单在`Saved/AppearancePlanning/seeded_kit_recovery_a01/plan.json`，状态明确为未在UE应用，不能称渲染通过。
 
+## 真实短样验收
+
+2026-10-25已在新DLL `328d5557d03f6e27676a4673dcf3851084bc4633cc91f4546e1bb870abec1046`完成a02两个seed、A/B、四机位各3帧：48张4K RGB、48张实例mask、480条人物Pose，全部保留unknown、diagnostic/not_training及MRQ_syncfalse。实际UE原生契约测试1项通过；四个MRQ均正常完成、材质/相机/角色恢复和自有会话释放通过。B在native模型override之后、GPU预热之前应用球衣，并在实际输出帧逐人读回；没有通过删除旧材质检查放行。
+
+根agent查看过四机位并列图及四角色裁剪：1048外场左黑03/右红04、门将左黄05/右绿01；1102外场左红04/右白02、门将左黑03/右黄05。同源A/B的17点world在此短样逐值相同；8对中帧mask中7对逐像素相同，1048/CineCam_01有61个差异像素，不声称全像素完全一致。正式收据为`Saved/AppearancePlanning/seeded_kit_capture_a02/short_acceptance_root.json`，原图/总览在G数据集的`_staging/`，不入Git。
+
+首版a01被旧OnFrameStart的“必须零材质override”检查拒绝：球衣实际apply/restore成功，但尚未进入Pose采样，并非已有权重损坏。修正为逐slot核对授权服装及其他材质，继续检查mesh/动画/附着和原默认材质；正常退出Editor后编译，新a02全部重渲染，不混用旧失败样本。失败收据保留。
+
+48份EXR已在全部后处理/消费结束后精确退休，释放4,286,219,059字节。清理门禁另修复了Windows保留已退出进程句柄的误拒：实际`GetExitCodeProcess`仍拒绝活动/活动PID重用及未知状态；真实活动与已退出持有句柄两种条件的针对检查通过。原清理清单SHA、不可重放journal及边界检查不变。
+
+此验收只覆盖短样，不等于300帧整批或后续训练已完成。短样最低commit余量约7.1GiB；整批采用明确12线程/队列8，并在每个变体完成恢复/释放后正常退出UE再做6CPU导出，以回收PIE/Lumen缓存。新变体启动和MRQ提交仍执行资源门禁，活动余量低于6GiB只正常取消自有MRQ，不强杀或改pagefile。
+
 ## v9结束后的配对验证
 
 先完成v9的78训练/追踪、完整分析、独立实际预算核对和相关进程退出；随后才启动UE。用户已授权此后续，不重复索取同一授权。
 
-第一步用现有五套材质直接接回原seed分配，不预先新增贴图、换随机算法或扩目录。四个不同Set ID不等于实际颜色已经足够可区分，真实渲染时检查双方和门将的可区分性、纹理、背面和语义slot；若现有套装满足要求即直接复用。Set_06–15已有历史短渲染记录，但不因文件存在自动纳入正式目录；只有确有覆盖缺口时，才对现有catalog另立明确版本和兼容选择，且不使用未完成号码策略。
+第一步用原v1目录中的Set_01–05接回1048/1102原seed分配。Set_06–15同样是已有资产，无须重建；扩展抽样目录时另立版本并保留原v1兼容性，继续复用同一seed算法，不使用号码WIP。四个不同Set ID不等于实际颜色已经足够可区分，短样检查双方和门将的配色、纹理及语义slot，不能把资产存在当作渲染已通过。
 
 同运动、同相机A/B：
 

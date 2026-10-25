@@ -4,6 +4,9 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+import os
+import subprocess
+import sys
 from unittest.mock import patch
 
 spec = importlib.util.spec_from_file_location('policy', Path(__file__).with_name('dataset_storage_policy.py'))
@@ -11,6 +14,22 @@ p = importlib.util.module_from_spec(spec); spec.loader.exec_module(p)
 
 
 class StoragePolicyTest(unittest.TestCase):
+    @unittest.skipUnless(os.name=='nt','只验证Windows真实进程句柄语义')
+    def test_active_consumer_rejected_exited_held_handle_accepted(self):
+        child=subprocess.Popen([sys.executable,'-c',
+            "import sys;print('ready',flush=True);sys.stdin.readline()"],stdin=subprocess.PIPE,stdout=subprocess.PIPE)
+        try:
+            self.assertEqual(child.stdout.readline().strip(),b'ready')
+            with self.assertRaisesRegex(ValueError,'仍活动'):
+                p.inactive({'raw_exr_consumer_process_ids':[child.pid]})
+            child.stdin.write(b'\n');child.stdin.flush();self.assertEqual(child.wait(timeout=10),0)
+            # 故意保留Popen与Win32进程句柄，复现生产中误拒已退出消费者的条件。
+            p.inactive({'raw_exr_consumer_process_ids':[child.pid]})
+        finally:
+            if child.poll() is None:
+                child.stdin.write(b'\n');child.stdin.flush();child.wait(timeout=10)
+            child.stdin.close();child.stdout.close()
+
     def test_targeted_lifecycle_and_guards(self):
         with tempfile.TemporaryDirectory(dir=Path(__file__).parents[2] / 'Saved' / 'StoragePolicy') as folder:
             root = Path(folder); dataset = root/'dataset'; research = root/'research'; saved = root/'saved'
