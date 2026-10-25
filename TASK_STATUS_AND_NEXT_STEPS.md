@@ -4,8 +4,11 @@
 
 ## 当前主线结果
 
+- [v8完整结果](Docs/research/LEARNED_ASSOCIATION_V8_RESULTS.md)已收尾：36训练、42追踪/评价、实际进程退出及独立窗口/pair预算核对全部完成。36000更新、108000R/18000S窗口曝光，所有九个四组的实际R顺序/已知pair/初始化相同，两RS的S相同。预取真实闭合；全部训练约852秒。
+- 同真实预算pose_RS−pose_R宏均AssA/HOTA/IDF1为+2.8034/+2.1881/+2.9859点，达到事前门槛；相对预训练ByteTrack为+1.4727/+1.1678/+1.8433点。三个seed和比赛均差正，九单元8正1负，game9第三seed AssA−2.0417点；pose_RS仍在game9比赛均值低于预训练。
+- 关键限制：motion_RS最强，pose_RS相对它AssA低4.3956点；motion_RS−motion_R为+1.6816点。因此当前支持合成身份连续性监督的开发增益，尚不能称Pose特征优于运动线索。断档proxy恢复pose_R40.2371%→pose_RS45.3626%，仍低于motion_RS48.6053%。最终116/187封存，不自动开始新训练。
 - [v8可学习困难候选关联](Docs/research/LEARNED_ASSOCIATION_V8.md)的共享输入与协议已完成：1048蓝四机位1200帧、真实game4/6/9各750帧预测均完成；补1800张真实train图、复用450张原图引用，约352MiB下载块已精确清理。三折各1000唯一R窗口、共享1000唯一S窗口及956个检测断档proxy事件已在看学习结果前固定。
-- v8采用game4/6/9留一比赛三折、三seed、motion/pose×R/RS四臂，共36个小训练。每臂1000更新、同3000R窗口同序，混合额外1000S；窗口和pair曝光分开记，不冒充原图预算。独立准入及真实四组单步诊断通过（4次诊断、0正式预算），唯一a02控制器已真实完成首批预训练基线追踪/评价，随后36臂训练及42项追踪/评价；权威状态为D研究根`pose/learned_association_v8/control_a02/driver_state.json`。a01在零正式更新时遇到TrackEval COMBINED计数无Frames字段，已最小修复、3项新增CPU检查及实际750帧评价通过，旧失败证据保留。不另起控制器或热改源码，最终116/187继续封存。
+- v8采用game4/6/9留一比赛三折、三seed、motion/pose×R/RS四臂，已全部完成。每臂1000更新、同3000R窗口同序，混合额外1000S；窗口和pair曝光分开记，不冒充原图预算。4次单步诊断独立记录、0正式预算。a01在零正式更新时遇到TrackEval COMBINED计数无Frames字段，a02最小修复，旧失败证据保留，优化重放0。权威终态和完成链为D研究根`pose/learned_association_v8/milestone_complete_a01.json`，不重启控制器。
 - [v7姿态质量、敏感度与时序关联](Docs/research/POSE_QUALITY_TEMPORAL_V7.md)三阶段已全部结束。COCO200开发图514人已知框诊断：肢体OKS预训练0.705400、R3均0.698685、蓝/红混合0.699315/0.699546；混合仅微升R3，整体17点未改善且均低于预训练。本轮复用既有权重、0新正式更新，逐臂仍为3000R；有界预取实际用于十模型质量推理准备。
 - 成本敏感度900事件精确复现原静态MOT及lambda0；5605个非空候选行仅175个竞争（3.12%）。九模型改变成本但未改变排序或阈值可用性。历史3观测、最多3帧OLS时序对照十模型完整完成，实际使用4448–4449候选对，最终轨迹仍与v6相同；混合−R3/时序预训练均差0，未达到门槛或超过原预训练。最终116/187封存，相关进程已退出。
 - [v6固定raw检测框裁剪Pose对照](Docs/research/POSE_FIXED_CROP_V6.md)十模型已全部完成且实际进程退出：复用v5九个last EMA及预训练、零新正式训练更新、每臂相同3000R。覆盖从约24.3%升至77.95%，但十模型轨迹输出和指标完全相同；两种混合−R3及混合−同crop预训练均为0，未通过进步门槛。
@@ -49,6 +52,6 @@
 
 ## 后续研究
 
-v7质量在D研究根`pose/pose_v7/quality_a02/summary.json`，敏感度在`pose/association_dev_a01/v7_sensitivity/replay_a01`，时序完整分析在`pose/association_dev_a01/v7_temporal/analysis_a01`。v8当前a02协议SHA为`779261f168c11b1ae1fd62f21c42cf96c69f2cfb626fff5b325a43bb1adebf27`，代码bundle为`e21e3ff1824bebec569c649d048de2a64195c348d13e18bee4d75f0c4aaf81d4`。a01原协议/源码不改，新版本仅修正评价汇总字段，数据/训练数学/预算/门槛不变，优化重放0。当前只继续该唯一控制流程，完成后统一分析四单元、混合−R及两预训练参考。没有新渲染。
+v8已完成，a02协议SHA为`779261f168c11b1ae1fd62f21c42cf96c69f2cfb626fff5b325a43bb1adebf27`，代码bundle为`e21e3ff1824bebec569c649d048de2a64195c348d13e18bee4d75f0c4aaf81d4`。下一阶段先做Pose缺点/坐标噪声、mask作用与自由历史误差分层，保留motion_RS强参考；候选mask-only和门控Pose残差另立协议，不据本轮开发结果声称新盲测，不自动训练。完整结果与计划见v8结果文档。没有新渲染。
 
 未完成号码继续保留、不纳入当前数据或提交。每独立阶段报告真实完成证据，历史started_not_committed不当作当前故障，不重复启动已结束驱动。

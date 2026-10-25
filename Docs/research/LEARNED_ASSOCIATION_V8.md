@@ -1,5 +1,7 @@
 # v8可学习候选关联与跨比赛开发
 
+本轮已完成36训练、42追踪/评价及独立实际窗口/pair核对，进程已退出。[完整结果](LEARNED_ASSOCIATION_V8_RESULTS.md)：pose_RS较pose_R的AssA+2.8034点、较预训练ByteTrack+1.4727点，通过事前门槛；但较motion_RS低4.3956点。以下保留事前协议和执行修正，不据结果回改规则。
+
 ## 问题与范围
 
 v5–v7没有证明合成位置微调改善追踪；扩大预测覆盖、短时OLS也没有改变最终轨迹。本轮改为研究合成身份连续性监督：固定共享的官方预训练检测/Pose模型，学习困难候选的关联概率，不同时改变姿态估计器。小MLP和候选规则是机制验证原型，不先声称算法首创或合成效用。
@@ -42,8 +44,8 @@ GT只提供训练身份标签和评价指标，不提供输入Pose。真实GT使
 
 合成共享缓存1200帧/13199检测/6985个可用Pose几何、真实三场各750帧共享预测均已完成；四机位20个gap层和各折真实窗口均有充分的唯一有监督候选。三折各1000R、共享1000S池以及956个断档proxy已固定。26项针对CPU检查涵盖GT身份/绝对时间不进特征、motion遮蔽、bbox等价、历史、预算、完整矩阵、下载块、launcher父子链和Count汇总边界。另四臂各1次真实CUDA诊断更新通过、不计正式预算。CPU/单步通过不等于训练或追踪已有提升。
 
-当前唯一执行状态为D研究根`pose/learned_association_v8/control_a02/driver_state.json`。a01在零正式优化更新时因TrackEval1.3.0的COMBINED_SEQ Count没有Frames字段而停止；原记录保留。a02只对实际单序列检查750帧，对单序列/汇总均检查未筛预测及GT行数，数学/数据/门槛不变，已实际完成首个750帧评价，优化重放0。a02协议SHA为`779261f168c11b1ae1fd62f21c42cf96c69f2cfb626fff5b325a43bb1adebf27`。
+已结束的权威状态为D研究根`pose/learned_association_v8/control_a02/driver_state.json`，完成链为`milestone_complete_a01.json`。a01在零正式优化更新时因TrackEval1.3.0的COMBINED_SEQ Count没有Frames字段而停止；原记录保留。a02只对实际单序列检查750帧，对单序列/汇总均检查未筛预测及GT行数，数学/数据/门槛不变，优化重放0。a02协议SHA为`779261f168c11b1ae1fd62f21c42cf96c69f2cfb626fff5b325a43bb1adebf27`。
 
 执行入口为`tools/research_ops/v8_prepare.py`准备候选闭包；root独立冻结准入、协议和断档registry后，由不可变bundle内`v8_control.py`默认只读预飞、显式`--execute`串行运行。六项预训练参考追踪和36项已训练追踪均用同一共享cache，总42项完整750帧评价。`v8_analyze.py`只接受36训练/42评价全部完成状态，保留每折/seed/臂、四单元差分、两项预训练参考及全部负结果；不重复推理或搜索阈值。
 
-全部结束后还用独立`v8_budget_audit.py`读取实际曝光链、事务和last，核对九个四组配对的真实UID顺序、已知监督pair数及初始化，并检查两RS的S顺序/已知pair相等。三项针对CPU检查已通过，工具另装独立bundle，未改活动执行代码；当前仍等待36臂全部结束，不能把计划预算写成已完成曝光。
+全部结束后，独立`v8_budget_audit.py`已实际核对曝光链、事务和last，九个四组配对的真实UID顺序、已知监督pair数及初始化全部相等，两RS的S顺序/已知pair也相等。工具另装独立bundle，未改原执行代码；实际36000更新、108000R/18000S窗口闭合，完成收据位于`postrun_audit_a01/actual_budget.json`。

@@ -44,7 +44,7 @@ UE配置、轨迹与收据位于本项目Saved物理目录；渲染媒体（含�
 
 [v5配对对照](Docs/research/POSE_LONGPAIR_V5.md)使用30秒数据的固定虚拟裁剪，比较纯真实、加蓝地板合成、加红棕地板合成；真实曝光保持相同，并独立比较共同预训练参考。[九臂结果](Docs/research/POSE_V5_RESULTS.md)蓝相对R3平均AssA仅+0.2644点、1/3训练seed提高，红均差0，未过门槛或超过预训练。[v6](Docs/research/POSE_FIXED_CROP_V6.md)提升Pose接入覆盖、[v7](Docs/research/POSE_QUALITY_TEMPORAL_V7.md)检验质量/敏感度/短时预测后，轨迹仍无改善。
 
-当前[v8](Docs/research/LEARNED_ASSOCIATION_V8.md)固定共享预训练检测/Pose，单独学习困难候选的身份连续性；三比赛留一开发、motion/pose×R/RS四单元，同3000R窗口、混合另1000S窗口。输入、窗口和956个断档proxy已固定，唯一对照流程已启动，尚无完整v8结果。窗口不等于图像曝光、检测断档代理不等于物理遮挡；实际进度以任务状态和D研究收据为准。
+[v8完整结果](Docs/research/LEARNED_ASSOCIATION_V8_RESULTS.md)已完成36臂、三比赛留一开发及实际预算核对：同3000R窗口、混合另1000S，pose_RS相对pose_R AssA+2.8034点、相对预训练ByteTrack+1.4727点，通过事前门槛；但仍低于motion_RS 4.3956点，不能将合成身份监督增益全部归于Pose。窗口不等于图像曝光、956个检测断档proxy不等于物理遮挡；测试116/187继续封存。
 
 ## Git
 
