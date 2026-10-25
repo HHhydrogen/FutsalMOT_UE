@@ -27,7 +27,7 @@
 - [本轮v4真实结果](research/POSE_V4_RESULTS.md)：本次根据已结束元数据新增；同真实曝光平均AssA仅+0.26444035pp、1/3 seed为正，未过登记门槛；混合臂未超过预训练关联结果。不预设合成收益。
 - [30秒数据后续实验](research/LONGPAIR_NEXT_EXPERIMENT.md)：先尺度/附件覆盖，再做同运动地板控制；当前执行口径见[v5协议](research/POSE_LONGPAIR_V5.md)。
 - [v5完整结果](research/POSE_V5_RESULTS.md)：九臂训练及真实追踪完整结束，蓝相对R3平均AssA仅+0.2644点、1/3 seed为正，红均差0；均未过登记门槛或超过预训练。含低姿态覆盖线索及下一轮方案。
-- [v6固定框裁剪Pose](research/POSE_FIXED_CROP_V6.md)：复用v5九模型及预训练，保持真实曝光不变、零新训练更新，隔离附件覆盖和关联作用；两帧GPU边界通过，完整十模型探索性对照随后执行。
+- [v6固定框裁剪Pose](research/POSE_FIXED_CROP_V6.md)：十模型完整结束，覆盖升至77.95%但全部轨迹相同，混合相对R3和同crop预训练均无提升；含实际权重/预测差异证据和下一轮约束。
 - [原Pose路线历史](research/POSE_PIPELINE_HISTORY.md)保存原阶段独有决策，不能当作今天的恢复命令。
 
 ## operations：维护与历史
