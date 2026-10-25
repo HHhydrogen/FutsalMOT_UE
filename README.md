@@ -46,6 +46,8 @@ UE配置、轨迹与收据位于本项目Saved物理目录；渲染媒体（含�
 
 [v8完整结果](Docs/research/LEARNED_ASSOCIATION_V8_RESULTS.md)已完成36臂、三比赛留一开发及实际预算核对：同3000R窗口、混合另1000S，pose_RS相对pose_R AssA+2.8034点、相对预训练ByteTrack+1.4727点，通过事前门槛；但仍低于motion_RS 4.3956点，不能将合成身份监督增益全部归于Pose。窗口不等于图像曝光、956个检测断档proxy不等于物理遮挡；测试116/187继续封存。
 
+当前[v9](Docs/research/POSE_QUALITY_RESIDUAL_V9.md)根据[缺点/噪声及拟真域差诊断](Docs/research/POSE_V9_DIAGNOSIS.md)，开展同真实预算的有界质量残差对照；以同容量运动残差和v8 motion_RS为双参考，纯真实及预训练参考均保留。唯一后台流程已启动，尚无完整效果结论；现有数据与球衣保持冻结。
+
 ## Git
 
 ```powershell

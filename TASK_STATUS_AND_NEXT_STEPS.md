@@ -4,6 +4,8 @@
 
 ## 当前主线结果
 
+- [v9只读诊断](Docs/research/POSE_V9_DIAGNOSIS.md)已完成：90项固定模型窗口报告、三场自由motion参考逐字节复现、144个同尺度人物crop域探针。缺点敏感度高于小抖动；颜色和成像域差明显，抽样两队球衣统计高度相似，但不能据此归因拟真不足或称关联器直接学颜色。源GT Pose仅用于合成投影诊断，不进入训练。
+- 新授权的[v9质量残差对照](Docs/research/POSE_QUALITY_RESIDUAL_V9.md)已冻结并唯一后台启动，权威状态为D研究根`pose/pose_quality_v9/control_a01/driver_state.json`。同3000R窗口/RS另1000S；主3分组×3fold×3seed×R/RS=54臂，探索4分组×3fold×事前首seed×R/RS=24臂。预取2和观测缓存，主对照先行；13项针对CPU检查及10次实际诊断更新通过，诊断不计正式预算。不重复启动或热改冻结源，尚无v9完整效果结论。
 - [v8完整结果](Docs/research/LEARNED_ASSOCIATION_V8_RESULTS.md)已收尾：36训练、42追踪/评价、实际进程退出及独立窗口/pair预算核对全部完成。36000更新、108000R/18000S窗口曝光，所有九个四组的实际R顺序/已知pair/初始化相同，两RS的S相同。预取真实闭合；全部训练约852秒。
 - 同真实预算pose_RS−pose_R宏均AssA/HOTA/IDF1为+2.8034/+2.1881/+2.9859点，达到事前门槛；相对预训练ByteTrack为+1.4727/+1.1678/+1.8433点。三个seed和比赛均差正，九单元8正1负，game9第三seed AssA−2.0417点；pose_RS仍在game9比赛均值低于预训练。
 - 关键限制：motion_RS最强，pose_RS相对它AssA低4.3956点；motion_RS−motion_R为+1.6816点。因此当前支持合成身份连续性监督的开发增益，尚不能称Pose特征优于运动线索。断档proxy恢复pose_R40.2371%→pose_RS45.3626%，仍低于motion_RS48.6053%。最终116/187封存，不自动开始新训练。
@@ -52,6 +54,6 @@
 
 ## 后续研究
 
-v8已完成，a02协议SHA为`779261f168c11b1ae1fd62f21c42cf96c69f2cfb626fff5b325a43bb1adebf27`，代码bundle为`e21e3ff1824bebec569c649d048de2a64195c348d13e18bee4d75f0c4aaf81d4`。下一阶段先做Pose缺点/坐标噪声、mask作用与自由历史误差分层，保留motion_RS强参考；候选mask-only和门控Pose残差另立协议，不据本轮开发结果声称新盲测，不自动训练。完整结果与计划见v8结果文档。没有新渲染。
+v8已完成且其跟进已删除。用户新授权的v9已独立冻结：协议`pose/pose_quality_v9/frozen_a01/protocol.json` SHA`a659c061af4187ee49da4526a5dd765c32d6b9acfec506ec0cc233a9707759b6`，bundle`f473bf25f8bd31fb3a48829207fd46487d90752f59ec10fb966342614a9fc948`。只继续唯一v9流程，完成后统一核对实际曝光和对照结果；不据旧开发集声称新盲测。没有新UE渲染，球衣多样性及成像退化的因果实验另立数据版本。
 
 未完成号码继续保留、不纳入当前数据或提交。每独立阶段报告真实完成证据，历史started_not_committed不当作当前故障，不重复启动已结束驱动。
