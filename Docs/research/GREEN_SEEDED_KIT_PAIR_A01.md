@@ -26,6 +26,8 @@
 
 新数据完成发布和实际安全退出UE后，另冻结预测/训练准入。主比较只改变服装经预测Pose进入关联器的输入：固定旧v9的S框、窗口UID和身份标签，同PT Pose模型与crop规则分别提取新A/B的Pose；R缓存完全不变。映射要依实际seed、源时间和相机核对，不能凭目录名伪造对应。若无法严格对应，先建立一致的新控制，不把不等输入的旧结果当公平基线。
 
+独立预测候选为`tools/research_ops/green_kit_prediction_cache.py`。它只复用冻结的v8裁剪Pose数值函数，不运行检测器；先验证16单位/发布SHA/全部正常退出/EXR退休及实际无UE进程，再允许新D研究bundle和显式配置SHA执行。A/B每帧保留原检测框、score、UID及顺序，拒绝丢弃预测或回填旧Pose；只读新G成品，预取2，不写裁剪图。4项CPU门禁/固定框检查已通过；当前尚未安装执行bundle、签预测配置或运行新绿色GPU推理，不能称该入口已通过端到端验证。
+
 渲染期间已独立构建`grf_ue_bridge.green_kit_pair_inputs.replace_synthetic_pose`：仅替换旧S记录的`xy_px/geometry_valid`，强制1000唯一窗口，框/score/时间/尺寸/UID、候选标签及顺序保持，缺新预测直接拒绝而不回填旧Pose；1102和test不能进入S池。5项CPU检查及真实旧池的零变化自检通过：1000窗口、5431唯一观测、4791候选pair、2758已知标签pair完整保留。自检仅用旧观测自身验证契约，没有新绿色预测或模型更新。历史UID含blue是逻辑对应键，不能冒充实际图像来源；绿色图片及模型身份必须另由预测manifest明确绑定。收据为`Saved/ResearchBuild/green_pose_pool_CPU_a01.json`，实际绿色A/B池尚未生成。
 
 固定检测的帧对应另由`plan_green_frames`登记：缓存中的第一帧检测UID含`000001`（一基frame_number），图片却为`000000.png`（零基frame_index）；必须按显式帧字段映射，不能从UID猜文件名。3项CPU检查和真实旧四机位1200帧、13199检测的对应规则检查通过，A/B固定框链相同，旧Pose字段不传给新推理。该检查仅使用待发布组结构模板，没有验证新绿色文件存在或生成Pose；待真正发布后仍需绑定实际组/图片来源与模型。小收据为`Saved/ResearchBuild/green_frame_correspondence_CPU_a01.json`。
