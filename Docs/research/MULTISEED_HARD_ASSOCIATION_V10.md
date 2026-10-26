@@ -28,6 +28,8 @@ CPU收据在`Saved/ResearchBuild/v10_motion_sources_a01/manifest.json`。前缀�
 
 完整阶段为12个单机位单位，共3600RGB/mask/36000Pose。分阶段准入由`freeze_multiseed_v10.py`默认只读、显式冻结，消费上述根短样验收。沿用已验串行采集→本次正常quit→6CPU后处理→精确退休EXR，12线程/队列8不变；禁止渲染/导出加速工作。媒体只在G Dataset独立版本，D Saved只元数据。短样通过不等完整采集或训练完成，完整批仍按实际state和收据判定。
 
+完整批已于14:54:56唯一启动，权威状态为`Saved/AppearancePlanning/multiseed_v10_a01/control_full_a01/state.json`。独立发布候选`tools/appearance/publish_multiseed_v10.py`已通过4项纯CPU元数据夹具：十二单位同卷移动和原索引字节保留、非exact world如实报告、活动控制器拒绝、world篡改在移动前拒绝、未知partial不重放。夹具没有生成正式媒体或训练更新，尚未实际发布。只能在十二单位全部完成、每次正常退出/EXR退休且真实控制器退出后，先运行默认只读计划，再显式`--publish`，目标为`G:/FutsalMOT_Dataset/v4_pose17_multiseed_green_a01`。发布对每seed四条world流各读一次，保留所有机位原值、实际view及来源SHA；不重读巨大的原生明细、不审计媒体像素、不复制4K。intent/逐项移动journal/complete及独立relocation保留历史来源路径，发布仍不等训练准入。
+
 ## 公平窗口与方法对照
 
 计划两个新S采样池：四运动seed平衡采样；同源下增加交叉/实际检测断档的困难采样。每池1000唯一窗口、每seed250，实际标签/pair另计。先从固定预测与GT标签登记事件，再冻结具体配额；不足时如实报告，不能复制UID填额、把请求的时间间隔称检测缺失，或按下游分数补样。受控历史缺点若采用则另标干预，不冒称自然遮挡。
