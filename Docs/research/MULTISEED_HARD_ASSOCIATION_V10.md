@@ -34,6 +34,8 @@ CPU收据在`Saved/ResearchBuild/v10_motion_sources_a01/manifest.json`。前缀�
 
 共享预测的CPU来源契约`tools/research_ops/v10_prediction_inputs.py`已通过4项针对检查，并实际读取既有1048绿色B组及两场val的索引：6源/2325帧计划可生成，首尾图片存在；没有解码、运行模型或生成新预测。完整目标是四seed×四cam的4800合成帧，加1125验证帧，共18源5925帧。每个绿色来源均重新运行同一冻结PT原图检测，旧1048蓝框缓存不复用。新序列UID命名不带旧blue；`frame_index`零基、`frame_number`一基、PNG零基、JPEG一基分别明确，原运动源帧与源时间另存，不能以本地序列时间覆盖源偏移。进入模型的帧元数据不含GT身份/框/Pose，合成标签和真实GT引用只供预测完成后的身份标签或评价。三个新增运动组仍在完整采集中，此候选不等全部新图绑定、预测准入或GPU完成；收据为`Saved/ResearchBuild/v10_prediction_inputs_CPU_a01.json`。
 
+独立模型执行候选`tools/research_ops/v10_prediction_cache.py`另有5项CPU检查通过：完整十二单位/源限制门禁、实际进程身份/PID复用、原检测截边与顺序、缺Pose拒绝且无效Pose保留、显式配置SHA不符时拒绝。它绑定原v8检测参数及冻结裁剪Pose函数/预取字节，先独占新输出再加载模型，异常保留partial和失败收据；不回填旧Pose、不按GT筛检测。尚未安装新的D执行bundle、冻结`v10_shared_prediction_config_v1`或运行真实GPU/端到端预飞。必须等本次完整发布和UE实际退出，配置绑定新旧成品/发布/最终采集、新比赛下载/解码/独立身份验收及原PT数值来源，默认只读预飞后再显式`--execute --config-sha256`。5项CPU通过不等5925帧预测已完成或训练已获准入；收据为`Saved/ResearchBuild/v10_prediction_cache_CPU_a01.json`。
+
 计划两个新S采样池：四运动seed平衡采样；同源下增加交叉/实际检测断档的困难采样。每池1000唯一窗口、每seed250，实际标签/pair另计。先从固定预测与GT标签登记事件，再冻结具体配额；不足时如实报告，不能复制UID填额、把请求的时间间隔称检测缺失，或按下游分数补样。受控历史缺点若采用则另标干预，不冒称自然遮挡。
 
 每池分别训练强v8 motion、v9同名义参数motion_residual、v9 gated Pose。三原开发fold×三训练seed×三方法×两池，计划54个新RS，每臂1000实际更新、完全相同3000R窗口同序、另1000S；FP32 AdamW lr0.001/wd0.0001、独立meanR+meanS/3、预取2、last1000，不选best。总计划54000更新/162000R/54000S窗口，不是独立图像数或等计算预算。
