@@ -38,6 +38,8 @@
 
 新的`green_kit_runtime/train/track/metric/control/analyze/budget_audit.py`采用独立绿色协议、checkpoint和追踪身份，只读复用冻结v9的gated网络、特征/门控、无状态增强、Cache和domain loss，不冒充旧v9模型。18组按三fold×三seed×A/B登记，每组1000更新/3000R/1000S、FP32 AdamW及预取2、last无best；只在完整新准入和真实只读预飞通过后启动。六项CPU检查覆盖曝光链/实际UID顺序、额外S拒绝和不能用宏均掩盖负seed或HOTA下降；它们不替代实际训练、追踪及TrackEval验收。
 
+新训练已实际冻结并启动。九文件bundle为`60709c29618cb72451aa859877dc0010a8bace963515bcb9474ad8c2e3bed745`；研究根`pose/green_seeded_kit_pair_a01/frozen_a01/protocol.json` SHA `d3489aa5922ab07e102915e27cc593834a2842f81b1eb94b10efa74fe860d5bb`，限定准入SHA `c1580537df6b2e97ba1a4c4235b99031f204b003e43711a0725d85bf720ae1e0`。完整18上下文真实预飞通过，唯一控制器按原矩阵运行；首A组已实际完成1000更新、3000R/1000S及750帧自由追踪、TrackEval和原断档proxy评价。其余仍在运行，完成以`control_a01/driver_state.json`的18训练/18追踪和完整分析为准，随后进程退出后再独立实际预算核对；不据首组结果选择配色或方法。
+
 渲染期间已独立构建`grf_ue_bridge.green_kit_pair_inputs.replace_synthetic_pose`：仅替换旧S记录的`xy_px/geometry_valid`，强制1000唯一窗口，框/score/时间/尺寸/UID、候选标签及顺序保持，缺新预测直接拒绝而不回填旧Pose；1102和test不能进入S池。5项CPU检查及真实旧池的零变化自检通过：1000窗口、5431唯一观测、4791候选pair、2758已知标签pair完整保留。自检仅用旧观测自身验证契约，没有新绿色预测或模型更新。历史UID含blue是逻辑对应键，不能冒充实际图像来源；绿色图片及模型身份必须另由预测manifest明确绑定。收据为`Saved/ResearchBuild/green_pose_pool_CPU_a01.json`，实际绿色A/B池尚未生成。
 
 固定检测的帧对应另由`plan_green_frames`登记：缓存中的第一帧检测UID含`000001`（一基frame_number），图片却为`000000.png`（零基frame_index）；必须按显式帧字段映射，不能从UID猜文件名。3项CPU检查和真实旧四机位1200帧、13199检测的对应规则检查通过，A/B固定框链相同，旧Pose字段不传给新推理。该检查仅使用待发布组结构模板，没有验证新绿色文件存在或生成Pose；待真正发布后仍需绑定实际组/图片来源与模型。小收据为`Saved/ResearchBuild/green_frame_correspondence_CPU_a01.json`。
