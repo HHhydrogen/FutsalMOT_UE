@@ -2,17 +2,19 @@
 
 更新：2026-10-26。历史过程见Git及对应运行收据；本页不保留过期PID流水。
 
-## 正在推进的下一阶段
+## v10已完成与当前状态
 
 - 用户已授权[独立运动/困难事件v10](Docs/research/MULTISEED_HARD_ASSOCIATION_V10.md)，以强motion_RS为主要参照，全部同3000R窗口和已有预取，最终测试封存。此前“仅方案不自动执行”已由新授权覆盖，但旧批仍不重启。
 - v10完整12单位已实际全部结束并发布`G:/FutsalMOT_Dataset/v4_pose17_multiseed_green_a01`：3600RGB/mask、36000人物Pose、900源时间样本，3600EXR共144520931344字节已退休；最后UE本次15:59:36正常退出，采集控制器与全部UE已不存在。root dataset SHA为`1b7386b4275b3101a1a4a4a9e68d360b618b29d72db0dc66873ebdab36a3e251`，与发布complete一致。本完整批world逐值相同/max0，短样7.0251毫米差异的历史及未知根因保留，不升级物理可见性或同步声明。根收据`Saved/AppearancePlanning/multiseed_v10_a01/full_acceptance_root.json`。
 - 共享预测18源/5925帧已实际全部完成且进程退出：4800合成帧54875个raw检测，1125验证帧19090个raw检测，几何规则通过数分别26474/14346，不是准确率。权威`shared_inputs_a01/manifest.json`及根收据`Saved/ResearchBuild/v10_prediction_complete_root_a01.json`已闭合；不重复预测，R缓存不改，测试封存。
 - 两个S池已实际构建并独立核对：balanced/hard_enriched各1000唯一窗口，四运动seed各250、80格配额相同。自然检测缺失窗口0/26，实例框重叠窗口205/996；已知pair分别2799/3236，不能声称池间等pair或等计算。全部874个合成自然缺失proxy事件保留独立账本，不当物理遮挡。根收据`Saved/ResearchBuild/v10_pools_complete_root_a01.json`。
 - 54臂完整记录训练已全部结束、相关进程实际退出，独立核对54000更新/162000R/54000S窗口及1134份模型/优化器/完整RNG检查点全部通过。实际R all/known pair为608040/469476，S为458676/162945；同池三方法及跨池原R顺序/初始化一致，6诊断更新另计，重放0。`postrun_audit_a01/actual_budget.json`为完整预算，原训练协议/源码不再运行或改写。
-- 当前唯一后台为独立v10的253项CPU自由追踪/评价，17:33:28启动，权威`D:/projects/FutsalMOT_Research/pose/multiseed_v10_a01/tracking_control_a01/driver_state.json`。追踪配置SHA `f85e69bc2a50220528a2caf42243ee940768cc0a60a4fa845eab2d7c7da27ef1`、七文件bundle `f3098416f1d5d8063de9d2ffcaaea70e5e23e481a6b5ec96868a16acc7349ab7`不热改。五场两种PT参考共10项已通过真实评价/ID0/预测行数门禁，随后162新RS和81纯R对照继续；全部253项及自动分析/进程退出后才报告效果。GPU禁用，不打开UE、不另起追踪。
+- 253项CPU自由追踪/评价及自动分析18:05:04已全部结束，真实CIM确认控制器、子进程和UE退出；终态`complete253_tracking_and_analysis`。最终独立核验全部253项MOT/评价来源、50组配对及事前分母通过，`final_verification_a01/receipt.json`为完成链。不再启动本轮训练、追踪或采集。
+- [v10完整结果](Docs/research/POSE_V10_RESULTS.md)：两新比赛上gated−强motion_RS AssA为balanced −0.0417点、hard +0.2110点，均未过登记+0.5点联合门槛。困难池2/3 seed及两场均值为正，仍有6/18单元下降；困难池gated绝对分数还低于balanced 0.0639点。不能把相对motion转正说成困难采样令Pose变强。
+- 同3000R下gated混合−纯R AssA为+0.2567/+0.1927点，相对PT bbox为+5.9712/+5.9073点，但未证明Pose可靠增量、合成等价真实或物理遮挡恢复。完整54,000步、1,134份完整检查点、全部253项评价与论文CSV/PNG/PDF已保存，全部负结果和最终测试封存边界保留。
 - 新比赛扩域仅替换原tracker一条帧域AST守卫，实际sequence/game不改名，其余数值AST相同；原750帧PT bbox/static/learned三个模式逐输出及audit完全一致。6项CPU检查覆盖真实TrackEval合法ID0、未匹配预测保留及汇总Count边界。五场可信断档proxy结果前登记1353事件（旧956、新397），与合成874个“无任何raw框”事件定义不同，不称物理遮挡；所有事件为评价分母。
 - 三个新增运动1042 `[152,452)`、1044 `[383,683)`、1131 `[565,865)`的36RGB/mask/360Pose短样已实际完成并根视觉验收，原seed球衣逐帧读回/恢复通过，36EXR共1454751354字节已退休，所有相关进程退出。根验收`Saved/AppearancePlanning/multiseed_v10_a01/short_acceptance_root.json`。1044的R0跨机位关节world最大差7.0251毫米（投影最大1.2334像素），根变换相同、具体成因未证；原值保留，限定逐视角身份研究，不称同步多视角Pose真值。完整12单位沿用串行正常退出/导出/清EXR；终态以`control_full_a01/state.json`为准，目标3600RGB/mask/36000Pose，不把短样通过当整批完成。源轨迹proxy9/5/6不冒称真实图像交叉或物理遮挡。
-- 新比赛不能只换原game4/6/9片段。SportsMOT事前固定Dortmund–Schalke450帧及Norwich–Ipswich675帧，实际身份已与旧三场核验；1125帧下载及逐图解码/GT格式验收完整结束，进程已退出。`D:/projects/FutsalMOT_Research/public/sportsmot_val_v10_a01/decode_validation_a01.json`为输入验收，GT身份0合法；共享预测现已完成、尚未追踪评价；新比赛没有新增R训练曝光，测试未读。
+- 新比赛不能只换原game4/6/9片段。SportsMOT事前固定Dortmund–Schalke450帧及Norwich–Ipswich675帧，实际身份已与旧三场核验；1125帧输入/解码/GT/共享预测及全部评价均已完整结束，ID0保留，无新增R训练曝光。当前两场已成为开发验证，不称最终盲测，最终测试未读。
 - 用户要求所有后续训练全过程留存。[记录规范](Docs/operations/TRAINING_RECORDS.md)已真正接入v10逐步loss/Rloss/Sloss、LR、梯度范数、耗时、R/S UID/epoch/all及known pair/曝光链，0/每50/1000完整模型+优化器+Python/NumPy/TorchCPU/CUDA RNG及原stdout/stderr。首正式1000步端到端验收通过，收据`control_a01/first_run_end_to_end_gate.json`；硬崩溃超last不猜步重放。绿色旧18臂的历史缺失字段仍明确缺失，不补造。
 
 ## 当前主线结果
@@ -83,6 +85,6 @@
 
 ## 后续研究
 
-v8/v9及绿色球衣完整配对/同预算对照已全部闭合。后续按用户新授权推进v10独立运动/困难事件及未观察比赛，当前来源准备和完整记录已开展，新渲染/预测/训练尚未开始。先完成数据与验证来源再冻结预算和执行准入，不根据原三场继续选色调参；不重启旧批或安排渲染/导出性能开发。最终测试始终封存。
+v8/v9、绿色球衣及v10完整采集、预测、同预算训练/真实追踪/独立核对现均已闭合。下一阶段可先做固定权重/输入下的Pose候选决策诊断，再另立明确方法或数据干预协议；当前没有自动续训或重渲染授权范围内的待执行批次。保留全部负结果，不根据原三场继续选色调参，不重启旧批或安排渲染/导出性能开发。最终测试始终封存。
 
 未完成号码继续保留、不纳入当前数据或提交。每独立阶段报告真实完成证据，历史started_not_committed不当作当前故障，不重复启动已结束驱动。
