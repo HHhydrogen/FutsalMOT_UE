@@ -40,6 +40,8 @@
 
 新训练已实际冻结并启动。九文件bundle为`60709c29618cb72451aa859877dc0010a8bace963515bcb9474ad8c2e3bed745`；研究根`pose/green_seeded_kit_pair_a01/frozen_a01/protocol.json` SHA `d3489aa5922ab07e102915e27cc593834a2842f81b1eb94b10efa74fe860d5bb`，限定准入SHA `c1580537df6b2e97ba1a4c4235b99031f204b003e43711a0725d85bf720ae1e0`。完整18上下文真实预飞通过，唯一控制器按原矩阵运行；首A组已实际完成1000更新、3000R/1000S及750帧自由追踪、TrackEval和原断档proxy评价。其余仍在运行，完成以`control_a01/driver_state.json`的18训练/18追踪和完整分析为准，随后进程退出后再独立实际预算核对；不据首组结果选择配色或方法。
 
+独立CPU队内/跨队输入诊断已完成，未改活动九文件或使用GPU。`green_kit_team_probe.py`复用原固定检测与GT身份/框匹配，仅用于事后分层，不把GT Pose或队伍身份输入模型。原4791个候选出现次数完整保留：同身份正例833、同队负例775、跨队负例1150、未知2033；不是4791个独立人物。三类已知候选的A/B共同有效肢体点平均差约0.77/0.83/0.90像素，几何有效比例并未一致提高；未知候选差约4.08像素。该报告是合成训练候选上的输入诊断，几何通过率不等准确率，不据此推断真实追踪队内/跨队收益。3项CPU分类/零有效点分母/尺度检查通过，实际报告位于研究根`pose/green_seeded_kit_pair_a01/team_diagnostic_a01/report.json`，三文件独立bundle为`23cbae000a558dacb05a3a068819025039a7505ef45aa570025bd6c5a6e494bd`。
+
 渲染期间已独立构建`grf_ue_bridge.green_kit_pair_inputs.replace_synthetic_pose`：仅替换旧S记录的`xy_px/geometry_valid`，强制1000唯一窗口，框/score/时间/尺寸/UID、候选标签及顺序保持，缺新预测直接拒绝而不回填旧Pose；1102和test不能进入S池。5项CPU检查及真实旧池的零变化自检通过：1000窗口、5431唯一观测、4791候选pair、2758已知标签pair完整保留。自检仅用旧观测自身验证契约，没有新绿色预测或模型更新。历史UID含blue是逻辑对应键，不能冒充实际图像来源；绿色图片及模型身份必须另由预测manifest明确绑定。收据为`Saved/ResearchBuild/green_pose_pool_CPU_a01.json`，实际绿色A/B池尚未生成。
 
 固定检测的帧对应另由`plan_green_frames`登记：缓存中的第一帧检测UID含`000001`（一基frame_number），图片却为`000000.png`（零基frame_index）；必须按显式帧字段映射，不能从UID猜文件名。3项CPU检查和真实旧四机位1200帧、13199检测的对应规则检查通过，A/B固定框链相同，旧Pose字段不传给新推理。该检查仅使用待发布组结构模板，没有验证新绿色文件存在或生成Pose；待真正发布后仍需绑定实际组/图片来源与模型。小收据为`Saved/ResearchBuild/green_frame_correspondence_CPU_a01.json`。
