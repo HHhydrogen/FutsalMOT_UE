@@ -22,7 +22,11 @@ CPU收据在`Saved/ResearchBuild/v10_motion_sources_a01/manifest.json`。前缀�
 
 真实UE已创建并保存12个全新源Sequence，范围分别为`[0,452)`、`[0,683)`、`[0,865)`，捕获仍为登记的300帧子窗。`Saved/AppearancePlanning/multiseed_v10_a01/P2_sources_prepare.json`记录每轴关键帧、速度轨道、CameraCut和资产SHA，原地图/canonical Sequence/15Actor不变；建源Editor本次14:33:23正常Exiting/closed并确认进程退出。此证据只证明源已构建，不等动态短样验收。
 
-短样为三seed×四cam×3帧，共36RGB/mask/360人物Pose；完整为12个单机位单位，共3600RGB/mask/36000Pose。分阶段准入由`freeze_multiseed_v10.py`默认只读、显式冻结；完整阶段必须消费根视觉短样验收。沿用已验串行采集→本次正常quit→6CPU后处理→精确退休EXR，12线程/队列8不变；禁止渲染/导出加速工作。媒体只在G Dataset独立版本，D Saved只元数据。新的P2与导出身份分支仍须实际短样闭环，不能把CPU检查当端到端通过。
+三seed×四cam×3帧短样已真实完成，共36RGB/mask/360人物Pose。根agent已逐一查看三张四机位及四角色总览：1042外场白/红、1044黑/红、1131黄/红，门将按原四role独立分配，草地分别冷绿/深绿/暖绿。原生逐帧材质读回、mesh、相机、地板与角色恢复通过；36EXR共1454751354字节消费后退休，最后UE本次14:42:02正常退出，控制器及消费者均已退出。`Saved/AppearancePlanning/multiseed_v10_a01/short_acceptance_root.json`保存限定用途的根验收；视觉检查不等Pose准确率或物理可见性验证。
+
+短样的独立机位world并非全都逐值一致：1042最大差0.0171毫米，1044为7.0251毫米，1131为0。1044差异局限于源帧383–385的R0关节姿态：actor/visual根变换、warmup计数及帧内采样版本相同，但bone/refToLocal不同；具体成因未证实。将差异投到实际相机，最大约1.2334像素。保留各机位原值，不平均、不改写为exact。当前准入仅用于逐视角身份/实例框监督，关联器不输入投影GT Pose，也不融合跨机位3D；不能据此声称同步多视角Pose真值。完整数据发布需如实汇总该差异，不套用旧A/B工程阈值伪装配对一致。
+
+完整阶段为12个单机位单位，共3600RGB/mask/36000Pose。分阶段准入由`freeze_multiseed_v10.py`默认只读、显式冻结，消费上述根短样验收。沿用已验串行采集→本次正常quit→6CPU后处理→精确退休EXR，12线程/队列8不变；禁止渲染/导出加速工作。媒体只在G Dataset独立版本，D Saved只元数据。短样通过不等完整采集或训练完成，完整批仍按实际state和收据判定。
 
 ## 公平窗口与方法对照
 
