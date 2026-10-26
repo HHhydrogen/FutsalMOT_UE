@@ -35,6 +35,7 @@
 - [v9主54臂阶段结果](research/POSE_V9_MAIN54_STAGE.md)为历史中期报告，后续探索和实际预算均已闭合，以完整结果为准。
 - [v9完整结果](research/POSE_V9_RESULTS.md)：78臂及实际预算已闭合；混合−纯R AssA+0.8867点，但对同名义参数motion仅+0.1459、对强motion−0.4491点，未过Pose增量门槛。
 - [绿色草地/原seed球衣配对](research/GREEN_SEEDED_KIT_PAIR_A01.md)和[18臂完整结果](research/GREEN_SEEDED_KIT_RESULTS_A01.md)：采集、固定框预测、训练/追踪和实际预算均闭合；B−纯R AssA+1.1078、B−PT bbox+5.6404点，B−强motion−0.2279、B−A−0.0102点，保留全部负结果，测试封存。
+- [独立运动与困难关联v10](research/MULTISEED_HARD_ASSOCIATION_V10.md)：新增运动源、困难事件和未观察比赛验证；当前是事前意图与CPU来源准备，不是渲染/训练通过。
 - [原Pose路线历史](research/POSE_PIPELINE_HISTORY.md)保存原阶段独有决策，不能当作今天的恢复命令。
 
 ## operations：维护与历史
@@ -43,6 +44,7 @@
 - [统一运行与维护](operations/RUNNING_AND_MAINTENANCE.md)：本机路径、启动器和历史入口边界。
 - [严格存储与EXR清理](operations/STORAGE_POLICY.md)：G盘媒体边界、D研究执行bundle及成功后定向清理。
 - [后续训练性能](operations/TRAINING_PERFORMANCE.md)：实际吞吐观察、有界预取、硬件余量及新协议边界。
+- [训练全过程与论文证据](operations/TRAINING_RECORDS.md)：每步曝光/损失、定期完整检查点、历史缺失字段及论文CSV/曲线。
 - [根目录文件用途](operations/ROOT_FILES.md)：必须保留的入口、旧OpenCode配置和可再生IDE索引。
 - [UE手动启动修复](operations/UE_STARTUP_REPAIR_20261025.md)：最近项目自动恢复导致的模块搜索问题与明确项目启动入口。
 - [单仓库迁移记录](operations/SINGLE_REPOSITORY_MIGRATION_20261025.md)。原双仓库/备份建议为历史，不授权补建用户已删除的备份。

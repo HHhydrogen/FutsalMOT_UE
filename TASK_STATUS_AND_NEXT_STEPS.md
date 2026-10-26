@@ -2,6 +2,13 @@
 
 更新：2026-10-26。历史过程见Git及对应运行收据；本页不保留过期PID流水。
 
+## 正在推进的下一阶段
+
+- 用户已授权[独立运动/困难事件v10](Docs/research/MULTISEED_HARD_ASSOCIATION_V10.md)，以强motion_RS为主要参照，全部同3000R窗口和已有预取，最终测试封存。此前“仅方案不自动执行”已由新授权覆盖，但旧批仍不重启。
+- 三个新增运动源CPU已绑定并准备：1042 `[152,452)`、1044 `[383,683)`、1131 `[565,865)`，复用原seed球衣、七模型与四相机，完整原始轨迹SHA保持；根轨迹交叉proxy分别9/5/6个，不冒称图像交叉或检测断档。`Saved/ResearchBuild/v10_motion_sources_a01/manifest.json`只是CPU来源收据，新UE契约/短样/渲染尚未开始。
+- 新比赛不能只换原game4/6/9片段。SportsMOT固定镜像与官方45条val清单一致，事前规则选定Dortmund–Schalke450帧及Norwich–Ipswich675帧；源标题/首帧记分牌与旧三场画面对照已核验。唯一下载输入任务正在补齐1125帧，`D:/projects/FutsalMOT_Research/public/sportsmot_val_v10_a01/download_a01/state.json`为权威；尚未预测/评价，也没有新增R训练曝光，测试未读。
+- 用户要求所有后续训练全过程留存。[记录规范](Docs/operations/TRAINING_RECORDS.md)与新记录循环已实现候选，4项CPU契约和实际Torch零更新检查点读回通过；新一轮1000步端到端接入尚待验证。绿色旧18臂实际18000步已导出`D:/projects/FutsalMOT_Research/pose/green_seeded_kit_pair_a01/paper_training_archive_a01`，包含原始CSV、全部seed损失PNG/PDF和缺失字段说明；原日志不改，历史未留的中间权重/RNG不补造。
+
 ## 当前主线结果
 
 - 绿色短样已根验收：8组96RGB/mask、960人物Pose（48主A/B+48颜色检查，6源时间样本），三张总览已实际查看，原seed两队/门将配色及原草地纹理正确。相机和world配对逐值一致、最大差0，检查的中帧mask差0，不冒称全部RGB像素/物理可见性。96EXR共3883119675字节已精确退休，所有短样UE/导出/控制器真实退出。验收为`Saved/AppearancePlanning/green_seeded_kit_a01/short_acceptance_root.json`。
@@ -70,6 +77,6 @@
 
 ## 后续研究
 
-v8/v9及绿色球衣完整配对/同预算对照已全部闭合。本轮支持合成身份连续性监督相对纯R的开发增益，但未证明换球衣的增量或Pose超过强motion_RS。后续方案优先独立运动seed/困难交叉与检测断档覆盖、未观察的官方train比赛验证，以强motion_RS为主要参照；先冻结预算，不根据这三场继续选色调参。噪声/模糊另作独立因素。方案尚未自动执行，不重启旧批或安排渲染/导出性能开发；最终测试始终封存。
+v8/v9及绿色球衣完整配对/同预算对照已全部闭合。后续按用户新授权推进v10独立运动/困难事件及未观察比赛，当前来源准备和完整记录已开展，新渲染/预测/训练尚未开始。先完成数据与验证来源再冻结预算和执行准入，不根据原三场继续选色调参；不重启旧批或安排渲染/导出性能开发。最终测试始终封存。
 
 未完成号码继续保留、不纳入当前数据或提交。每独立阶段报告真实完成证据，历史started_not_committed不当作当前故障，不重复启动已结束驱动。
