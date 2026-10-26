@@ -30,12 +30,18 @@ def _sha(value: str, field: str) -> str:
     return value
 
 
-def select_floor_id(seed: int) -> str:
+def select_floor_id(seed: int, *, catalog: Optional[tuple] = None) -> str:
     """独立哈希选择；可供 UE 预览使用，不伪造生产轨迹摘要。"""
     if isinstance(seed, bool) or not isinstance(seed, int) or not 0 <= seed <= 0x7fffffff:
         raise ValueError("seed 必须是 0 至 2147483647 的整数")
-    rank = _hash({"namespace": NAMESPACE, "seed": seed, "catalog_sha256": _hash(CATALOG)})
-    return CATALOG[int(rank, 16) % len(CATALOG)]["id"]
+    choices = CATALOG if catalog is None else catalog
+    if not isinstance(choices, tuple) or not choices:
+        raise ValueError("地板目录必须为非空 tuple")
+    ids = [item["id"] for item in choices]
+    if any(not isinstance(value, str) or not value for value in ids) or len(set(ids)) != len(ids):
+        raise ValueError("地板目录 ID 必须非空且唯一")
+    rank = _hash({"namespace": NAMESPACE, "seed": seed, "catalog_sha256": _hash(choices)})
+    return choices[int(rank, 16) % len(choices)]["id"]
 
 
 def build_floor_manifest(
