@@ -60,6 +60,18 @@ SoccerNet当前官方train的57条序列只有game4/6/9，三场均已观察；�
 
 ## 全过程记录与阶段完成
 
-全部新训练接入[训练全过程规范](../operations/TRAINING_RECORDS.md)，保留每步loss/LR/梯度/真实及合成UID与pair、0/每50/最终模型+优化器+完整RNG、环境、日志、全部评价及负结果。记录代码也纳入执行bundle和准入SHA；新控制器端到端验证尚待完成，不把CPU日志夹具当实际训练。
+全部新训练接入[训练全过程规范](../operations/TRAINING_RECORDS.md)，保留每步loss/LR/梯度/真实及合成UID与pair、0/每50/最终模型+优化器+完整RNG、环境、日志、全部评价及负结果。记录代码也纳入执行bundle和准入SHA。下述实际接入验证和首正式1000步已闭合，不能将它们替代全部54臂及追踪验收。
+
+## 共享预测、窗口与完整记录训练的实际状态
+
+18源5925帧预测已全部完成、实际进程退出，manifest SHA为`63d9e38e436f7749a25fbe69665b5fd912385fbf6d4ae5cfe2bc0cd46cee503d`。4800合成图共有54875个raw框、26474个几何规则通过；1125验证图共有19090个raw框、14346个几何规则通过。这些是覆盖统计，不是准确率，GT不参与检测/Pose推理或预测筛选。两场新比赛预测已完成，尚无追踪评价结果。
+
+两池已按事前规则真实构建，`pools_a01/complete.json`及根收据`Saved/ResearchBuild/v10_pools_complete_root_a01.json`已核对1000唯一UID、四seed各250及80格12/13配额。balanced/hard_enriched的自然gap窗口分别0/26、实例框重叠窗口205/996、全部pair为5143/11845、已知pair为2799/3236；全部874个自然检测缺失proxy事件另存，包含未选事件。池间监督pair预算不相等，同池三方法使用完全相同UID/标签/顺序；不将困难构成变化当模型收益。
+
+独立七文件训练bundle为`D:/projects/FutsalMOT_Research/code/3fe69befcd6c1aa3a552a55626c47b47c68af139409e77796893eb813ed5f02a`，新协议`training_frozen_a01/protocol.json` SHA为`2a1fa8ecd0b48993289c859ec6e83c36bf987e9d7de9ccf44820c4a86f7be575`。`v10_runtime.py`只读加载原冻结v9/v8数值，R池/标准化/质量尺度及3000R曝光表逐值复用，独立新身份不伪装v9。54臂从新初始化训练，不追加旧权重；27个纯R参考的来源/初始化/预算另绑定，历史记录缺项如实保留。
+
+正式前对强motion、同容量motion_residual及gated各执行原循环和记录循环的同一3R+1S CUDA更新，loss和所有模型张量逐值一致，完整优化器/RNG检查点读回通过。6次诊断更新另记，不计入54臂预算。正式唯一控制器17:03启动，首个正式1000步已通过独立加载及21份定期完整检查点逐项核验，`control_a01/first_run_end_to_end_gate.json`为`complete_first_formal1000_records_verified`，优化器重放0。
+
+训练仍按固定54矩阵继续，权威`control_a01/driver_state.json`；终态`complete_54_recorded_train_wait_independent_tracking`只代表训练闭合。逐步loss/Rloss/Sloss/LR/gradL2/耗时、真实及合成UID/epoch/all及known pair、链、每50步完整状态、环境和原stdout/stderr实际保存在D研究目录。追踪与新比赛评价使用独立后续协议，不热改活动七文件、预算、精度或源池。
 
 阶段依次报告：源/预算与新比赛登记；UE短样；完整采集/EXR退休/正常退出；共享预测/窗口；训练与实际预算；全部真实追踪与主比较。新数据或新场景没有收益也完整保留，不调测试、不挑seed/阈值/比例，不自动续训。
