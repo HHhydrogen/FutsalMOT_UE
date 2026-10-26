@@ -72,6 +72,18 @@ SoccerNet当前官方train的57条序列只有game4/6/9，三场均已观察；�
 
 正式前对强motion、同容量motion_residual及gated各执行原循环和记录循环的同一3R+1S CUDA更新，loss和所有模型张量逐值一致，完整优化器/RNG检查点读回通过。6次诊断更新另记，不计入54臂预算。正式唯一控制器17:03启动，首个正式1000步已通过独立加载及21份定期完整检查点逐项核验，`control_a01/first_run_end_to_end_gate.json`为`complete_first_formal1000_records_verified`，优化器重放0。
 
-训练仍按固定54矩阵继续，权威`control_a01/driver_state.json`；终态`complete_54_recorded_train_wait_independent_tracking`只代表训练闭合。逐步loss/Rloss/Sloss/LR/gradL2/耗时、真实及合成UID/epoch/all及known pair、链、每50步完整状态、环境和原stdout/stderr实际保存在D研究目录。追踪与新比赛评价使用独立后续协议，不热改活动七文件、预算、精度或源池。
+固定54矩阵现已全部完成，`control_a01/driver_state.json`为`complete_54_recorded_train_wait_independent_tracking`，实际训练进程已退出。独立`postrun_audit_a01/actual_budget.json`逐步核对54000更新/162000R/54000S窗口、1134份完整模型/优化器/RNG/曝光链，同池三方法S顺序及all/known pair一致，跨池原R与初始化一致。实际R all/known pair为608040/469476，S为458676/162945；6次诊断更新另计。首臂或全部训练闭合不代表追踪收益。
+
+逐步loss/Rloss/Sloss/LR/gradL2/耗时、真实及合成UID/epoch/all及known pair、链、每50步完整状态、环境和原stdout/stderr实际保存在D研究目录。训练原协议/源码/数据保留，后续追踪只读，不追加更新。
+
+## 五比赛真实自由追踪的独立准入
+
+`tracking_frozen_a01/config.json` SHA为`f85e69bc2a50220528a2caf42243ee940768cc0a60a4fa845eab2d7c7da27ef1`，独立七文件bundle为`f3098416f1d5d8063de9d2ffcaaea70e5e23e481a6b5ec96868a16acc7349ab7`。真实默认只读预飞后，17:33:28唯一启动`v10_tracking_control.py`，CPU执行/GPU禁用。完整矩阵253项：五场×PT_bbox/PT_static_pose共10参考；54个新RS各评价一个原heldout及两新比赛共162项；27个纯R模型同样各三场共81项。纯R实际加载原v8/v9完成模型/初始化/预算，来源引用新增更新0，历史记录缺失不补造。
+
+原tracker冻结SHA为`7f7196d9ac812b17ea94a909aaa057910ebecdfd10ee769a9ebe8b7f92759688`。新适配只以AST替换一条三比赛/750帧域守卫，显式准入真实五比赛及450/675/750帧；实际sequence/game原值不变，其余整棵数值AST保持相同。原750帧上PT_bbox、PT_static_pose和learned三个模式的全部输出及audit逐值相同，`tracking_numeric_validation_a01/receipt.json`为CPU实际证据，不读取新比赛追踪结果。原低分stage、候选、门槛和代价不变。
+
+`evaluation_inputs_a01/gap_registry.json`在新比赛追踪结果前已实际登记1353个可信断档事件，其中旧三场956、新两场397。采用原v8双向唯一IoU≥0.5可信端点、连续有效GT、缺2–29帧/端点间距≤30；可信匹配缺失可以包含raw歧义，与合成池“无任何raw框”874事件的自然缺失规则不同。全部注册事件作各序列分母，缺预测/歧义/换ID均计失败；不是物理遮挡恢复。
+
+新SportsMOT直接保留合法GT ID0，无伪造gameinfo；原三场仍按player/goalkeeper mark1口径，TrackEval1.3.0和`DO_PREPROC=False`保持，全部预测行保留。6项针对CPU检查含真实ID0/额外未匹配框夹具和单序列/COMBINED Count边界。先完成五场10项PT真实评价门禁再继续学习臂；10项现已通过，模型增量仍待全253项分析。终态必须`complete253_tracking_and_analysis`、253齐全、真实分析complete及控制器身份退出，不以进程存活/无报错冒充完成。
 
 阶段依次报告：源/预算与新比赛登记；UE短样；完整采集/EXR退休/正常退出；共享预测/窗口；训练与实际预算；全部真实追踪与主比较。新数据或新场景没有收益也完整保留，不调测试、不挑seed/阈值/比例，不自动续训。
