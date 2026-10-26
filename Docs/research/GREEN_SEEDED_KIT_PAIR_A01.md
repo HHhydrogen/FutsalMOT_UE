@@ -20,13 +20,19 @@
 
 全部单位完成、EXR退休且所有UE及控制器实际退出后，才同G卷发布到独立`G:/FutsalMOT_Dataset/v3_pose17_green_seeded_kit_pair_a01`。发布保留原unit小索引和消费收据bytes，写intent、逐项rename journal、配对元数据与relocation，未知partial拒自动重放。旧蓝、v1及已冻结研究不改。源diagnostic/not_training/MRQ_syncfalse及unknown限制继续保留，发布不自动获得训练资格。
 
-完整准入已实际冻结并通过只读预飞，首300帧单位已经提交。绿色专用发布工具为`tools/appearance/publish_green_kit_pair_a01.py`，默认只读，完整终态前拒绝；3项CPU夹具检查已过，尚未执行真实发布。它从manifest及真实capture_scope获取camera_id，不假造旧蓝控制器成功状态。world工程配对界限为1mm，仅作来源一致性的工程检查，仍分别报告实际exact与最大差，不是研究效用门槛。
+完整采集采用独立冻结准入。绿色专用发布工具为`tools/appearance/publish_green_kit_pair_a01.py`，默认只读，完整终态前拒绝；3项CPU夹具检查通过后才执行真实发布。它从manifest及真实capture_scope获取camera_id，不假造旧蓝控制器成功状态。world工程配对界限为1mm，仅作来源一致性的工程检查，仍分别报告实际exact与最大差，不是研究效用门槛。
+
+上述采集/发布现已真实完成：16单位4800RGB/mask、48000人物Pose，4800EXR全部退休；采集控制器及所有UE已退出，最后一次UE于2026-10-26 11:50:12正常Exiting/closed。同G卷rename发布到`v3_pose17_green_seeded_kit_pair_a01`，媒体复制0；dataset SHA为`fe640d58252cf621106afa819e8952f99cb5bc57269643a5545ecc15c4db96fb`，与`_publication_a01/complete.json`一致。单次stream比较八对world及实际相机逐值一致、最大差0，保留每cam原值，不升级为RGB像素exact或可见性证据。根验收为`Saved/AppearancePlanning/green_seeded_kit_a01/full_acceptance_root.json`。
+
+同一安全边界已精确退休旧失败a02的625份EXR、55136216798字节；625份RGB及原生/轨迹/校准/失败证据保留。事务位于`Saved/StoragePolicy/failed_blue_full_a02_retirement_a01/`，失败批不因清理而改成成功。不得重放该事务或已完成的绿色发布。
 
 ## 之后的公平实验
 
 新数据完成发布和实际安全退出UE后，另冻结预测/训练准入。主比较只改变服装经预测Pose进入关联器的输入：固定旧v9的S框、窗口UID和身份标签，同PT Pose模型与crop规则分别提取新A/B的Pose；R缓存完全不变。映射要依实际seed、源时间和相机核对，不能凭目录名伪造对应。若无法严格对应，先建立一致的新控制，不把不等输入的旧结果当公平基线。
 
-独立预测候选为`tools/research_ops/green_kit_prediction_cache.py`。它只复用冻结的v8裁剪Pose数值函数，不运行检测器；先验证16单位/发布SHA/全部正常退出/EXR退休及实际无UE进程，再允许新D研究bundle和显式配置SHA执行。A/B每帧保留原检测框、score、UID及顺序，拒绝丢弃预测或回填旧Pose；只读新G成品，预取2，不写裁剪图。4项CPU门禁/固定框检查已通过；当前尚未安装执行bundle、签预测配置或运行新绿色GPU推理，不能称该入口已通过端到端验证。
+独立预测入口为`tools/research_ops/green_kit_prediction_cache.py`。它只复用冻结的v8裁剪Pose数值函数，不运行检测器；先验证16单位/发布SHA/全部正常退出/EXR退休及实际无UE进程，再允许新D研究bundle和显式配置SHA执行。A/B每帧保留原检测框、score、UID及顺序，拒绝丢弃预测或回填旧Pose；只读新G成品，预取2，不写裁剪图。4项CPU门禁/固定框检查不等于端到端预测验收。
+
+实际绿色发布之后，已安装独立五文件预测bundle `3210f236ba131ddf3181a72f014b9665f853c1d75595c22722c87bcd3d0149f4`，原v8裁剪函数和预取源码直接取自冻结bundle，未改其数值。新预测配置SHA `06d05b024377d2d406abcaa2e0fab85da369181d921ad440c8c974ba575aa051`，来源/进程/2400帧映射只读预飞通过并唯一启动；权威启动收据为D研究根`pose/green_seeded_kit_pair_a01/_launch_prediction_a01/launch.json`。当前是新A/B预测阶段，正式训练更新0；只有`predictions_a01/manifest.json`实际完成且进程退出后才进入新训练冻结，不能把启动当成预测完成或服装收益。
 
 渲染期间已独立构建`grf_ue_bridge.green_kit_pair_inputs.replace_synthetic_pose`：仅替换旧S记录的`xy_px/geometry_valid`，强制1000唯一窗口，框/score/时间/尺寸/UID、候选标签及顺序保持，缺新预测直接拒绝而不回填旧Pose；1102和test不能进入S池。5项CPU检查及真实旧池的零变化自检通过：1000窗口、5431唯一观测、4791候选pair、2758已知标签pair完整保留。自检仅用旧观测自身验证契约，没有新绿色预测或模型更新。历史UID含blue是逻辑对应键，不能冒充实际图像来源；绿色图片及模型身份必须另由预测manifest明确绑定。收据为`Saved/ResearchBuild/green_pose_pool_CPU_a01.json`，实际绿色A/B池尚未生成。
 
