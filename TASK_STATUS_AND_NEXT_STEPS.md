@@ -7,7 +7,8 @@
 - 绿色短样已根验收：8组96RGB/mask、960人物Pose（48主A/B+48颜色检查，6源时间样本），三张总览已实际查看，原seed两队/门将配色及原草地纹理正确。相机和world配对逐值一致、最大差0，检查的中帧mask差0，不冒称全部RGB像素/物理可见性。96EXR共3883119675字节已精确退休，所有短样UE/导出/控制器真实退出。验收为`Saved/AppearancePlanning/green_seeded_kit_a01/short_acceptance_root.json`。
 - 完整绿色配对16单位已全部完成并同G卷发布：`G:/FutsalMOT_Dataset/v3_pose17_green_seeded_kit_pair_a01`，4800RGB/mask、48000人物Pose、600源时间样本。4800EXR消费后全部退休，所有采集UE及控制器已退出；最后一次UE日志2026-10-26 11:50:12正常Exiting/closed。单次world与实际相机元数据比较逐值一致、最大差0，不冒称RGB全像素或物理可见性。发布dataset SHA为`fe640d58252cf621106afa819e8952f99cb5bc57269643a5545ecc15c4db96fb`，根收据为`Saved/AppearancePlanning/green_seeded_kit_a01/full_acceptance_root.json`；不重启完整采集或重复发布。
 - 新A/B固定框Pose预测已完整结束且进程退出：2400帧，A/B各13199个相同检测、1000窗口/5431观测，非Pose窗口SHA一致；R缓存未变。几何有效检测A6998/B7000只是规则通过数，不是准确率或训练收益。manifest为研究根`pose/green_seeded_kit_pair_a01/predictions_a01/manifest.json`，根收据为`Saved/ResearchBuild/green_prediction_complete_root_a01.json`。
-- 新18RS训练/真实追踪已在独立绿色协议下唯一启动：研究根`pose/green_seeded_kit_pair_a01/control_a01/driver_state.json`为权威。三fold×三seed×A/B，每组1000实际更新/同3000R窗口/另1000S，原预取2、gated数值/初始化不变，last无best。协议SHA `d3489aa5922ab07e102915e27cc593834a2842f81b1eb94b10efa74fe860d5bb`，全部18上下文真实只读预飞通过；首组1000步及750帧追踪/TrackEval/断档链已实际完成。其余按冻结矩阵串行，不据中期结果调参，最终再独立预算核对并比较纯R、强motion_RS及两预训练参考；尚不预设收益。见[绿色球衣实验](Docs/research/GREEN_SEEDED_KIT_PAIR_A01.md)。
+- [绿色球衣18臂完整结果](Docs/research/GREEN_SEEDED_KIT_RESULTS_A01.md)已闭合：18训练/18追踪/分析、实际进程退出及独立预算核对全部通过，18000实际更新/54000R/18000S窗口，9组A/B初始化/UID顺序及全部/已知pair一致。B−纯R AssA/HOTA/IDF1为+1.1078/+0.7291/+1.1740点，B−PT bbox为+5.6404/+4.1638/+6.6677点；但B−强motion_RS为−0.2279/−0.1582/−0.1829点，B−A为−0.0102/−0.0121/−0.0789点。球衣额外收益和Pose超越运动均未证明；B−纯R仍有3/9单元下降，B−PT有1/9下降，不报全情形稳超。模型为固定PT感知下新学身份关联器，不是新Pose头准确率提升。测试封存，不重启本轮或自动加训。
+- 队内/跨队独立CPU诊断也已完成：4791合成固定候选中同身份833、同队负775、跨队负1150、未知2033全部保留；几何覆盖未一致提高，共同有效点A/B差约0.77–0.90像素。这不是实际追踪分队收益或Pose准确率。全结果及局限以前述完整报告为准。
 - 旧失败蓝批的625份EXR已在绿色发布且所有UE退出后按精确清单退休55136216798字节；625份RGB及native/轨迹/校准/失败收据保留，不虚构旧后处理成功。完成收据为`Saved/StoragePolicy/failed_blue_full_a02_retirement_a01/completion_receipt.json`，不重放删除。
 - 最新指令：取消专门的渲染/导出加速开发和性能基准，已有未接入候选保留为停止使用的WIP，不作为实验前置。直接推进绿色材质短样、原seed球衣同运动/相机完整配对和同3000R预算对照。采用已验串行单机位采集→正常退出→后处理→精确清EXR；训练继续用已有预取，测试封存。
 - 最新方向按用户要求转为[原版绿色及有限变化](Docs/engineering/GREEN_FLOOR_VARIATION.md)，蓝/红保留诊断，不继续旧蓝批作为下一轮主训练。原实例仅`Param`标量、无颜色vector；已通过真实UE在全新GreenV1创建复制父图和五个实例，增益/原标量逐项读回、原图及非BaseColor连接保留、源文件SHA不变、无材质编译报错，未改地图且正常退出。下一步实际绿色短样验收，再完整采集；材质参数通过不等视觉/采样通过。颜色与纹理/粗糙度不同时变，沿用原floor seed算法，序列内固定。
@@ -69,6 +70,6 @@
 
 ## 后续研究
 
-v8/v9已全部闭合。继续原seed球衣接回后的绿色草地配对，先新材质短样，再完整采集/发布和同预算训练；不再安排渲染/导出性能开发，不启动旧蓝批或改旧冻结协议。噪声/模糊另作独立因素，不据已观察开发比赛声称新盲测；测试始终封存。
+v8/v9及绿色球衣完整配对/同预算对照已全部闭合。本轮支持合成身份连续性监督相对纯R的开发增益，但未证明换球衣的增量或Pose超过强motion_RS。后续方案优先独立运动seed/困难交叉与检测断档覆盖、未观察的官方train比赛验证，以强motion_RS为主要参照；先冻结预算，不根据这三场继续选色调参。噪声/模糊另作独立因素。方案尚未自动执行，不重启旧批或安排渲染/导出性能开发；最终测试始终封存。
 
 未完成号码继续保留、不纳入当前数据或提交。每独立阶段报告真实完成证据，历史started_not_committed不当作当前故障，不重复启动已结束驱动。

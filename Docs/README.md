@@ -31,9 +31,10 @@
 - [v6固定框裁剪Pose](research/POSE_FIXED_CROP_V6.md)：十模型完整结束，覆盖升至77.95%但全部轨迹相同，混合相对R3和同crop预训练均无提升；含实际权重/预测差异证据和下一轮约束。
 - [v7质量与时序关联](research/POSE_QUALITY_TEMPORAL_V7.md)：已知框定位质量、同PT状态成本敏感度及独立短时Pose预测协议；区分几何覆盖、定位精度和关联决策。
 - [v8协议](research/LEARNED_ASSOCIATION_V8.md)和[完整结果](research/LEARNED_ASSOCIATION_V8_RESULTS.md)：36臂三比赛留一开发，合成Pose组较纯真实AssA+2.8034点、较预训练ByteTrack+1.4727点，但低于motion_RS 4.3956点；实际窗口/pair预算通过，保留全部负结果。
-- [v9训练前诊断](research/POSE_V9_DIAGNOSIS.md)和[质量残差协议](research/POSE_QUALITY_RESIDUAL_V9.md)：缺点/噪声、自由状态和有限外观域差，继而同R预算检验Pose是否超过强motion参考；主三seed、探索事前首seed，已启动唯一新流程。
-- [v9主54臂阶段结果](research/POSE_V9_MAIN54_STAGE.md)：混合较纯R AssA+0.8867点，但对同名义参数motion仅+0.1459点、对原v8 motion仍−0.4491点；未过Pose增量门槛，24项探索和最终预算核对尚待结束。
-- [v9完整结果](research/POSE_V9_RESULTS.md)：78臂及实际预算已闭合；缺点/抖动探索及956断档proxy全量保留，主54结论未改变，之后接回原seed球衣做独立配对。
+- [v9训练前诊断](research/POSE_V9_DIAGNOSIS.md)和[质量残差协议](research/POSE_QUALITY_RESIDUAL_V9.md)：缺点/噪声、自由状态和有限外观域差；主三seed、探索事前首seed，已全部结束。
+- [v9主54臂阶段结果](research/POSE_V9_MAIN54_STAGE.md)为历史中期报告，后续探索和实际预算均已闭合，以完整结果为准。
+- [v9完整结果](research/POSE_V9_RESULTS.md)：78臂及实际预算已闭合；混合−纯R AssA+0.8867点，但对同名义参数motion仅+0.1459、对强motion−0.4491点，未过Pose增量门槛。
+- [绿色草地/原seed球衣配对](research/GREEN_SEEDED_KIT_PAIR_A01.md)和[18臂完整结果](research/GREEN_SEEDED_KIT_RESULTS_A01.md)：采集、固定框预测、训练/追踪和实际预算均闭合；B−纯R AssA+1.1078、B−PT bbox+5.6404点，B−强motion−0.2279、B−A−0.0102点，保留全部负结果，测试封存。
 - [原Pose路线历史](research/POSE_PIPELINE_HISTORY.md)保存原阶段独有决策，不能当作今天的恢复命令。
 
 ## operations：维护与历史

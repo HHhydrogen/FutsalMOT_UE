@@ -2,6 +2,10 @@
 
 2026-10-26。用户要求直接推进实验，取消渲染/导出加速开发及基准。当前复用已验GPU-render/CPU-LBS、原appearance v1球衣和串行采集，不引入新解码器、渲染/导出重叠或额外成像增强。
 
+## 最终状态
+
+本轮采集/发布、2400帧A/B预测、18训练/18真实追踪与独立实际预算核对已经全部结束，相关进程已退出；不再等待或重启下述计划中的驱动。完整数字、每折/seed及下降项见[最终结果](GREEN_SEEDED_KIT_RESULTS_A01.md)。B−纯R AssA+1.1078点、B−PT bbox+5.6404点，但B−强motion_RS−0.2279点，B−A−0.0102点；球衣增量与Pose超越运动均未证明。以下保留方法及过程来源，不覆盖最终结论。
+
 ## 数据及短样
 
 来源保持1048 train `[0,300)`、1102 synthetic_dev `[20,320)`，原GRF运动、四机位、固定七模型及肤色不变。A默认服装，B严格采用原seed manifest的Jersey/Shorts；不重新抽模型/肤色，不接号码WIP。绿色目录沿用原floor独立seed算法，1048选择稍冷绿，1102选择稍暖绿；A/B同seed同地板，每段固定。颜色增益和原草地纹理链见[绿色方案](../engineering/GREEN_FLOOR_VARIATION.md)。
@@ -38,7 +42,7 @@
 
 新的`green_kit_runtime/train/track/metric/control/analyze/budget_audit.py`采用独立绿色协议、checkpoint和追踪身份，只读复用冻结v9的gated网络、特征/门控、无状态增强、Cache和domain loss，不冒充旧v9模型。18组按三fold×三seed×A/B登记，每组1000更新/3000R/1000S、FP32 AdamW及预取2、last无best；只在完整新准入和真实只读预飞通过后启动。六项CPU检查覆盖曝光链/实际UID顺序、额外S拒绝和不能用宏均掩盖负seed或HOTA下降；它们不替代实际训练、追踪及TrackEval验收。
 
-新训练已实际冻结并启动。九文件bundle为`60709c29618cb72451aa859877dc0010a8bace963515bcb9474ad8c2e3bed745`；研究根`pose/green_seeded_kit_pair_a01/frozen_a01/protocol.json` SHA `d3489aa5922ab07e102915e27cc593834a2842f81b1eb94b10efa74fe860d5bb`，限定准入SHA `c1580537df6b2e97ba1a4c4235b99031f204b003e43711a0725d85bf720ae1e0`。完整18上下文真实预飞通过，唯一控制器按原矩阵运行；首A组已实际完成1000更新、3000R/1000S及750帧自由追踪、TrackEval和原断档proxy评价。其余仍在运行，完成以`control_a01/driver_state.json`的18训练/18追踪和完整分析为准，随后进程退出后再独立实际预算核对；不据首组结果选择配色或方法。
+新训练采用九文件bundle `60709c29618cb72451aa859877dc0010a8bace963515bcb9474ad8c2e3bed745`；研究根`pose/green_seeded_kit_pair_a01/frozen_a01/protocol.json` SHA `d3489aa5922ab07e102915e27cc593834a2842f81b1eb94b10efa74fe860d5bb`，限定准入SHA `c1580537df6b2e97ba1a4c4235b99031f204b003e43711a0725d85bf720ae1e0`。完整18上下文真实预飞后，唯一控制器已按原矩阵完成每组1000更新、3000R/1000S及750帧自由追踪、TrackEval和原断档proxy评价。`control_a01/driver_state.json`为完整终态；退出后独立审计`postrun_audit_a01/actual_budget.json`通过18000更新/54000R/18000S及全部A/B初始化/UID/pair核对。未据中期结果选择配色或方法。
 
 独立CPU队内/跨队输入诊断已完成，未改活动九文件或使用GPU。`green_kit_team_probe.py`复用原固定检测与GT身份/框匹配，仅用于事后分层，不把GT Pose或队伍身份输入模型。原4791个候选出现次数完整保留：同身份正例833、同队负例775、跨队负例1150、未知2033；不是4791个独立人物。三类已知候选的A/B共同有效肢体点平均差约0.77/0.83/0.90像素，几何有效比例并未一致提高；未知候选差约4.08像素。该报告是合成训练候选上的输入诊断，几何通过率不等准确率，不据此推断真实追踪队内/跨队收益。3项CPU分类/零有效点分母/尺度检查通过，实际报告位于研究根`pose/green_seeded_kit_pair_a01/team_diagnostic_a01/report.json`，三文件独立bundle为`23cbae000a558dacb05a3a068819025039a7505ef45aa570025bd6c5a6e494bd`。
 
