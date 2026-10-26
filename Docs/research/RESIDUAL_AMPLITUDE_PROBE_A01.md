@@ -82,3 +82,7 @@
 下载仍处于真实大范围网络读取，已设置本聊天的阶段接续：健康无变化静默，输入/预测/额外R窗口闭合后汇报并移除跟进。不把进程存活或尚无解码输出当完成，也不因读取较慢自动重启。
 
 下载等待期另完成`extra_real_prediction_inputs.py`独立输入候选和五项CPU夹具检查：只接受真正complete的三源2250帧manifest，逐成员精确映射JPEG一基到缓存零基；模型帧白名单排除GT身份/框/Pose及意外字段，拒绝缺失/重复/det成员、错比赛或封存序列。该候选尚未安装推理bundle或签GPU准入，没有读取2250帧成品、加载模型或产生预测；不调用旧v8三序列schema伪装新来源。实际下载完成后才核验真实manifest和输入文件边界，再冻结执行。
+
+独立执行候选`extra_real_prediction_cache.py`也已构建，五项针对CPU检查通过：完成/退出绑定、旧数值raw转写、新UID、未匹配预测保留、Pose不得删框/改框、独占进程门禁。它仅调用原v10的raw/attach纯函数与原v8裁剪函数，不调用旧18源preflight、不加载GT或冒用旧schema。输入仍未完整闭合，当前没有安装新执行bundle、签预测配置、模型加载或GPU执行；CPU通过不等2250帧实际推理通过。
+
+实际执行时须先建立状态为`complete2250_extra_real_inputs_verified_processes_absent`的根收据，绑定下载manifest且下载实际退出；再冻结`extra_real_shared_prediction_config_v1`。最小bundle仅五文件：新入口/新输入契约/原冻结v8裁剪/原OrderedPrefetch/存储边界。配置另绑定原v10预测配置SHA `6293539cdd8dfc35b6f3459f6ae27c2bc5fa067a9fda6b547b9d4efe69cd8833`，直接核验原v6协议与相同PT权重。建议输出D研究根`pose/pose_mechanism_a01/extra_R_inputs_a01/shared_predictions_a01`，默认只读预飞，明确`--execute --config-sha256`才执行。完整终态为`complete3_sources2250_frames_not_training_authorized`且真实进程退出，才能进入新窗口构建；旧R/S/PT缓存不重推。

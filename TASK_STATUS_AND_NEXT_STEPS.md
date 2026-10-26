@@ -13,6 +13,7 @@
 - 原固定的额外R三片段061/098/154已另冻结2250帧获取准入并启动，输出`D:/projects/FutsalMOT_Research/public/real_substitution_train_a01`，不提取/用det，不模型预测或训练。A/B/C仍须另冻结4000R资源控制及更多独立比赛/非劣效精度；这些片段不是新比赛，不重启旧采集/清理，测试封存。
 - 当前下载仍在大范围网络读取，manifest只在真正完成/异常时落盘，实际Name/CommandLine优先，不能据没有JPEG/manifest自动重启。已设置本聊天阶段接续，健康静默；完整数据/共享预测/额外R输入闭合后汇报并移除跟进，不能提前声称C训练/等效完成。
 - 下载等待期已完成额外R独立预测输入候选`extra_real_prediction_inputs.py`及五项CPU边界检查。只接受实际complete三源manifest、显式零/一基映射、GT不入模型；尚无真实2250帧输入验收、推理bundle、GPU准入或新预测。根CPU收据`Saved/ResearchBuild/extra_R_prediction_inputs_CPU_a01.json`，不把夹具当实际数据完成。
+- 独立执行入口`extra_real_prediction_cache.py`候选及五项CPU门禁已通过，原raw/attach与裁剪/预取数值复用、不套旧18源schema。尚未安装D执行bundle、签新预测配置或GPU运行；实际下载/退出根收据和真实输入预飞仍是前置。收据`Saved/ResearchBuild/extra_R_prediction_entry_CPU_a01.json`，活动下载源码不改。
 
 ## v10已完成与当前状态
 
