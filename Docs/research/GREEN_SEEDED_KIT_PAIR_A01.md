@@ -28,6 +28,8 @@
 
 渲染期间已独立构建`grf_ue_bridge.green_kit_pair_inputs.replace_synthetic_pose`：仅替换旧S记录的`xy_px/geometry_valid`，强制1000唯一窗口，框/score/时间/尺寸/UID、候选标签及顺序保持，缺新预测直接拒绝而不回填旧Pose；1102和test不能进入S池。5项CPU检查及真实旧池的零变化自检通过：1000窗口、5431唯一观测、4791候选pair、2758已知标签pair完整保留。自检仅用旧观测自身验证契约，没有新绿色预测或模型更新。历史UID含blue是逻辑对应键，不能冒充实际图像来源；绿色图片及模型身份必须另由预测manifest明确绑定。收据为`Saved/ResearchBuild/green_pose_pool_CPU_a01.json`，实际绿色A/B池尚未生成。
 
+固定检测的帧对应另由`plan_green_frames`登记：缓存中的第一帧检测UID含`000001`（一基frame_number），图片却为`000000.png`（零基frame_index）；必须按显式帧字段映射，不能从UID猜文件名。3项CPU检查和真实旧四机位1200帧、13199检测的对应规则检查通过，A/B固定框链相同，旧Pose字段不传给新推理。该检查仅使用待发布组结构模板，没有验证新绿色文件存在或生成Pose；待真正发布后仍需绑定实际组/图片来源与模型。小收据为`Saved/ResearchBuild/green_frame_correspondence_CPU_a01.json`。
+
 canonical gated A/B×3比赛留一×3训练seed，拟18个新RS；每臂1000实际更新、同3000R窗口同序、额外1000S同序同pair，使用已有预取2/FP32及last，不选best或追加旧权重训练。若执行18新RS，新增预算为18000更新、54000R及18000S窗口，不能称图像数或总标注量。纯R、motion_RS、PT只有完整数值源码、输入、初始化和预算相同时才引用旧结果，并在收据中明确“历史控制复用/新增更新0”。
 
 分别报告B−A、混合−纯R、混合−motion_RS及预训练，保留每fold/seed、队内/跨队和负结果。当前关联器不读RGB；服装改变颜色和纹理，不能只归因颜色，也不是全图检测泛化实验。仅1048参与合成训练，1102不训练、不挑配色；一个合成运动seed不代表广泛动作或环境覆盖。既有v9 Pose尚未稳定超过强motion_RS，这一事实不因新数据更自然而改变。
