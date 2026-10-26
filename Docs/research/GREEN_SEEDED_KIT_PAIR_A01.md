@@ -32,7 +32,11 @@
 
 独立预测入口为`tools/research_ops/green_kit_prediction_cache.py`。它只复用冻结的v8裁剪Pose数值函数，不运行检测器；先验证16单位/发布SHA/全部正常退出/EXR退休及实际无UE进程，再允许新D研究bundle和显式配置SHA执行。A/B每帧保留原检测框、score、UID及顺序，拒绝丢弃预测或回填旧Pose；只读新G成品，预取2，不写裁剪图。4项CPU门禁/固定框检查不等于端到端预测验收。
 
-实际绿色发布之后，已安装独立五文件预测bundle `3210f236ba131ddf3181a72f014b9665f853c1d75595c22722c87bcd3d0149f4`，原v8裁剪函数和预取源码直接取自冻结bundle，未改其数值。新预测配置SHA `06d05b024377d2d406abcaa2e0fab85da369181d921ad440c8c974ba575aa051`，来源/进程/2400帧映射只读预飞通过并唯一启动；权威启动收据为D研究根`pose/green_seeded_kit_pair_a01/_launch_prediction_a01/launch.json`。当前是新A/B预测阶段，正式训练更新0；只有`predictions_a01/manifest.json`实际完成且进程退出后才进入新训练冻结，不能把启动当成预测完成或服装收益。
+实际绿色发布之后，已安装独立五文件预测bundle `3210f236ba131ddf3181a72f014b9665f853c1d75595c22722c87bcd3d0149f4`，原v8裁剪函数和预取源码直接取自冻结bundle，未改其数值。新预测配置SHA `06d05b024377d2d406abcaa2e0fab85da369181d921ad440c8c974ba575aa051`，来源/进程/2400帧映射只读预飞通过后唯一启动；权威启动收据为D研究根`pose/green_seeded_kit_pair_a01/_launch_prediction_a01/launch.json`。预测不会产生正式训练更新；只有`predictions_a01/manifest.json`实际完成且进程退出后才进入新训练冻结，不能把启动当成预测完成或服装收益。
+
+新预测现已完整闭合并确认实际进程退出：A/B各1200帧、13199个相同固定检测，各1000个窗口/5431独立观测，非Pose窗口SHA相同。几何有效检测为A6998、B7000，仅是原几何规则的通过数量，不是Pose准确率或追踪增益。完整manifest SHA为`f35e1da846a4edb4244caf9db9c5463c662c08a1bf217cfe59fbbccbbba974ca`；R缓存不变，预测产生的优化更新为0。
+
+新的`green_kit_runtime/train/track/metric/control/analyze/budget_audit.py`采用独立绿色协议、checkpoint和追踪身份，只读复用冻结v9的gated网络、特征/门控、无状态增强、Cache和domain loss，不冒充旧v9模型。18组按三fold×三seed×A/B登记，每组1000更新/3000R/1000S、FP32 AdamW及预取2、last无best；只在完整新准入和真实只读预飞通过后启动。六项CPU检查覆盖曝光链/实际UID顺序、额外S拒绝和不能用宏均掩盖负seed或HOTA下降；它们不替代实际训练、追踪及TrackEval验收。
 
 渲染期间已独立构建`grf_ue_bridge.green_kit_pair_inputs.replace_synthetic_pose`：仅替换旧S记录的`xy_px/geometry_valid`，强制1000唯一窗口，框/score/时间/尺寸/UID、候选标签及顺序保持，缺新预测直接拒绝而不回填旧Pose；1102和test不能进入S池。5项CPU检查及真实旧池的零变化自检通过：1000窗口、5431唯一观测、4791候选pair、2758已知标签pair完整保留。自检仅用旧观测自身验证契约，没有新绿色预测或模型更新。历史UID含blue是逻辑对应键，不能冒充实际图像来源；绿色图片及模型身份必须另由预测manifest明确绑定。收据为`Saved/ResearchBuild/green_pose_pool_CPU_a01.json`，实际绿色A/B池尚未生成。
 
