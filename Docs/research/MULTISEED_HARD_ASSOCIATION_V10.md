@@ -76,6 +76,8 @@ SoccerNet当前官方train的57条序列只有game4/6/9，三场均已观察；�
 
 逐步loss/Rloss/Sloss/LR/gradL2/耗时、真实及合成UID/epoch/all及known pair、链、每50步完整状态、环境和原stdout/stderr实际保存在D研究目录。训练原协议/源码/数据保留，后续追踪只读，不追加更新。
 
+论文训练归档`paper_training_archive_a01`已实际导出全部54000步CSV、54臂预算CSV及六图的PNG/PDF，展示原损失和向后50步均值、保留全部seed；`complete.json`绑定原run来源。它不平滑评价结果、不挑检查点，损失曲线不替代追踪效果。
+
 ## 五比赛真实自由追踪的独立准入
 
 `tracking_frozen_a01/config.json` SHA为`f85e69bc2a50220528a2caf42243ee940768cc0a60a4fa845eab2d7c7da27ef1`，独立七文件bundle为`f3098416f1d5d8063de9d2ffcaaea70e5e23e481a6b5ec96868a16acc7349ab7`。真实默认只读预飞后，17:33:28唯一启动`v10_tracking_control.py`，CPU执行/GPU禁用。完整矩阵253项：五场×PT_bbox/PT_static_pose共10参考；54个新RS各评价一个原heldout及两新比赛共162项；27个纯R模型同样各三场共81项。纯R实际加载原v8/v9完成模型/初始化/预算，来源引用新增更新0，历史记录缺失不补造。
