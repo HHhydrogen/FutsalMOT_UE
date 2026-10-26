@@ -12,6 +12,7 @@
 - 原54份trace的候选机会审查也已完成，只读行内代理、零新推理：可信未介入且足三历史/正负候选子集中，Pose与自己关闭分支没有新增排序翻转。不是新策略自由追踪或总体Pose无用证明；下一步核验表示/信息与训练期对照，不盲目同时放宽候选、gate和损失。
 - 原固定的额外R三片段061/098/154已另冻结2250帧获取准入并启动，输出`D:/projects/FutsalMOT_Research/public/real_substitution_train_a01`，不提取/用det，不模型预测或训练。A/B/C仍须另冻结4000R资源控制及更多独立比赛/非劣效精度；这些片段不是新比赛，不重启旧采集/清理，测试封存。
 - 当前下载仍在大范围网络读取，manifest只在真正完成/异常时落盘，实际Name/CommandLine优先，不能据没有JPEG/manifest自动重启。已设置本聊天阶段接续，健康静默；完整数据/共享预测/额外R输入闭合后汇报并移除跟进，不能提前声称C训练/等效完成。
+- 下载等待期已完成额外R独立预测输入候选`extra_real_prediction_inputs.py`及五项CPU边界检查。只接受实际complete三源manifest、显式零/一基映射、GT不入模型；尚无真实2250帧输入验收、推理bundle、GPU准入或新预测。根CPU收据`Saved/ResearchBuild/extra_R_prediction_inputs_CPU_a01.json`，不把夹具当实际数据完成。
 
 ## v10已完成与当前状态
 
