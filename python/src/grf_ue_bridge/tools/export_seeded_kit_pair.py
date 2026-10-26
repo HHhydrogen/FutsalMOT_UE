@@ -143,6 +143,9 @@ def export(attempt,output,workers,metadata_loader=None):
     if plan.get('green_seeded_kit_contract') is True:
         group['green_floor']=kit['green_floor']
         group['green_floor_restored']=state['green_floor_restored']
+    if plan.get('v10_multiseed_contract') is True:
+        group['capture_experiment']='multiseed_v10_a01'
+        group['independent_motion_scope']=plan['source_scope']
     masks.write_json(output/'group.json',group)
     masks.write_json(output/'dataset.json',dict(schema='futsalmot_seeded_kit_diagnostic_export_v1',
         status='complete',group_ref='group.json',rgb_frames=n*len(receipts),mask_frames=n*len(receipts),person_pose=n*10*len(receipts),

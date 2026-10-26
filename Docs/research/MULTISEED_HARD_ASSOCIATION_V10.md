@@ -18,7 +18,11 @@
 
 CPU收据在`Saved/ResearchBuild/v10_motion_sources_a01/manifest.json`。前缀保留原0至end历史，不把所选段重基为0；原full trajectory/meta/appearance SHA、旧活跃范围、七模型标定、固定相机均保留。仅复用原appearance v1 Jersey/Shorts分配，不新增随机器或重抽模型/肤色，不接号码WIP。绿色使用既有独立floor seed/catalog，序列固定。
 
-新UE契约/源Sequence、少量短样及新运行准入尚待实现，不能用旧两seed校验器假装接受新scope。通过后沿用已验串行单机位→本次正常quit→6CPU后处理→精确退休EXR；禁止渲染/导出加速工作。媒体只在G Dataset独立版本，D Saved只元数据。
+独立v10契约、计划、建源和串行入口已实现：`prepare_multiseed_v10.py`、`pose17_multiseed_v10_contract.py`、`pose17_multiseed_v10_sources.py`、`run_multiseed_v10_serial.py`。旧服装共用门禁提取为参数化内部函数，旧入口仍固定原两seed；v10通过独立schema、完整源SHA、非零源时间和新package显式路由，不伪装旧身份。3项v10检查与3项旧绿色契约回归通过，三个实际源的0至end原字节、十球员/球三维坐标、时间及标定已核验。
+
+真实UE已创建并保存12个全新源Sequence，范围分别为`[0,452)`、`[0,683)`、`[0,865)`，捕获仍为登记的300帧子窗。`Saved/AppearancePlanning/multiseed_v10_a01/P2_sources_prepare.json`记录每轴关键帧、速度轨道、CameraCut和资产SHA，原地图/canonical Sequence/15Actor不变；建源Editor本次14:33:23正常Exiting/closed并确认进程退出。此证据只证明源已构建，不等动态短样验收。
+
+短样为三seed×四cam×3帧，共36RGB/mask/360人物Pose；完整为12个单机位单位，共3600RGB/mask/36000Pose。分阶段准入由`freeze_multiseed_v10.py`默认只读、显式冻结；完整阶段必须消费根视觉短样验收。沿用已验串行采集→本次正常quit→6CPU后处理→精确退休EXR，12线程/队列8不变；禁止渲染/导出加速工作。媒体只在G Dataset独立版本，D Saved只元数据。新的P2与导出身份分支仍须实际短样闭环，不能把CPU检查当端到端通过。
 
 ## 公平窗口与方法对照
 
@@ -34,7 +38,7 @@ SoccerNet当前官方train的57条序列只有game4/6/9，三场均已观察；�
 
 公共传输镜像Lekim89/sportsmot已固定revision `2993b47d4369fa70ea70afc8bc63b5964e556a81`，45条val名称与官方清单完全一致；这不是官方像素SHA证明。选择规则在看新图/模型结果前登记：标题明确足球、不同比赛的源视频按ID排序取前两场，再取该源在val中最早clip。少于300帧拒绝，最多前750帧，不重复补帧。已固定并看过两张首帧及旧三场对照：`v_2QhNRucNC7E_c017`为2015/16 Dortmund–Schalke，450帧，首帧记分牌16:26/0:0；`v_G-vNjfx1GGc_c004`为2015 Norwich–Ipswich附加赛，675帧，首帧77:23/3:1。源标题、记分牌和场地/球队服装与原三场不同；原SoccerNet球队名匿名，不补造其精确球队名称。
 
-GT、seqinfo及两张首帧已获取，`D:/projects/FutsalMOT_Research/public/sportsmot_val_v10_a01/identity_receipt.json`保存结果前身份核验，固定配置`download_config.json` SHA为`f71492e133c087324a54cddae16304b3005b15433f731f75403dded473668092`。唯一下载任务正在补齐1125帧，下载不等完整图像解码、预测或评价通过。SportsMOT只标球员，其类别/身份0及GT格式须独立适配，不能假造SoccerNet gameinfo或按GT过滤预测。真实曝光新增0，不读test。
+1125帧已完整下载，实际下载进程退出；逐帧真实JPEG解码为1280×720 RGB，25FPS元数据及GT9列/帧号/唯一身份/正框宽高检查通过。两段分别6622/8137条GT，21/20个身份，均存在合法ID0；不删ID0、不裁剪标注、不按GT过滤预测。`D:/projects/FutsalMOT_Research/public/sportsmot_val_v10_a01/identity_receipt.json`保存结果前身份核验，`decode_validation_a01.json`保存实际输入验收；固定`download_config.json` SHA为`f71492e133c087324a54cddae16304b3005b15433f731f75403dded473668092`。仍未预测或评价，真实训练曝光新增0，不读test。SportsMOT仅标球员，后续评价适配不伪造SoccerNet gameinfo。
 
 新比赛是后续未调参开发验证，不叫最终盲测。原三场留一仍完整报告为次要开发证据。新两场主门槛沿用AssA均差≥0.5点、至少2/3训练seed正、两场比赛均差均非负、HOTA均差≥0、IDF1下降≤0.5点；若最终可核验比赛数改变，必须在预测/结果前另签协议。三fold或训练seed不计作独立比赛，不能直接声称真实五人制泛化。
 

@@ -25,18 +25,27 @@ def context_payload(plan):
 
 
 def validate_seeded_kit_contract(plan):
+    if 'v10_multiseed_contract' in plan:
+        from pose17_multiseed_v10_contract import validate_v10_contract
+        return validate_v10_contract(plan)
     if plan.get('green_seeded_kit_contract') is True:
         from pose17_green_kit_contract import validate_green_kit_contract
         return validate_green_kit_contract(plan)
     if 'seeded_kit_pair_contract' not in plan and 'seeded_kit_pair' not in plan:return False
+    return validate_kit_core(plan,windows=WINDOWS,original_sha=ORIGINAL_SHA,package=PACKAGE,
+        schema=SCHEMA,scope=SCOPE,floor_id='sport_blue_v1')
+
+
+def validate_kit_core(plan,*,windows,original_sha,package,schema,scope,floor_id):
+    """复用原数值/服装门禁；新scope必须提供独立固定身份，绝不改旧常量。"""
     require(plan.get('seeded_kit_pair_contract') is True and isinstance(plan.get('seeded_kit_pair'),dict),'服装配对需要独立明确opt-in')
     require(not any(k in plan for k in ('long_window_contract','long_window','location_pilot_contract','location_pilot')),'不能混用历史长窗/120帧准入')
     kit=plan['seeded_kit_pair'];seed=kit.get('seed');variant=kit.get('variant');stage=kit.get('stage')
-    require(type(seed) is int and seed in WINDOWS and variant in ('A','B') and stage in ('short','full'),'服装seed/版本/阶段错误')
-    start,end,split=WINDOWS[seed];count=3 if stage=='short' else 300
-    require(kit.get('schema')==SCHEMA and kit.get('split')==split and kit.get('source_frame_range')==[start,start+count]
-        and kit.get('floor_id')=='sport_blue_v1' and kit.get('apply_original_seeded_kits') is (variant=='B'),'配对split/源帧/蓝地板/服装开关变化')
-    require(plan.get('schema')=='futsalmot_pose17_smoke_plan_v1' and plan.get('source_scope')==SCOPE
+    require(type(seed) is int and seed in windows and variant in ('A','B') and stage in ('short','full'),'服装seed/版本/阶段错误')
+    start,end,split=windows[seed];count=3 if stage=='short' else 300
+    require(kit.get('schema')==schema and kit.get('split')==split and kit.get('source_frame_range')==[start,start+count]
+        and kit.get('floor_id')==floor_id and kit.get('apply_original_seeded_kits') is (variant=='B'),'配对split/源帧/地板/服装开关变化')
+    require(plan.get('schema')=='futsalmot_pose17_smoke_plan_v1' and plan.get('source_scope')==scope
         and plan.get('diagnostic_scope')=='pose17_gpu_render_cpu_lbs_joint_diagnostic'
         and type(plan.get('start_frame')) is int and plan['start_frame']==start
         and type(plan.get('frame_count')) is int and plan['frame_count']==count
@@ -48,19 +57,19 @@ def validate_seeded_kit_contract(plan):
         and plan.get('override_warmup_frames')==plan['gpu_lbs_warmup_frames'],'不能删减native预热')
     motion=plan.get('source_motion',{})
     require(motion.get('root_seed')==seed and motion.get('fps')==10
-        and motion.get('source_frames_sha256')==ORIGINAL_SHA[seed][0]
-        and motion.get('source_meta_sha256')==ORIGINAL_SHA[seed][1]
+        and motion.get('source_frames_sha256')==original_sha[seed][0]
+        and motion.get('source_meta_sha256')==original_sha[seed][1]
         and motion.get('selected_source_frame_range')==[start,end]
         and motion.get('context_source_frame_range')==[0,end],'原完整运动来源/前缀变化')
     validate_roster(plan.get('targets'))
     cameras=plan.get('cameras',[])
     require([c.get('camera_id') for c in cameras]==list(CAMERAS)
-        and all(c.get('source_sequence')==PACKAGE+f'/seed_{seed:08d}/LS_Cam_'+c['camera_id'][-2:] for c in cameras)
+        and all(c.get('source_sequence')==package+f'/seed_{seed:08d}/LS_Cam_'+c['camera_id'][-2:] for c in cameras)
         and len({c.get('camera_actor_object_name') for c in cameras})==4,'四机位源路径/身份变化')
     binding=kit.get('binding',{})
     require(binding.get('source_policy')=='futsalmot_appearance_v1' and binding.get('root_seed')==seed
         and binding.get('no_new_random_assignment') is True and binding.get('numbers_enabled') is False
-        and binding.get('original_full_trajectory_sha256')==ORIGINAL_SHA[seed][0]
+        and binding.get('original_full_trajectory_sha256')==original_sha[seed][0]
         and binding.get('pose_targets_fingerprint')==digest(plan['targets']),'必须复用原无号码服装清单，固定Pose模型')
     entities=binding.get('entities',[]);targets={r['entity_id']:r for r in plan['targets']}
     require(len(entities)==10 and {r.get('entity_id') for r in entities}==set(targets),'原服装实体集合变化')

@@ -23,6 +23,10 @@ def bindings(admission,stage):
     require(admission['manifest_sha256']==sha(RUN/'manifest.json'),'清单变化')
     for item in admission['source_files']:require(sha(ROOT/item['path'])==item['sha256'],'源码/资产变化：'+item['path'])
     require(admission['module_sha256']==sha(ROOT/'Binaries/Win64/UnrealEditor-FutsalMOT.dll'),'DLL变化')
+    if RUN.name=='multiseed_v10_a01':
+        require(admission['schema']=='futsalmot_v10_multiseed_admission_v1'
+            and admission['source_prepare_sha256']==sha(RUN/'P2_sources_prepare.json')
+            and read(RUN/'P2_sources_prepare.json')['status']=='twelve_new_source_sequences_saved_not_captured','v10来源/准入错误')
     if stage=='full':
         require(sha(RUN/'short_acceptance_root.json')==admission['short_acceptance_sha256']
             and read(RUN/'short_acceptance_root.json')['root_visual_reviewed'] is True,'绿色短样未验收')
@@ -96,19 +100,29 @@ def export(ref,work,storage):
     return dict(stage=str(stage),rgb=count,mask=count,person_pose=count*10,EXR_deleted=done['file_count'],EXR_bytes=done['bytes'])
 
 
-def main():
+def main(scope='green_a01'):
+    global RUN,RESEARCH
+    require(scope in ('green_a01','v10_a01'),'只接受明确登记scope')
+    if scope=='v10_a01':
+        RUN=ROOT/'Saved/AppearancePlanning/multiseed_v10_a01'
+        RESEARCH=Path('D:/projects/FutsalMOT_Research/pose/multiseed_v10_a01/exports')
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('--stage',choices=('short','full'),required=True)
     p.add_argument('--execute',action='store_true');a=p.parse_args()
     admission=read(RUN/('admission_'+a.stage+'_a01.json'));bindings(admission,a.stage)
     manifest=read(RUN/'manifest.json')
     refs=[r for r in manifest['plans'] if r['stage']=='short'] if a.stage=='short' else manifest['full_units']
-    require(len(refs)==(8 if a.stage=='short' else 16),'预登记短样/分区矩阵改变')
+    expected=(3 if a.stage=='short' else 12) if scope=='v10_a01' else (8 if a.stage=='short' else 16)
+    require(len(refs)==expected,'预登记短样/分区矩阵改变')
+    if scope=='v10_a01':
+        expected_rows=[(seed,'B') for seed in (1042,1044,1131) for _ in range(1 if a.stage=='short' else 4)]
+        require([(r['seed'],r['variant']) for r in refs]==expected_rows,'v10三运动顺序改变')
     for ref in refs:require(sha(ref['path'])==ref['sha256'],'计划变化')
     if not a.execute:
-        print(json.dumps(dict(status='readonly_green_serial_preflight',stage=a.stage,units=len(refs),resources=resources(),
+        print(json.dumps(dict(status='readonly_green_serial_preflight',scope=scope,stage=a.stage,units=len(refs),resources=resources(),
             render_export_overlap=False,source_bindings=len(admission['source_files']),test_read=False)));return
     work=RUN/('control_'+a.stage+'_a01');work.mkdir(exist_ok=False)
-    state=dict(schema='futsalmot_green_kit_serial_v1',status='started',pid=os.getpid(),stage=a.stage,completed=[],
+    state=dict(schema='futsalmot_multiseed_v10_serial_v1' if scope=='v10_a01' else 'futsalmot_green_kit_serial_v1',
+        scope=scope,status='started',pid=os.getpid(),stage=a.stage,completed=[],
         admission_sha256=sha(RUN/('admission_'+a.stage+'_a01.json')),render_export_overlap=False,test_read=False)
     put=lambda:atomic(work/'state.json',state)
     put();spec=importlib.util.spec_from_file_location('green_storage',ROOT/'tools/storage/dataset_storage_policy.py')
@@ -154,7 +168,7 @@ def main():
             state['completed'].append(dict(attempt=name,seed=ref['seed'],variant=ref['variant'],floor_id=ref['floor_id'],
                 purpose=ref['purpose'],normal_UE_exit=True,min_commit_bytes=state['min_commit_bytes'],**result));put()
         state.update(status='complete_short_exports_EXR_retired_wait_root_visual_review' if a.stage=='short' else
-            'complete_full_16_units_EXR_retired_wait_root_publication',rgb=sum(r['rgb'] for r in state['completed']),
+            f'complete_full_{expected}_units_EXR_retired_wait_root_publication',rgb=sum(r['rgb'] for r in state['completed']),
             mask=sum(r['mask'] for r in state['completed']),person_pose=sum(r['person_pose'] for r in state['completed']));put()
     except BaseException as error:state.update(status='failed_preserved_no_replay',error=repr(error));put();raise
 

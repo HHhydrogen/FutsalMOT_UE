@@ -41,16 +41,24 @@ def configure(plan,camera):
     return result
 
 
-def main():
+def main(run_dir=RUN):
     import unreal
+    RUN=Path(run_dir)
+    is_v10=RUN==ROOT/'Saved/AppearancePlanning/multiseed_v10_a01'
+    require(is_v10 or RUN==ROOT/'Saved/AppearancePlanning/green_seeded_kit_a01','未登记运行scope')
     request=read(RUN/'action_request.json');manifest=read(RUN/'manifest.json')
     refs=manifest['plans']+manifest.get('full_units',[]);ref=next(r for r in refs if r['attempt']==request['attempt'])
     require(request['editor_pid']==os.getpid(),'不是本次Editor')
     require(sha(ref['path'])==ref['sha256'],'计划变化')
     plan=read(ref['path']);require(validate_seeded_kit_contract(plan) and plan['green_seeded_kit_contract'] is True,'非新绿色契约')
+    require((plan.get('v10_multiseed_contract') is True) is is_v10,'运行scope与计划身份不符')
     stage=plan['seeded_kit_pair']['stage'];camera=ref.get('camera_id')
     admission=read(RUN/('admission_'+stage+'_a01.json'))
     require(admission['runtime_authorized'] is True and admission['stage']==stage and admission['manifest_sha256']==sha(RUN/'manifest.json'),'无新阶段准入')
+    if is_v10:
+        require(admission['schema']=='futsalmot_v10_multiseed_admission_v1'
+            and admission['source_prepare_sha256']==sha(RUN/'P2_sources_prepare.json')
+            and read(RUN/'P2_sources_prepare.json')['status']=='twelve_new_source_sequences_saved_not_captured','v10真实源未建成')
     for item in admission['source_files']:require(sha(ROOT/item['path'])==item['sha256'],'绑定代码/资产变化：'+item['path'])
     require(sha(ROOT/'Binaries/Win64/UnrealEditor-FutsalMOT.dll')==admission['module_sha256'],'DLL身份变化')
     for key in ('base_plan','source_input','original_appearance'):

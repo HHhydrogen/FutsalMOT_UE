@@ -5,8 +5,8 @@
 ## 正在推进的下一阶段
 
 - 用户已授权[独立运动/困难事件v10](Docs/research/MULTISEED_HARD_ASSOCIATION_V10.md)，以强motion_RS为主要参照，全部同3000R窗口和已有预取，最终测试封存。此前“仅方案不自动执行”已由新授权覆盖，但旧批仍不重启。
-- 三个新增运动源CPU已绑定并准备：1042 `[152,452)`、1044 `[383,683)`、1131 `[565,865)`，复用原seed球衣、七模型与四相机，完整原始轨迹SHA保持；根轨迹交叉proxy分别9/5/6个，不冒称图像交叉或检测断档。`Saved/ResearchBuild/v10_motion_sources_a01/manifest.json`只是CPU来源收据，新UE契约/短样/渲染尚未开始。
-- 新比赛不能只换原game4/6/9片段。SportsMOT固定镜像与官方45条val清单一致，事前规则选定Dortmund–Schalke450帧及Norwich–Ipswich675帧；源标题/首帧记分牌与旧三场画面对照已核验。唯一下载输入任务正在补齐1125帧，`D:/projects/FutsalMOT_Research/public/sportsmot_val_v10_a01/download_a01/state.json`为权威；尚未预测/评价，也没有新增R训练曝光，测试未读。
+- 三个新增运动1042 `[152,452)`、1044 `[383,683)`、1131 `[565,865)`已绑定原seed球衣、七模型、相机及完整SHA，根轨迹交叉proxy为9/5/6，不冒称图像交叉/断档。独立v10契约通过3项检查及3项旧绿色回归；真实UE已建成12个新源Sequence，原地图/canonical/15Actor不变，14:33:23本次正常退出且PID不存在。收据`Saved/AppearancePlanning/multiseed_v10_a01/P2_sources_prepare.json`；下一步独立短样准入，三seed共36RGB/mask/360Pose，尚未动态验收，不启动完整批。
+- 新比赛不能只换原game4/6/9片段。SportsMOT事前固定Dortmund–Schalke450帧及Norwich–Ipswich675帧，实际身份已与旧三场核验；1125帧下载及逐图解码/GT格式验收完整结束，进程已退出。`D:/projects/FutsalMOT_Research/public/sportsmot_val_v10_a01/decode_validation_a01.json`为输入验收，GT身份0合法；尚未预测/评价，也没有新增R训练曝光，测试未读。
 - 用户要求所有后续训练全过程留存。[记录规范](Docs/operations/TRAINING_RECORDS.md)与新记录循环已实现候选，4项CPU契约和实际Torch零更新检查点读回通过；新一轮1000步端到端接入尚待验证。绿色旧18臂实际18000步已导出`D:/projects/FutsalMOT_Research/pose/green_seeded_kit_pair_a01/paper_training_archive_a01`，包含原始CSV、全部seed损失PNG/PDF和缺失字段说明；原日志不改，历史未留的中间权重/RNG不补造。
 
 ## 当前主线结果
