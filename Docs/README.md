@@ -36,7 +36,7 @@
 - [v9完整结果](research/POSE_V9_RESULTS.md)：78臂及实际预算已闭合；混合−纯R AssA+0.8867点，但对同名义参数motion仅+0.1459、对强motion−0.4491点，未过Pose增量门槛。
 - [绿色草地/原seed球衣配对](research/GREEN_SEEDED_KIT_PAIR_A01.md)和[18臂完整结果](research/GREEN_SEEDED_KIT_RESULTS_A01.md)：采集、固定框预测、训练/追踪和实际预算均闭合；B−纯R AssA+1.1078、B−PT bbox+5.6404点，B−强motion−0.2279、B−A−0.0102点，保留全部负结果，测试封存。
 - [独立运动与困难关联v10协议](research/MULTISEED_HARD_ASSOCIATION_V10.md)和[完整结果](research/POSE_V10_RESULTS.md)：54训练/253项五比赛评价及全过程预算已闭合；两新比赛gated−强motion AssA平衡−0.0417、困难+0.2110点，均未过登记门槛。同3000R混合较纯R小幅提高，不能称Pose可靠增量或合成等价真实，全部负结果保留。
-- [Pose诊断与合成替代真实监督方案](research/POSE_DIAGNOSIS_AND_REAL_DATA_SUBSTITUTION_PLAN.md)：先冻结权重诊断，再按证据补数据或改训练；以R3000、R3000+S1000、R3000+额外R1000分别检验补充与替代，明确非劣效/等效及真实资源账本。本次仅制定方案，尚未执行新实验。
+- [Pose诊断与合成替代真实监督方案](research/POSE_DIAGNOSIS_AND_REAL_DATA_SUBSTITUTION_PLAN.md)及[首轮执行](research/POSE_MECHANISM_A01.md)：162项固定权重CPU诊断、20例视觉复核/额外R可行性/57段元数据及进程退出均已完成，新增优化更新0。Pose分支实际作用很小，下一步先单因素验证利用机制；资源替代另立预算与准入，不把均值接近或新窗口UID当真实等效/标注节省。
 - [原Pose路线历史](research/POSE_PIPELINE_HISTORY.md)保存原阶段独有决策，不能当作今天的恢复命令。
 
 ## operations：维护与历史
