@@ -4,6 +4,8 @@
 
 ## 当前主线结果
 
+- 绿色短样已根验收：8组96RGB/mask、960人物Pose（48主A/B+48颜色检查，6源时间样本），三张总览已实际查看，原seed两队/门将配色及原草地纹理正确。相机和world配对逐值一致、最大差0，检查的中帧mask差0，不冒称全部RGB像素/物理可见性。96EXR共3883119675字节已精确退休，所有短样UE/导出/控制器真实退出。验收为`Saved/AppearancePlanning/green_seeded_kit_a01/short_acceptance_root.json`。
+- 完整绿色配对已在新69项冻结准入下唯一启动：`tools/appearance/run_green_kit_serial_a01.py --stage full`，权威`Saved/AppearancePlanning/green_seeded_kit_a01/control_full_a01/state.json`；首1048 A/Cam01的300帧MRQ已真实提交。16个单机位单位完全串行，每单位正常UE退出后导出/清EXR，目标4800RGB/mask、48000Pose。不得另起驱动或修改69个绑定文件；全部完成后同G卷独立发布，再开始同3000R对照。研究口径见[绿色球衣实验](Docs/research/GREEN_SEEDED_KIT_PAIR_A01.md)。
 - 最新指令：取消专门的渲染/导出加速开发和性能基准，已有未接入候选保留为停止使用的WIP，不作为实验前置。直接推进绿色材质短样、原seed球衣同运动/相机完整配对和同3000R预算对照。采用已验串行单机位采集→正常退出→后处理→精确清EXR；训练继续用已有预取，测试封存。
 - 最新方向按用户要求转为[原版绿色及有限变化](Docs/engineering/GREEN_FLOOR_VARIATION.md)，蓝/红保留诊断，不继续旧蓝批作为下一轮主训练。原实例仅`Param`标量、无颜色vector；已通过真实UE在全新GreenV1创建复制父图和五个实例，增益/原标量逐项读回、原图及非BaseColor连接保留、源文件SHA不变、无材质编译报错，未改地图且正常退出。下一步实际绿色短样验收，再完整采集；材质参数通过不等视觉/采样通过。颜色与纹理/粗糙度不同时变，沿用原floor seed算法，序列内固定。
 - a03已完成1048 A/B四机位共8单位：2400RGB/mask、24000Pose，均正常UE退出并精确清EXR。a04尝试渲染与6CPU导出重叠，1102_B/Cam01再次触发真实commit低于6GiB保护，正常取消/恢复/退出，parent为`failed_preserved_no_replay`，不重启。1102_A/Cam01导出工人随后独立完成300RGB/mask/3000Pose及300EXR退休；parent仍记录8项，不伪造整批完成。并行加速方向已按用户要求终止。入口为`Saved/AppearancePlanning/seeded_kit_capture_a04/control_a01/state.json`及其独立工人完成收据。

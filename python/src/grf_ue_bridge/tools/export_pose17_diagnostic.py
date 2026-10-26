@@ -91,7 +91,7 @@ def _export_mask_frame(job):
         require(counts[entity]==area,"mask计数与bbox解码不同")
         geometry[entity] = (bbox,area)
     with Path(destination).open("xb") as handle:
-        Image.fromarray(mask).save(handle,format="PNG")
+        Image.fromarray(mask).save(handle,format="PNG",compress_level=1,optimize=False)
     return frame,width,height,geometry
 
 

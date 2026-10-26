@@ -13,11 +13,15 @@ import types
 from pathlib import Path
 from pose17_calibration_assets import ORIGINAL_VISUAL_MESH, JOINT_VISUAL_IDS, calibration_visual_mesh, production_visual_mesh
 from pose17_location_pilot_contract import validate_location_pilot_contract
+from pose17_long_window_contract import validate_long_window_contract
+from pose17_seeded_kit_contract import validate_seeded_kit_contract, assert_seeded_kit_receipt
+from pose17_camera_scope import select_capture_cameras, make_capture_scope, session_cameras
 
 
 _PREPARED = None  # 持有 transient 队列；不会冒充已经执行的 MRQ。
 _LEVEL = "/Game/FutsalMOT/Maps/L_FutsalCourt"
 _SESSION = "futsalmot_pose17_smoke_runtime"
+MEDIA_ROOT_CONTRACT_VERSION = 1
 
 
 def validate_plan(plan):
@@ -29,7 +33,9 @@ def validate_plan(plan):
         raise ValueError("attempt 必须为安全独立目录名")
     start, count = plan.get("start_frame"), plan.get("frame_count")
     location_pilot = validate_location_pilot_contract(plan)
-    if type(start) is not int or type(count) is not int or not (count == 120 if location_pilot else 3 <= count <= 30):
+    long_window = validate_long_window_contract(plan)
+    seeded_kit = validate_seeded_kit_contract(plan)
+    if type(start) is not int or type(count) is not int or not (count in (3,300) if seeded_kit else count == 300 if long_window else count == 120 if location_pilot else 3 <= count <= 30):
         raise ValueError("需要明确起始帧与3..30个连续动态诊断帧")
     cameras = plan.get("cameras", [])
     if len(cameras) < 2 or len({item["camera_id"] for item in cameras}) != len(cameras):
@@ -309,15 +315,25 @@ def _native_targets(unreal, plan):
         target.set_editor_property("manifest_sha256", hashlib.sha256(raw).hexdigest())
         if override_asset is not None:
             target.set_editor_property("diagnostic_visual_mesh_override", override_asset)
+        kit = plan.get("seeded_kit_pair", {})
+        if kit.get("apply_original_seeded_kits") is True:
+            bound = next(item for item in kit["binding"]["entities"] if item["entity_id"] == row["entity_id"])
+            target.set_editor_property("seeded_kit_set_id", bound["kit_set_id"])
+            for semantic, field in (("Jersey", "seeded_jersey_material"), ("Shorts", "seeded_shorts_material")):
+                material = unreal.load_asset(bound["semantic_materials"][semantic])
+                if material is None or material.get_class().get_name() != "Material":
+                    raise RuntimeError("原seed服装资产不存在或class不符")
+                target.set_editor_property(field, material)
         targets.append(target)
         snapshots[row["entity_id"]] = raw
     return targets, snapshots
 
 
-def prepare(plan):
+def prepare(plan,camera_id=None):
     """仅构造独立内存队列与无覆盖attempt，不执行MRQ或改现有queue。"""
     import unreal
     global _PREPARED
+    capture_cameras = select_capture_cameras(plan,camera_id)
     if _PREPARED is not None or getattr(sys.modules.get(_SESSION), "prepared", None) is not None:
         raise RuntimeError("该模块已持有准备队列，不重复构造")
     report = preflight(plan)
@@ -328,9 +344,19 @@ def prepare(plan):
     attempt = root / plan["attempt"]
     if attempt.exists():
         raise RuntimeError("attempt 已存在，拒绝覆盖")
+    # Saved只放状态/native收据；所有新RGB/EXR固定写G的独立raw，不恢复旧Saved媒体路径。
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+    from grf_ue_bridge.storage_policy import require_render_destination as _checked_media
+    media_root = _checked_media(Path("G:/FutsalMOT_Dataset/_work") / plan["attempt"] / "raw")
+    if media_root.exists():
+        raise RuntimeError("G盘raw attempt已存在，拒绝覆盖未完成或历史媒体")
     attempt.mkdir(parents=True, exist_ok=False)
     encoded = json.dumps(plan, ensure_ascii=False, sort_keys=True, allow_nan=False).encode("utf-8")
     (attempt / "plan.json").write_bytes(encoded)
+    capture_scope = make_capture_scope(plan,camera_id,hashlib.sha256(encoded).hexdigest()) if camera_id is not None else None
+    if capture_scope is not None:
+        with (attempt / "capture_scope.json").open('x',encoding='utf-8') as stream:
+            json.dump(capture_scope,stream,ensure_ascii=False,indent=2)
     (attempt / "preflight.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     for entity, raw in snapshots.items():
         if entity not in {side + str(index) for side in "LR" for index in range(5)}:
@@ -338,7 +364,7 @@ def prepare(plan):
         (attempt / (entity + "_landmark_snapshot.json")).write_bytes(raw)
     queue = unreal.MoviePipelineQueue()
     settings = []
-    for camera in plan["cameras"]:
+    for camera in capture_cameras:
         destination = "/Game/FutsalMOT/Development/Pose17/" + plan["attempt"] + "/" + camera["camera_id"]
         if unreal.EditorAssetLibrary.does_asset_exist(destination):
             raise RuntimeError("独立Sequence资产已存在，拒绝覆盖")
@@ -359,7 +385,7 @@ def prepare(plan):
         from pathlib import Path as _StoragePath
         _storage_sys.path.insert(0, str(_StoragePath(__file__).resolve().parents[1] / "src"))
         from grf_ue_bridge.storage_policy import require_render_destination as _checked_media
-        output.output_directory = unreal.DirectoryPath(str(_checked_media(attempt / camera["camera_id"])))
+        output.output_directory = unreal.DirectoryPath(str(_checked_media(media_root / camera["camera_id"])))
         output.output_resolution = unreal.IntPoint(3840, 2160)
         # 文件帧为attempt内相对编号；EXR/native仍保留真实Sequence源帧。
         output.file_name_format = "{render_pass}{frame_number_rel}"
@@ -396,6 +422,9 @@ def prepare(plan):
         setting = config.find_or_add_setting_by_class(unreal.FutsalPose17MRQPass)
         setting.max_records = plan["frame_count"] * len(plan["targets"])
         setting.targets = targets
+        kit = plan.get("seeded_kit_pair", {})
+        setting.set_editor_property("apply_seeded_kit_for_diagnostic", kit.get("apply_original_seeded_kits") is True)
+        setting.set_editor_property("seeded_appearance_fingerprint", kit["binding"]["source_appearance_fingerprint"] if kit.get("apply_original_seeded_kits") is True else "")
         setting.set_editor_property("prepare_cpu_for_diagnostic", plan.get("allow_pie_cpu_preparation") is True)
         setting.set_editor_property("hide_driver_for_diagnostic", plan.get("allow_pie_driver_hide") is True)
         setting.set_editor_property("diagnostic_camera_object_names", [camera["camera_actor_object_name"]])
@@ -411,19 +440,28 @@ def prepare(plan):
         if plan.get("diagnostic_scope")=="pose17_gpu_render_cpu_lbs_joint_diagnostic":
             setting.set_editor_property("allow_joint_pose17_diagnostic",True)
         settings.append(setting)
-    _PREPARED = {"queue": queue, "settings": settings, "attempt": attempt, "plan": plan}
+    _PREPARED = {"queue": queue, "settings": settings, "attempt": attempt, "plan": plan, "media_root": media_root,
+                 "capture_cameras":capture_cameras}
     # MCP run_python_file 可能使用新的执行globals；通过专用模块持有 transient UE 对象。
     session = types.ModuleType(_SESSION)
     session.prepared = _PREPARED
     sys.modules[_SESSION] = session
-    state = {"schema": "futsalmot_pose17_smoke_state_v1", "status": "prepared_not_submitted",
-             "plan_sha256": hashlib.sha256(encoded).hexdigest(), "jobs": len(plan["cameras"]),
+    state = {"schema": "futsalmot_pose17_smoke_state_v1", "status": "prepared_not_submitted", "media_root": str(media_root),
+             "plan_sha256": hashlib.sha256(encoded).hexdigest(), "jobs": len(capture_cameras),
              "ready_to_render": (plan.get("allow_pie_cpu_preparation") is True or plan.get("pose_sampling_path")=="gpu_render_cpu_lbs")
                  and plan.get("allow_pie_driver_hide") is True,
              "pose_sampling_path":plan.get("pose_sampling_path","cpu_skin_cache"),
              "production_accepted": False, "completed_jobs": [], "errors": [],
              "remaining_gates": ["runtime_CPU_LOD_prepare_restore_validation",
                                  "camera_motionblur_zero", "source_sequence_runtime_pose_dynamic", "MRQ_RGB_mask_pose_pair_validation"]}
+    if capture_scope is not None:state['capture_scope']=capture_scope
+    if validate_long_window_contract(plan):
+        # 300帧独立入口还必须验证新源前缀与临时地板事务；不能直接走通用submit。
+        state["ready_to_render"] = False
+        state["remaining_gates"].append("long_window_source_and_floor_transaction")
+    if validate_seeded_kit_contract(plan):
+        state["ready_to_render"] = False
+        state["remaining_gates"].append("seeded_kit_native_fields_and_floor_source_context")
     (attempt / "state.json").write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
     _PREPARED["state"] = state
     return state
@@ -438,6 +476,7 @@ def _write_state(session):
 
 def _assert_override_receipt(plan, receipt):
     """纯CPU契约：新角色必须提供真实身份、材质/动画保持及恢复收据。"""
+    assert_seeded_kit_receipt(plan, receipt)
     targets = [row for row in plan["targets"] if row.get("diagnostic_visual_mesh_override")]
     if not targets:
         if receipt.get("visual_mesh_override_requested") or receipt.get("visual_mesh_overrides"):
@@ -560,7 +599,7 @@ def submit():
         state["executor_success"] = bool(success)
         # 不订阅带PIE Pipeline/Job的延迟delegate。此处只读C++在world清理前保存的JSON。
         from pose17_native_receipt import normalize_native_receipt
-        for camera in session["plan"]["cameras"]:
+        for camera in session_cameras(session):
             name = camera["camera_id"]
             filename = session["attempt"] / (name + "_native_pose_restore_receipt.json")
             try:
@@ -582,19 +621,20 @@ def submit():
             except Exception as error:
                 state["errors"].append("native_receipt: " + name + ": " + repr(error))
         jobs = state["completed_jobs"]
-        all_passed = bool(success) and not state["errors"] and len(jobs) == len(session["plan"]["cameras"]) and all(
+        all_passed = bool(success) and not state["errors"] and len(jobs) == len(session_cameras(session)) and all(
             row["sampling_passed"] and row["restore_passed"] for row in jobs)
         state["status"] = "rendered_requires_RGB_mask_pose_alignment_acceptance" if all_passed else "failed_requires_diagnosis"
         state["ready_to_render"] = False
-        state["media"] = {camera["camera_id"]: {extension: len(list((session["attempt"] / camera["camera_id"]).glob("*." + extension)))
-                         for extension in ("png", "exr")} for camera in session["plan"]["cameras"]}
+        state["media"] = {camera["camera_id"]: {extension: len(list((session["media_root"] / camera["camera_id"]).glob("*." + extension)))
+                         for extension in ("png", "exr")} for camera in session_cameras(session)}
         if any(count < session["plan"]["frame_count"] for counts in state["media"].values() for count in counts.values()):
             state["status"] = "failed_requires_diagnosis"
             state["errors"].append("PNG或ObjectID EXR数量不足；不以executor成功代替媒体完整性")
         state["streaming_restart_required"] = any(job["streaming_state_restart_required"] for job in jobs)
         state["editor_restore_probe_pending"] = True
         _write_state(session)
-        print("POSE17_SMOKE_FINISHED " + json.dumps(state, ensure_ascii=False))
+        print("POSE17_SMOKE_FINISHED " + json.dumps({key: state.get(key) for key in
+            ("status", "executor_success", "errors", "media", "streaming_restart_required")}, ensure_ascii=False))
 
     session["callbacks"] = [on_finished]
     executor.on_executor_finished_delegate.add_callable_unique(on_finished)
@@ -644,7 +684,7 @@ def _assert_release_gate(session, report, executor_running):
             or state.get("streaming_restart_required") is not False):
         raise RuntimeError("会话尚未成功完成executor/native恢复/postflight，不可释放")
     jobs = state.get("completed_jobs", [])
-    expected = {camera["camera_id"] for camera in session["plan"]["cameras"]}
+    expected = {camera["camera_id"] for camera in session_cameras(session)}
     if (len(jobs) != len(expected) or {job["job"] for job in jobs} != expected
             or not all(job.get("sampling_passed") is True and job.get("restore_passed") is True for job in jobs)):
         raise RuntimeError("本会话完成相机/采样/恢复收据不完整")
@@ -673,7 +713,7 @@ def release():
         raise RuntimeError("落盘状态或当前Editor场景/mesh与postflight不一致，不可释放")
     from pose17_native_receipt import normalize_native_receipt
     receipt_files = []
-    for camera in session["plan"]["cameras"]:
+    for camera in session_cameras(session):
         path = attempt / (camera["camera_id"] + "_native_pose_restore_receipt.json")
         receipt = normalize_native_receipt(json.loads(path.read_text(encoding="utf-8")))
         _assert_override_receipt(session["plan"],receipt)
@@ -704,6 +744,7 @@ def release():
               "native_receipts": receipt_files, "owned_callbacks_removed": len(callbacks),
               "executor_is_rendering": False, "mrq_running": False, "pie_worlds": [], "dirty_packages": [],
               "artifacts_retained": True, "other_queues_untouched": True, "production_accepted": False}
+    if 'capture_scope' in session['state']:result['capture_scope']=session['state']['capture_scope']
     with path.open("x", encoding="utf-8") as stream:
         json.dump(result, stream, ensure_ascii=False, indent=2, allow_nan=False)
     session["state"]["session_released"] = True
