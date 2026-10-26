@@ -28,15 +28,21 @@ CPU收据在`Saved/ResearchBuild/v10_motion_sources_a01/manifest.json`。前缀�
 
 完整阶段为12个单机位单位，共3600RGB/mask/36000Pose。分阶段准入由`freeze_multiseed_v10.py`默认只读、显式冻结，消费上述根短样验收。沿用已验串行采集→本次正常quit→6CPU后处理→精确退休EXR，12线程/队列8不变；禁止渲染/导出加速工作。媒体只在G Dataset独立版本，D Saved只元数据。短样通过不等完整采集或训练完成，完整批仍按实际state和收据判定。
 
-完整批已于14:54:56唯一启动，权威状态为`Saved/AppearancePlanning/multiseed_v10_a01/control_full_a01/state.json`。独立发布候选`tools/appearance/publish_multiseed_v10.py`已通过4项纯CPU元数据夹具：十二单位同卷移动和原索引字节保留、非exact world如实报告、活动控制器拒绝、world篡改在移动前拒绝、未知partial不重放。夹具没有生成正式媒体或训练更新，尚未实际发布。只能在十二单位全部完成、每次正常退出/EXR退休且真实控制器退出后，先运行默认只读计划，再显式`--publish`，目标为`G:/FutsalMOT_Dataset/v4_pose17_multiseed_green_a01`。发布对每seed四条world流各读一次，保留所有机位原值、实际view及来源SHA；不重读巨大的原生明细、不审计媒体像素、不复制4K。intent/逐项移动journal/complete及独立relocation保留历史来源路径，发布仍不等训练准入。
+完整批于14:54:56唯一启动，权威状态为`Saved/AppearancePlanning/multiseed_v10_a01/control_full_a01/state.json`。独立发布工具`tools/appearance/publish_multiseed_v10.py`通过4项纯CPU元数据夹具：十二单位同卷移动和原索引字节保留、非exact world如实报告、活动控制器拒绝、world篡改在移动前拒绝、未知partial不重放。只能在十二单位全部完成、每次正常退出/EXR退休且真实控制器退出后，先运行默认只读计划，再显式`--publish`，目标为`G:/FutsalMOT_Dataset/v4_pose17_multiseed_green_a01`。发布对每seed四条world流各读一次，保留所有机位原值、实际view及来源SHA；不重读巨大的原生明细、不审计媒体像素、不复制4K。intent/逐项移动journal/complete及独立relocation保留历史来源路径，发布仍不等训练准入。
+
+上述完整阶段现已真实闭合：12单位3600RGB/mask及36000人物Pose，3600EXR共144520931344字节已退休，最后UE于15:59:36正常Exiting/closed，采集控制器及所有UE实际退出。默认只读发布计划通过后，十二stage已同G卷移动到目标；dataset SHA `1b7386b4275b3101a1a4a4a9e68d360b618b29d72db0dc66873ebdab36a3e251`与`_publication_a01/complete.json`一致。单次四流比较在三个完整运动各3000记录/机位均逐值exact/max0；短样差异原记录及未知成因不撤回，也不据此声称根治或物理可见性。`full_acceptance_root.json`绑定发布/来源/退出/清理，source900时间样本不按四机位扩成独立运动。
 
 ## 公平窗口与方法对照
 
-共享预测的CPU来源契约`tools/research_ops/v10_prediction_inputs.py`已通过4项针对检查，并实际读取既有1048绿色B组及两场val的索引：6源/2325帧计划可生成，首尾图片存在；没有解码、运行模型或生成新预测。完整目标是四seed×四cam的4800合成帧，加1125验证帧，共18源5925帧。每个绿色来源均重新运行同一冻结PT原图检测，旧1048蓝框缓存不复用。新序列UID命名不带旧blue；`frame_index`零基、`frame_number`一基、PNG零基、JPEG一基分别明确，原运动源帧与源时间另存，不能以本地序列时间覆盖源偏移。进入模型的帧元数据不含GT身份/框/Pose，合成标签和真实GT引用只供预测完成后的身份标签或评价。三个新增运动组仍在完整采集中，此候选不等全部新图绑定、预测准入或GPU完成；收据为`Saved/ResearchBuild/v10_prediction_inputs_CPU_a01.json`。
+共享预测的CPU来源契约`tools/research_ops/v10_prediction_inputs.py`通过4项针对检查，CPU阶段实际读取既有1048绿色B组及两场val的6源/2325帧索引，并检查首尾图片存在；该检查未解码或运行模型。完整目标是四seed×四cam的4800合成帧，加1125验证帧，共18源5925帧。每个绿色来源均重新运行同一冻结PT原图检测，旧1048蓝框缓存不复用。新序列UID命名不带旧blue；`frame_index`零基、`frame_number`一基、PNG零基、JPEG一基分别明确，原运动源帧与源时间另存，不能以本地序列时间覆盖源偏移。进入模型的帧元数据不含GT身份/框/Pose，合成标签和真实GT引用只供预测完成后的身份标签或评价。CPU收据为`Saved/ResearchBuild/v10_prediction_inputs_CPU_a01.json`，本轮实际完整来源预飞和GPU状态见下。
 
-独立模型执行候选`tools/research_ops/v10_prediction_cache.py`另有5项CPU检查通过：完整十二单位/源限制门禁、实际进程身份/PID复用、原检测截边与顺序、缺Pose拒绝且无效Pose保留、显式配置SHA不符时拒绝。它绑定原v8检测参数及冻结裁剪Pose函数/预取字节，先独占新输出再加载模型，异常保留partial和失败收据；不回填旧Pose、不按GT筛检测。尚未安装新的D执行bundle、冻结`v10_shared_prediction_config_v1`或运行真实GPU/端到端预飞。必须等本次完整发布和UE实际退出，配置绑定新旧成品/发布/最终采集、新比赛下载/解码/独立身份验收及原PT数值来源，默认只读预飞后再显式`--execute --config-sha256`。5项CPU通过不等5925帧预测已完成或训练已获准入；收据为`Saved/ResearchBuild/v10_prediction_cache_CPU_a01.json`。
+独立模型执行入口`tools/research_ops/v10_prediction_cache.py`另有5项CPU检查通过：完整十二单位/源限制门禁、实际进程身份/PID复用、原检测截边与顺序、缺Pose拒绝且无效Pose保留、显式配置SHA不符时拒绝。它绑定原v8检测参数及冻结裁剪Pose函数/预取字节，先独占新输出再加载模型，异常保留partial和失败收据；不回填旧Pose、不按GT筛检测。配置必须在本次完整发布和UE实际退出后冻结，绑定新旧成品/发布/最终采集、新比赛下载/解码/独立身份验收及原PT数值来源，默认只读预飞后再显式`--execute --config-sha256`。CPU收据为`Saved/ResearchBuild/v10_prediction_cache_CPU_a01.json`，实际准入和执行状态见下；CPU通过不等最终预测或训练完成。
+
+实际发布后已将必要5文件安装到D研究执行bundle `3f8566583ff07e60665c60fd4ec28cd03e5e8633796c9da8ad83e997fe09bc92`，原数值裁剪/Pose与OrderedPrefetch复制自旧冻结bundle，字节SHA不变。新配置`pose/multiseed_v10_a01/prediction_frozen_a01/config.json` SHA `6293539cdd8dfc35b6f3459f6ae27c2bc5fa067a9fda6b547b9d4efe69cd8833`绑定新旧成品、真实采集/发布、两场val身份/解码链和原PT来源。18源/5925帧默认只读预飞已实际通过，16:09:05唯一启动GPU共享预测并已越过首机位50帧；输出`shared_inputs_a01`及原stdout/stderr保持独立。只有最终manifest为`complete_18_sources_not_training_authorized`且实际进程退出才算预测完成；当前不等新窗口池或训练完成，优化器更新仍为0。
 
 计划两个新S采样池：四运动seed平衡采样；同源下增加交叉/实际检测断档的困难采样。每池1000唯一窗口、每seed250，实际标签/pair另计。先从固定预测与GT标签登记事件，再冻结具体配额；不足时如实报告，不能复制UID填额、把请求的时间间隔称检测缺失，或按下游分数补样。受控历史缺点若采用则另标干预，不冒称自然遮挡。
+
+结果前采样规则已实现为独立CPU候选`v10_synthetic_windows.py`，4项针对检查通过，尚未实际构建新池。两池每seed250，均按原四camera×五gap的20格分配12/13个窗口，保持机位/间隔配额相同。平衡组每格取最小窗口SHA；困难组每格按“自然检测缺失proxy→图像实例框重叠proxy→候选数→最小SHA”排序。自然缺失要求连续有效实例GT中间2–29帧没有任何IoU≥0.5的raw框，端点有检测；GT匹配冲突不冒称检测消失。重叠指查询/另一身份的可见实例框IoU≥0.1，不能当物理遮挡真值。所有事件为独立账本，选择后仍报告实际事件数量。困难事件不足时，在同格按登记顺序取其余合格窗口并如实报告，合格窗口本身不足配额就失败；不复制UID、不按Pose质量/训练损失/追踪分数挑样。沿用原v8唯一IoU身份标签、运动候选门槛和窗口定义；源GT只取身份/实例框，不输入GT Pose，val从不入训练。根CPU收据为`Saved/ResearchBuild/v10_synthetic_windows_CPU_a01.json`，实际完整预测后再冻结构建准入。
 
 每池分别训练强v8 motion、v9同名义参数motion_residual、v9 gated Pose。三原开发fold×三训练seed×三方法×两池，计划54个新RS，每臂1000实际更新、完全相同3000R窗口同序、另1000S；FP32 AdamW lr0.001/wd0.0001、独立meanR+meanS/3、预取2、last1000，不选best。总计划54000更新/162000R/54000S窗口，不是独立图像数或等计算预算。
 
