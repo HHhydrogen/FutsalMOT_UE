@@ -60,3 +60,6 @@
 未完成号码两份设计文档仍受保护，保留在原开发目录，不因本次文档整理提交号码实现或资产。P1 Python3.9、研究Python3.10及UE Python环境继续隔离。final116/187封存。
 
 - [有界变化编码单因素学习验证](research/POSE_BOUNDED_VELOCITY_LEARNING_A01.md)与[完整结果](research/POSE_BOUNDED_VELOCITY_LEARNING_A01_RESULTS.md)：27臂27000更新/567完整检查点、513追踪、720指标/720断档配对与120+24描述均已独立终验。七场相对强motion AssA−0.0582点[−0.2245,+0.1080]，未建立可靠编码增量；全部负结果/失败保留，测试封存。
+- [新T决策接口零更新方案](research/POSE_DECISION_INTERFACE_A01.md)：区分raw残差、原quality gate与完整分配，固定9旧trace×两新模型，先真实数值/score2准入，不把代理当AssA收益。
+- [120样本盲人工质量输入](research/POSE_MANUAL_QUALITY_INPUTS_A01.md)：空模板与契约已完成，实际人工GT0，人员和独立复核待安排，未报PCK/OKS。
+- [常驻关联worker实测](operations/ASSOCIATION_WORKER_ADMISSION_A01_RESULTS.md)：六完整任务、原ID/指标一致，2track+1metric相对新进程串行实测2.19365倍；仅该工作量/后端，不冒充模型成绩或整轮训练倍数。
