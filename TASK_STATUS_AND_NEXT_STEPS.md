@@ -19,6 +19,8 @@
 
 ## 当前执行：有界27臂训练验收完成，513项匹配追踪推进
 
+- 用户最新要求后续训练/推理充分使用14600KF/4070Ti SUPER/32GB，已更新[性能准入规则](Docs/operations/TRAINING_PERFORMANCE.md)。当前冻结513任务保持原样；本轮闭合后，下一新协议优先独立track/metric常驻进程池、有界模型/输入缓存及训练传输/同步优化，先测同工作量总耗时和数值一致性。未运行新性能基准或承诺加速倍数，不恢复取消的渲染/导出优化。
+
 - 有界变化27臂已真实完成并退出，独立a02读回567份完整检查点，27000更新/81000R/18000S、R all-known304020/234738、S92574/50382及初始化/UID/epoch/逐步记录和链全验，重放0。a01审计误认为预取会自动cache.close而失败，原closed=false及失败保留；a02严格核prefetch join/1000消费和run真实退出，无训练或原记录变化。完成根6b97afe6…，实际预算postrun_audit_a02/actual_budget.json。14:29:25+08真实只读预飞后唯一启动513 CPU追踪=450新T+63同容量七场缺失参考（新SGD0），首新adapter7719次真实调用/195维/TrackEval门禁通过，实际state在DResearch/pose/pose_velocity_learning_a01/tracking_control_a01/driver_state.json。协议ac89537c…/六文件bundle923a393…，绝不重复启动/热改；完整结果/配对区间尚未完成，不宣称Pose收益。
 - 用户已授权实施[Pose利用验证方案](Docs/research/POSE_UTILIZATION_NEXT_A01.md)。[零更新信息链](Docs/research/POSE_INFORMATION_CHAIN_A01_RESULTS.md)完整54单元/641785行、79465状态行签名及独立终验/进程退出已完成，0优化、无新自由追踪/检测/Pose推理。全部未知与负结果保存，120个质量复核索引已固定但人工关键点真值/复核仍未完成，不报告PCK或OKS。
 - 近motion且实际介入的外部条件行中，平衡池均值正排65/127、线性外推54/127；困难池65/139、53/139，不能当独立事件或AssA。原外推候选实际三fold1000R/11260pair输入合同已通过，只改34通道并保持原gate；若直接重算gate会连带改变8208pair，因此显式分离。暂不启动原27–36臂，转向有界历史变化编码CPU合同；没有新训练或渲染。
