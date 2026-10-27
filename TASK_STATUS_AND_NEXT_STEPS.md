@@ -2,7 +2,15 @@
 
 更新：2026-10-27。历史过程见Git及对应运行收据；本页不保留过期PID流水。
 
-## 当前工作：18项零更新诊断已闭合，准备同缓存成熟追踪器对照
+## 最新闭合：官方OC-SORT同缓存12开发片段
+
+- 按用户新授权完成[版本/参数/输入协议](Docs/research/OCSORT_CACHED12_A01.md)及[全部结果](Docs/research/OCSORT_CACHED12_A01_RESULTS.md)。官方commit固定`8462e7e729a93ccd3bd995c0a79a890336cb3a0b`，三个算法文件原字节；默认det_thresh0.6/byteFalse，输入float32 N5/scale1，原Kalman64位/自然ID/全部core输出，MOTscore常数1。不是2023原字节或官方完整demo成绩。
+- 29CPU合同、真实96帧literal/常驻ABA/双spawn及正常退出通过；随后2track+1metric只正式执行12片段一次，共8165帧。两场实际计数门禁后继续10场，3690原gap分母、ID0、DO_PREPROC=False和全部未匹配预测保留。12评价/192历史参照/36配对、45指标区间及9gap描述独立终验通过，真实父子进程退出，SGD/新感知/媒体0，测试封存。
+- OC−强motion的AssA：原三场−5.9277点[−7.7113,−4.1442]，旧两场−7.0567[−67.1174,+53.0039]，七场−3.8914[−11.8842,+4.1015]；七场OC有2场更好、5场更差，全部保留。仅说明该固定配置下样本均值，不能称稳定超过OC-SORT/SOTA或Pose/合成因果。七场OC DetA另低22.1424点，内部阈值/确认/输出政策不同，不能当孤立关联模块比较。
+- 正式控制器记录24.3629秒（不含前置准备/准入/终验及退出尾部），采样进程树RSS峰0.7357GiB、最低可用RAM11.9787GiB；没有新串行提速证明。a01只读依赖路径误拒及a02缺threadpoolctl的真实失败均保留，独立a03补最小依赖/只读边界，算法参数不变，正式成功重放0。
+- 完成根`pose/ocsort_cached12_a01/complete_root_a01.json` SHA `13f185e6260c7ecc2456af6e98a02684076be7b388d932754516ea96bc4d3796`；实际正式配置`frozen_a03/config.json` SHA `832b41501e7eeddfe27cabb4b8ad5fa873a8ab03ca9e14bb78005486de2cbd79`。下一建议先做零更新score分层/阈值保留和轨迹输出差异账本，再决定单因素；不据12场搜索阈值或自动训练、扩数据。
+
+## 已闭合：18项零更新诊断与常驻吞吐
 
 - 用户授权继续后，已完成[常驻worker真实性能准入](Docs/operations/ASSOCIATION_WORKER_ADMISSION_A01_RESULTS.md)：六完整任务ABBA，串行104.2444秒→2track+1metric的47.5210秒，实测2.19365倍/耗时−54.4139%。27次完整追踪与评价的原ID/MOT/完整audit/全部指标/gap均与原结果一致，32个worker正常退出，最低可用RAM14.0258GiB。该小样本不外推为训练或513全轮倍数；新SGD/感知推理0，不重跑性能阶段。
 - [120样本盲人工输入](Docs/research/POSE_MANUAL_QUALITY_INPUTS_A01.md)已实际生成及pending验收，随后按用户弃用意向移出必做流程，不再等待人员。120人/2040点仍为0人工、0复核，不报准确率；原索引/空模板/工具归档保留，不删图或记录。Codex内置浏览器拒绝file://自动预览，页面未完成浏览器视觉验收，限制不绕过。

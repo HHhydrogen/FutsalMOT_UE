@@ -6,6 +6,8 @@
 
 [常驻worker实际准入](ASSOCIATION_WORKER_ADMISSION_A01_RESULTS.md)现已完成：固定六完整任务ABBA的新进程串行均值104.2444秒，2track+1metric常驻池47.5210秒，实测2.19365倍/耗时−54.4139%。27次完整追踪/评价与原MOT、完整audit、全部指标和gap逐值相同，32个worker正常退出，最低可用RAM14.0258GiB。适用同类执行优先采用该2+1策略；4+2、score2、GPU批量等不在此证明范围，不能替代它们的必要准入或承诺整轮训练倍数。
 
+[官方OC-SORT同缓存12片段](../research/OCSORT_CACHED12_A01_RESULTS.md)已实际复用2track+1metric有界执行：固定96帧literal/ABA/双spawn准入后，正式12片段/8165缓存帧只执行一次，原生ID/MOT/全部评价和真实退出终验通过。控制器至分析完成计24.3629秒，约335.14缓存帧/秒；采样进程树RSS峰0.7357GiB、最低可用RAM11.9787GiB/commit24.6877GiB。两track各6任务，metric12任务，全部close/join exit0，track无GT打开尝试。该值不含前置准备/准入/终验及退出尾部，不含检测/图像解码，不是全视频端到端FPS或新串行加速倍数；未跑4+2/新ABBA或GPU任务。仅新增缺失的FilterPy1.4.5和线程核验threadpoolctl3.6.0至研究runtime_dependencies，未升级原数值栈；原Kalman64位与float32输入分别记录。实际a01路径预飞及a02缺组件失败原样保留，独立a03没有重放成功正式片段。
+
 ## 2026-10-27当前结构与下一执行协议
 
 只读硬件核对为i5-14600KF、14核20逻辑线程，GPU为4070Ti SUPER、16376MiB显存，系统可见物理内存约31.84GiB。一次只读观察可用物理内存约16GiB，系统commit有余量；该快照不是持续峰值或基准，也不把整卡GPU百分比归因给当前任务。
