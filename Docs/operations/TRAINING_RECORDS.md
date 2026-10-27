@@ -8,6 +8,8 @@
 
 记录循环新增显式`diagnostic_updates=1`，仅当binding声明`diagnostic_only_one_update_not_formal_training=True`时允许，返回`diagnostic_only`，不生成正式千步完成收据。正式路径仍固定1000步；人工SIGINT和真实输入提前结束继续分别处理，不借诊断开关缩短正式预算。
 
+C的论文原始归档现已实际完成：`real_substitution_a01/paper_training_archive_a01`含全部18000步`steps.csv`、18臂`runs.csv`和来源`complete.json`，逐步保留基础/额外真实loss、LR/梯度、两类R UID/epoch/all及known pair与曝光链，无平滑、筛seed或补造。独立`export_substitution_training_records.py`只读取已验收日志与收据，不改权重/原始记录；378检查点仍在原run目录，新增训练更新0、新验证指标读取0。该归档不等追踪结果或合成替代结论。
+
 ## 新实验的强制记录
 
 研究根为实际`D:/projects/FutsalMOT_Research`；代码在不可变`code/<SHA>`，每次run独立目录。生成媒体只引用G成品，不复制训练图或EXR。

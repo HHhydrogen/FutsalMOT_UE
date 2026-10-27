@@ -7,11 +7,11 @@
 - [后续方案](Docs/research/POSE_DIAGNOSIS_AND_REAL_DATA_SUBSTITUTION_PLAN.md)已授权实施。162项机制与108项幅度CPU探针/机会审查及退出已完成，优化更新0，不重跑。关闭/打乱Pose影响很小，调大残差外部仅微升且原heldout下降；不能由此证明训练期Pose作用或必须加外部算法。
 - [额外真实输入阶段](Docs/research/EXTRA_REAL_INPUTS_A03.md)已全部闭合：061/098/154三段2250帧获取/CRC/首次解码、共享固定PT检测/Pose、三fold各1000唯一额外R窗口、九张未来曝光计划及独立核验/进程退出完成。旧两次网络失败原样保留，成功1500帧未重复下载，旧R/S/PT未重推，不重启获取/预测/建池。
 - 每fold排除heldout，两允许比赛各500；与基础R的窗口/观测/源帧引用交集均0，比赛时间不重叠。三fold条目共3000，但全局仅1500唯一窗口/2007源帧引用，不冒充独立样本或新比赛。三段仍属于原game4/6/9，标注工时未测。
-- 额外R输入及C十八臂训练现已全部完成，真实训练/控制器/launcher已退出。基础3000R表、标准化和质量尺度不变；C另立4000R资源问题，不能混入同3000R的Pose主比较。额外R输入根为D研究根`pose/pose_mechanism_a01/extra_R_inputs_a01/inputs_stage_complete_root_a03.json`，原缓存、窗口和论文输入CSV保留。当前UE/GPU研究任务关闭，仅CPU验证下载继续。
+- 额外R输入及C十八臂训练现已全部完成，真实训练/控制器/launcher已退出。基础3000R表、标准化和质量尺度不变；C另立4000R资源问题，不能混入同3000R的Pose主比较。额外R输入根为D研究根`pose/pose_mechanism_a01/extra_R_inputs_a01/inputs_stage_complete_root_a03.json`，原缓存、窗口和论文输入CSV保留。UE关闭，当前唯一GPU任务为下述七场共享PT预测。
 - 用户2026-10-27选择只报告配对差值和置信区间，不设非劣效/等效界限，不再为界限重复确认。[七比赛方案](Docs/research/REAL_SUPERVISION_SUBSTITUTION_A01.md)已固定7个未评估足球比赛、4790帧和比赛等权95%t区间/bootstrap敏感度，旧五场只作已观察开发参照，不当新盲测。
-- 验证输入a02恢复仍运行：`public/substitution_validation_a02/state.json`。a01坏JPEG失败保留，精确414帧重取后完整解码，a02继承437成功图只补4353；实际Name/CommandLine优先，不重启a01或另起下载。七场/全部4790帧、GT/首次解码和实际退出齐全且C GPU退出后才新共享PT预测，测试封存。
+- 七场输入a02已完整4790帧/GT/seqinfo/首次解码与实际退出，`validation_inputs_complete_root_a02.json` SHA `c3de03b1f926095b289044441329b78676045b136016647c29af86266e485046`。原a01失败保留，a02继承437成功图只补4353，完整manifest SHA `a948c541523dd886df86acab3f3e2270a812df1bec35529c6ff62fffc47b966b`；不重下、重哈或重解码成功图。测试封存。
 - C终态`complete18_C_training_wait_independent_audit_tracking`、18/18且active为空，独立`C_postrun_audit_a01/actual_budget.json`已真实核验18000更新/54000基础R/18000额外R/S0、378份完整检查点读回、step0初始化/九组两方法顺序/实际pair/LR/梯度及进程退出。R all/known为278136/207504，4诊断更新另计，重放0。协议SHA `e57a5a40d53f0d6b20ed0d790703a24abbb602c14679d135e1a198d5f568733c`及八文件bundle不改、不重启训练。
-- 新七场PT检测/cropPose的独立入口/ledger契约已实现，5CPU检查通过，仅候选，尚未安装/冻结或执行模型。输入4790帧完整及下载实际退出后冻结并运行一次共享预测；不重推旧R/S/PT。随后冻结全部A/B/C/PT自由追踪及gap_registry、配对区间分析，保留全部负结果，不作等效或成本节省判定。
+- 新七场PT检测/cropPose已真实只读预飞7源4790帧并11:29:41唯一后台启动，配置`prediction_frozen_a01/config.json` SHA `89a789b668da0fbd8d69c00b21487110bc115c9734e2a824ce5cfed0668d0119`，五文件bundle `b8a8573fb45fb974b0754230a811de7efa76d9ab6eea2a0454d3809dcb66f6eb`。首场至少250帧已实际预测，权威`shared_predictions_a01/manifest.json`和`_launch_shared_prediction_a01`日志；未全完成，不重复启动/热改/开UE。完整七源4790和真实退出后再登记断档及冻结392项A/B/C/PT自由追踪，不重推旧R/S/PT，保留全部负结果，仅配对差值/区间。
 - 下载等待期已构建七比赛392项追踪/评价/区间控制器候选及结果前断档登记接口，6CPU检查通过；A/B/C各motion/gated六模型实际CPU加载、初始化与同架构适配器读回/前向接口通过，`model_loading_diagnostic_a02/receipt.json`，更新0/新验证帧0。a01仅新封装漏B协议参数失败，已独立a02最小修复，旧失败保留。当前未冻结/运行新追踪，无新AssA；共享预测仍须完整4790输入/实际退出后。主motion/次gated只报告事前配对差值和置信区间，全部seed/fold/比赛/负结果保留。
 
 ## v10已完成与当前状态
