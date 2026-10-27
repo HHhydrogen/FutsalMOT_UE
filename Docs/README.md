@@ -40,6 +40,7 @@
 - [残差幅度单因素探针](research/RESIDUAL_AMPLITUDE_PROBE_A01.md)：108项CPU对照/分析/实际退出及CSV已闭合，外部Pose仅微变、原heldout下降；区分训练期补充、Pose推理及一般幅度作用，不声称改大幅度解决问题。
 - [额外真实输入验收](research/EXTRA_REAL_INPUTS_A03.md)：2250新时间片帧、共享PT预测、三fold各1000窗口及9张未来曝光计划已闭合，新增优化0。全局1500唯一窗口/2007源帧引用，非新增比赛；后续七比赛与无界限区间方案另立，C的4000R尚未训练，测试封存。
 - [七比赛真实资源对照方案](research/REAL_SUPERVISION_SUBSTITUTION_A01.md)及[完整结果](research/REAL_SUPERVISION_SUBSTITUTION_A01_RESULTS.md)：七场4790输入/共享预测、C18臂18000更新/完整记录、392项自由追踪及1323配对/105区间独立终验全部闭合。主motion B−C AssA +0.0024点，95%CI [−0.5608,+0.5657]；仅报告差值/区间，不据均值接近称等效，测试封存。
+- [七比赛后的Pose利用验证方案](research/POSE_UTILIZATION_NEXT_A01.md)：优先诊断独立信息和实际匹配利用，再验证一个显式时序表示改动；候选27新臂、必要控制后最多36，尚未冻结/执行。数据完善按真实缺口触发，不直接扩大渲染或训练轮数。
 - [原Pose路线历史](research/POSE_PIPELINE_HISTORY.md)保存原阶段独有决策，不能当作今天的恢复命令。
 
 ## operations：维护与历史
