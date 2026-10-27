@@ -12,6 +12,7 @@
 - 验证输入a02恢复仍运行：`public/substitution_validation_a02/state.json`。a01坏JPEG失败保留，精确414帧重取后完整解码，a02继承437成功图只补4353；实际Name/CommandLine优先，不重启a01或另起下载。七场/全部4790帧、GT/首次解码和实际退出齐全且C GPU退出后才新共享PT预测，测试封存。
 - C终态`complete18_C_training_wait_independent_audit_tracking`、18/18且active为空，独立`C_postrun_audit_a01/actual_budget.json`已真实核验18000更新/54000基础R/18000额外R/S0、378份完整检查点读回、step0初始化/九组两方法顺序/实际pair/LR/梯度及进程退出。R all/known为278136/207504，4诊断更新另计，重放0。协议SHA `e57a5a40d53f0d6b20ed0d790703a24abbb602c14679d135e1a198d5f568733c`及八文件bundle不改、不重启训练。
 - 新七场PT检测/cropPose的独立入口/ledger契约已实现，5CPU检查通过，仅候选，尚未安装/冻结或执行模型。输入4790帧完整及下载实际退出后冻结并运行一次共享预测；不重推旧R/S/PT。随后冻结全部A/B/C/PT自由追踪及gap_registry、配对区间分析，保留全部负结果，不作等效或成本节省判定。
+- 下载等待期已构建七比赛392项追踪/评价/区间控制器候选及结果前断档登记接口，6CPU检查通过；A/B/C各motion/gated六模型实际CPU加载、初始化与同架构适配器读回/前向接口通过，`model_loading_diagnostic_a02/receipt.json`，更新0/新验证帧0。a01仅新封装漏B协议参数失败，已独立a02最小修复，旧失败保留。当前未冻结/运行新追踪，无新AssA；共享预测仍须完整4790输入/实际退出后。主motion/次gated只报告事前配对差值和置信区间，全部seed/fold/比赛/负结果保留。
 
 ## v10已完成与当前状态
 

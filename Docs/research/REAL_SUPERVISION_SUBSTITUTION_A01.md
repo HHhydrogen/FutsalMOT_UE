@@ -71,3 +71,18 @@ C所需2250帧共享预测/三fold额外R输入此前已完整验收，七比赛
 正式18000次更新，4次诊断/16R单列，重放0。上述为累计曝光，包含跨fold/seed/架构重复，不是独立帧数或等计算量；训练已闭合不等效果验证已完成，不重启C。
 
 A/B只有数值源码、初始化、输入/顺序与预算完全一致才引用；历史A缺失LR/梯度/RNG字段继续标缺失，不补造。若复用条件不成立，先重立公平控制，不追加旧权重。新七源共享PT预测候选入口/ledger契约已构建并通过5项CPU检查（固定4790、GT隔离、索引、诊断继承路径及真实进程独占）；尚未安装预测bundle、冻结预测准入或实际GPU执行。完整输入必须验收/退出后才预测，缺帧不跳、不GT筛框。完整A/B/C及PT自由追踪/区间报告仍待完成，当前不宣称资源替代或模型提升。所有阶段向用户汇报，正常等待静默。
+
+## 等待输入期间的独立CPU准备
+
+用户要求保持“输入→共享预测→追踪”的实际执行顺序。下载等待期间只构建后续入口，不提前评价新比赛，也不另训模型或增加渲染/导出性能工作。
+
+- `substitution_tracking_runtime.py`、`substitution_tracking_jobs.py`和`substitution_tracking_control.py`已构建候选：A/B/C×motion/gated×三fold×三seed×七比赛共378项，加PT bbox/static各七项，共392项。先跑14项PT评价门禁，再全部学习模型；已有输出或partial拒绝覆盖/隐式恢复，独立准入和实际只读预飞尚未执行。
+- 原冻结v10的单帧scope适配器、TrackEval纯函数与原v8断档规则直接引用，原关联数值/阈值/分配不改，sequence/game不取别名。新C独立v2加载，A/B沿原加载器，不把旧权重追加训练。
+- 断档注册候选只读取共享raw检测与评价GT，在追踪结果前登记全部事件。无GT坐标的公开登记收据只存计数/来源引用，追踪进程只加载该收据；含端点GT坐标的完整账本只由登记/评价读取。GT ID0保留，DO_PREPROC=False，未匹配预测不丢弃，零事件恢复率保留null；这些不是物理遮挡标签。
+- `substitution_tracking_analysis.py`已实现392项完整性门禁、全部原结果及配对单元CSV，缺一项不输出部分汇总。21类配对保留所有63个单元，再每场均9项、七场等权；主motion/次gated及B−A/C−A/B−C不改，PT差值另作次要描述，五指标区间均保留。不输出等效/非劣效标志或据区间选结果。
+
+6项CPU针对检查通过，包含完整矩阵、配对单位、缺失/重复/非有限拒绝、合法ID0和实际launcher链。独立`model_loading_frozen_a02/config.json` SHA `e70e39f3bf5a5f2c6fbd631dda9694752dfb314f38846422471b9bf24057c2c0`，两文件bundle `code/4bd25a2f518a9a3323888669cc765c3db30de679235384ca8c952f050a0835df`实际CPU加载A/B/C各motion/gated共6个已有模型、核对原初始化及同架构相同推理适配器，并用原trainR特征作前向接口探针。`model_loading_diagnostic_a02/receipt.json`终态`complete6_ABC_model_loaders_CPU_adapters_verified`；优化更新0、新比赛处理帧0，不是新模型准确率或392项追踪验收。
+
+首个CPU加载诊断a01因新封装给旧B加载器传入空配置，缺`training_protocol`而退出。新增回归先实际复现，再仅补传原训练协议引用，a02通过；a01旧bundle/目录和`failed_root_a01.json`保留，无训练更新或模型改写。冻结的C训练与活动下载源码均未修改。
+
+输入完成后的五文件预测准入准备脚本位于本机`Saved/ResearchBuild/freeze_seven_match_prediction_a01.py`，已语法检查但未执行。它先验证完整4790帧ledger、文件大小、GT/seqinfo和实际下载/C退出，再写输入完成根收据、安装原数值最小bundle、冻结新预测配置；不重复媒体hash或已成功解码。正式预测、断档注册及追踪各需在真实输入边界完成后独立冻结，不能把CPU准备当生产运行。
