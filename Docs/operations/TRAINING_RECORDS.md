@@ -4,7 +4,9 @@
 
 2026-10-27资源对照新增独立候选`full_training_record_spec_v2_real_groups`：C每步3基础R+1额外R，明确总4000R/0S，不借S列计账。逐步增加基础/额外R loss、窗口和all/known pair；权重固定`mean(base3R)+mean(extra1R)/3`。检查点/完成schema为`full_training_checkpoint_v2_real_groups`/`full_training_process_complete_v2_real_groups`，其余完整RNG、0/50/1000与last规则保持。原v1路径保留，旧冻结bundle不改。
 
-目前只通过5项CPU记账契约（含v1回归及拒绝把额外R记为S），尚未新C的实际GPU数值证明、独立模型加载或1000步门禁。未来新控制器必须先完成这些验证；CPU候选不表示已经新增训练。
+2026-10-27独立C入口增加4项数据/曝光检查，加上5项记账契约均通过。两架构真正调用新记录循环，与手写`mean(base3R)+mean(extra1R)/3`的CUDA更新逐值对照loss、全部权重和优化器；v2检查点实际读回通过，4诊断更新/16R窗口另计，收据为`real_substitution_a01/C_numeric_validation_a01/receipt.json`。C十八臂已正式启动，首千步21份完整检查点必须读回后才继续其余17臂；当前不能把数值门禁当完整矩阵完成。
+
+记录循环新增显式`diagnostic_updates=1`，仅当binding声明`diagnostic_only_one_update_not_formal_training=True`时允许，返回`diagnostic_only`，不生成正式千步完成收据。正式路径仍固定1000步；人工SIGINT和真实输入提前结束继续分别处理，不借诊断开关缩短正式预算。
 
 ## 新实验的强制记录
 

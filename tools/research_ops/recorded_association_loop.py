@@ -5,10 +5,13 @@ import time
 from training_journal import TrainingJournal, require
 
 
-def train(output, spec, model, optimizer, batches, domain_loss, *, checkpoint_extra=None):
+def train(output, spec, model, optimizer, batches, domain_loss, *, checkpoint_extra=None, diagnostic_updates=None):
     """batches来自已验OrderedPrefetch2；主控制器另行冻结/检查数据及数值来源。"""
     import torch
     require(spec['runtime'].get('device') != 'cpu_fixture', '夹具不能成为正式训练入口')
+    require(diagnostic_updates is None or (diagnostic_updates==1
+            and spec['binding'].get('diagnostic_only_one_update_not_formal_training') is True),
+            '单步诊断必须显式登记，不得缩减正式预算')
     stop = [False]
     previous = signal.signal(signal.SIGINT, lambda *args: stop.__setitem__(0, True))
     start = time.perf_counter()
@@ -48,11 +51,18 @@ def train(output, spec, model, optimizer, batches, domain_loss, *, checkpoint_ex
                     step_wall_seconds=time.perf_counter()-clock,**group_losses)
                 if journal.completed % 50 == 0:
                     journal.save_checkpoint(model, optimizer, extra=checkpoint_extra)
-            require(journal.completed == 1000 or stop[0], '输入提前结束，不能伪造成取消或完成')
+                if diagnostic_updates is not None and journal.completed==diagnostic_updates:
+                    break
+            require(journal.completed == 1000 or stop[0] or journal.completed==diagnostic_updates,
+                    '输入提前结束，不能伪造成取消或完成')
             journal.event('training_wall_seconds', seconds=time.perf_counter()-start,
                           includes_checkpoints=True, includes_prefetch_wait=True)
             if journal.completed == 1000:
                 return journal.finish()
+            if diagnostic_updates is not None:
+                journal.save_checkpoint(model,optimizer,extra=checkpoint_extra)
+                journal.event('diagnostic_only_not_formal1000',actual_diagnostic_updates=journal.completed)
+                return dict(status='diagnostic_only',completed_updates=journal.completed)
             if journal.completed not in journal.checkpoints:
                 journal.save_checkpoint(model, optimizer, extra=checkpoint_extra)
             journal.event('user_SIGINT_safely_paused_no_replay', completed_updates=journal.completed)
