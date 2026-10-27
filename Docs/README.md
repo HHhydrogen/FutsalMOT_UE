@@ -41,7 +41,7 @@
 - [额外真实输入验收](research/EXTRA_REAL_INPUTS_A03.md)：2250新时间片帧、共享PT预测、三fold各1000窗口及9张未来曝光计划已闭合，新增优化0。全局1500唯一窗口/2007源帧引用，非新增比赛；后续七比赛与无界限区间方案另立，C的4000R尚未训练，测试封存。
 - [七比赛真实资源对照方案](research/REAL_SUPERVISION_SUBSTITUTION_A01.md)及[完整结果](research/REAL_SUPERVISION_SUBSTITUTION_A01_RESULTS.md)：七场4790输入/共享预测、C18臂18000更新/完整记录、392项自由追踪及1323配对/105区间独立终验全部闭合。主motion B−C AssA +0.0024点，95%CI [−0.5608,+0.5657]；仅报告差值/区间，不据均值接近称等效，测试封存。
 - [七比赛后的Pose利用方案](research/POSE_UTILIZATION_NEXT_A01.md)与[实际零更新结果](research/POSE_INFORMATION_CHAIN_A01_RESULTS.md)：54份共同状态/641785行及独立终验已完成，全部未知/负结果保留。简单外推在近motion条件代理上未优于均值，暂不直接启动27–36臂；推进有界变化编码CPU合同，测试封存。七场AssA约30而非旧两场约40，评价范围不能混用，人工Pose质量真值仍未完成。
-- [有界变化编码CPU验收](research/POSE_BOUNDED_VELOCITY_CPU_A01.md)：三个实际基础R池/11260pair已核对34列、原gate与单位范数，0模型/优化/外部输入，不代表模型收益；下一步另冻匹配训练准入。
+- [有界变化编码CPU验收](research/POSE_BOUNDED_VELOCITY_CPU_A01.md)：三个实际基础R池/11260pair已核对34列、原gate与单位范数，0模型/优化/外部输入；其后训练/追踪已独立闭合，合同本身不代表收益。
 - [原Pose路线历史](research/POSE_PIPELINE_HISTORY.md)保存原阶段独有决策，不能当作今天的恢复命令。
 
 ## operations：维护与历史
@@ -59,4 +59,4 @@
 
 未完成号码两份设计文档仍受保护，保留在原开发目录，不因本次文档整理提交号码实现或资产。P1 Python3.9、研究Python3.10及UE Python环境继续隔离。final116/187封存。
 
-- [有界变化编码单因素学习验证](research/POSE_BOUNDED_VELOCITY_LEARNING_A01.md)：真实数值/完整记录准入、27臂匹配训练、全部负结果与测试封存。
+- [有界变化编码单因素学习验证](research/POSE_BOUNDED_VELOCITY_LEARNING_A01.md)与[完整结果](research/POSE_BOUNDED_VELOCITY_LEARNING_A01_RESULTS.md)：27臂27000更新/567完整检查点、513追踪、720指标/720断档配对与120+24描述均已独立终验。七场相对强motion AssA−0.0582点[−0.2245,+0.1080]，未建立可靠编码增量；全部负结果/失败保留，测试封存。

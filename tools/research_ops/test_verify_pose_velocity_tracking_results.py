@@ -1,6 +1,7 @@
 """独立终验边界：矩阵/真实退出/完整CSV及比赛级区间，均为CPU夹具。"""
 from copy import deepcopy
 import unittest
+from unittest.mock import patch
 
 import verify_pose_velocity_tracking_results as verify
 from substitution_paired_analysis import effect_intervals
@@ -86,6 +87,75 @@ class Verification(unittest.TestCase):
         verify.verify_report(report, job, cfg, {seq: 0}, {seq: 4})
         bad = deepcopy(report); bad['registry_sha256'] = 'other'
         with self.assertRaises(ValueError): verify.verify_report(bad, job, cfg, {seq: 0}, {seq: 4})
+
+    def registry_fixture(self):
+        """保留实际old_five无schema/event_counts与seven独立schema的差异。"""
+        cfg = dict(sources={}, registries={}); documents = {}; expected_refs = {}
+        counts_by_panel = dict(old_five=dict(zip(tuple(verify.OLD)+verify.EXTERNAL, (363, 393, 200, 214, 183))),
+            seven=dict(zip(verify.SEVEN, (293, 423, 351, 327, 375, 287, 281))))
+        for panel, counts in counts_by_panel.items():
+            sources = {}; gt_counts = {}
+            for i, seq in enumerate(counts):
+                gt_ref = dict(path='GT/'+seq, sha256='GT_SHA/'+seq)
+                # 旧两个外部场真实使用gt_reference，旧三场与新七场使用gt。
+                gt_key = 'gt_reference' if seq in verify.EXTERNAL else 'gt'
+                sources[seq] = dict(sequence=seq, **{gt_key: gt_ref})
+                expected_refs[gt_ref['path']] = deepcopy(gt_ref)
+                gt_counts[seq] = 100+i
+            cfg['sources'].update(deepcopy(sources))
+            binding = dict(registry=dict(path=panel+'/ledger', sha256=panel+'_LEDGER_SHA'),
+                           receipt=dict(path=panel+'/receipt', sha256=panel+'_RECEIPT_SHA'))
+            cfg['registries'][panel] = binding
+            for value in binding.values(): expected_refs[value['path']] = deepcopy(value)
+            ledger = dict(sources=deepcopy(sources), event_count=sum(counts.values()),
+                events=[dict(sequence=seq) for seq, n in counts.items() for _ in range(n)],
+                tracking_results_read=False, test_read=False)
+            public = dict(registry=deepcopy(binding['registry']), sources=deepcopy(sources),
+                event_count=sum(counts.values()), GT_row_counts=gt_counts, contains_GT_coordinates=False,
+                tracking_results_read=False, test_read=False)
+            if panel == 'old_five':
+                public.update(status='complete_old5_public_receipt_from_original_frozen_events',
+                              event_counts=deepcopy(counts), events_rebuilt=False)
+            else:
+                public.update(schema='seven_match_gap_registration_receipt_without_GT_v1',
+                    status='complete7_gap_registry_before_tracking', sequence_event_counts=deepcopy(counts))
+            documents[binding['registry']['path']] = ledger
+            documents[binding['receipt']['path']] = public
+        return cfg, documents, expected_refs
+
+    def run_registered_fixture(self, cfg, documents, expected_refs):
+        def checked(value):
+            if expected_refs.get(value['path']) != value: raise ValueError('fixture来源SHA改变')
+            return value['path']
+        with patch.object(verify, 'checked', side_effect=checked) as checks, \
+                patch.object(verify, 'read', side_effect=lambda path: deepcopy(documents[path])):
+            values = verify.registered_counts(cfg)
+        return values, checks.call_args_list
+
+    def test_actual_old_five_and_seven_receipt_schemas_keep_all_denominators(self):
+        cfg, documents, expected_refs = self.registry_fixture()
+        (totals, gt_rows), calls = self.run_registered_fixture(cfg, documents, expected_refs)
+        self.assertEqual(sum(totals.values()), 3690)
+        self.assertEqual(len(totals), 12); self.assertEqual(set(gt_rows), set(totals))
+        checked_paths = {args.args[0]['path'] for args in calls}
+        self.assertTrue({p for p in expected_refs if p.startswith('GT/')} <= checked_paths)
+
+    def test_registry_schema_denominator_gt_counts_and_sha_errors_rejected(self):
+        for mutation in ('unknown_schema', 'wrong_status', 'mixed_count_fields', 'missing_gt_counts',
+                         'wrong_denominator', 'GT_coordinates', 'GT_source_SHA'):
+            cfg, documents, expected_refs = self.registry_fixture()
+            public = documents['old_five/receipt']
+            if mutation == 'unknown_schema': public['schema'] = 'other'
+            elif mutation == 'wrong_status': public['status'] = 'started'
+            elif mutation == 'mixed_count_fields': public['sequence_event_counts'] = deepcopy(public['event_counts'])
+            elif mutation == 'missing_gt_counts': public.pop('GT_row_counts')
+            elif mutation == 'wrong_denominator': public['event_counts']['SNMOT-060'] -= 1
+            elif mutation == 'GT_coordinates': public['contains_GT_coordinates'] = True
+            else:
+                for source in (public['sources'], documents['old_five/ledger']['sources'], cfg['sources']):
+                    source['SNMOT-060']['gt']['sha256'] = 'changed'
+            with self.subTest(mutation=mutation):
+                with self.assertRaises(ValueError): self.run_registered_fixture(cfg, documents, expected_refs)
 
 
 if __name__ == '__main__':

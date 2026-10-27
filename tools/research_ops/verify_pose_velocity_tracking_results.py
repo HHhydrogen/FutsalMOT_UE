@@ -257,12 +257,41 @@ def registered_counts(cfg):
     for key, count in (('old_five', 1353), ('seven', 2337)):
         binding = cfg['registries'][key]; public = read(checked(binding['receipt']))
         registry = read(checked(binding['registry']))
+        common = {'status', 'registry', 'sources', 'event_count', 'GT_row_counts',
+                  'contains_GT_coordinates', 'tracking_results_read', 'test_read'}
+        require(common <= set(public), '公共receipt缺完整分母/GT行数/边界字段')
+        if key == 'old_five':
+            require('schema' not in public and public['status'] == 'complete_old5_public_receipt_from_original_frozen_events'
+                    and public.get('events_rebuilt') is False and 'event_counts' in public
+                    and 'sequence_event_counts' not in public, '不是原old5公开收据格式，禁止猜测字段回退')
+            count_field = 'event_counts'
+        else:
+            require(public.get('schema') == 'seven_match_gap_registration_receipt_without_GT_v1'
+                    and public['status'] == 'complete7_gap_registry_before_tracking'
+                    and 'sequence_event_counts' in public and 'event_counts' not in public,
+                    '不是原seven公开收据格式，禁止猜测字段回退')
+            count_field = 'sequence_event_counts'
         counts = Counter(event['sequence'] for event in registry['events'])
         require(public['contains_GT_coordinates'] is False and public['tracking_results_read'] is False
+                and public['test_read'] is False and registry['tracking_results_read'] is False and registry['test_read'] is False
                 and public['registry'] == binding['registry'] and public['event_count'] == len(registry['events']) == count
-                and public['sources'] == registry['sources'] and not set(totals) & set(public['sources']), '原全事件ledger/公共receipt不符')
-        require(public['sequence_event_counts'] == {s: counts[s] for s in public['sources']}, '全事件场分母不符')
-        totals.update(public['sequence_event_counts']); gt_rows.update(public['GT_row_counts'])
+                and public['sources'] == registry['sources'] and not set(totals) & set(public['sources'])
+                and set(public['sources']) <= set(cfg['sources'])
+                and public['sources'] == {s: cfg['sources'][s] for s in public['sources']}, '原全事件ledger/公共receipt/GT来源不符')
+        declared = public[count_field]
+        require(isinstance(declared, dict) and set(declared) == set(public['sources'])
+                and all(type(n) is int and n >= 0 for n in declared.values())
+                and set(counts) <= set(public['sources']) and sum(declared.values()) == count
+                and declared == {s: counts[s] for s in public['sources']}, '全事件场分母不符')
+        require(isinstance(public['GT_row_counts'], dict) and set(public['GT_row_counts']) == set(public['sources'])
+                and all(type(n) is int and n > 0 for n in public['GT_row_counts'].values()), 'GT行数来源缺项或非法')
+        for source in public['sources'].values():
+            # 旧SportsMOT用gt_reference，其余来源用gt；不改原元数据或重新筛GT。
+            require(('gt' in source) != ('gt_reference' in source), '原GT来源必须唯一且显式绑定')
+            checked(source['gt'] if 'gt' in source else source['gt_reference'])
+            if 'gameinfo' in source:
+                checked(source['gameinfo'])
+        totals.update(declared); gt_rows.update(public['GT_row_counts'])
     require(set(totals) == set(gt_rows) == set(cfg['sources']) and sum(totals.values()) == 3690, '12场3690事件/GT分母不齐')
     return totals, gt_rows
 

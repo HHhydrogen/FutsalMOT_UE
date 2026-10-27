@@ -10,9 +10,11 @@
 
 首次独立审计a01对资源关闭有错误假设：原`OrderedPrefetch.close`只join生产线程并释放lease，不调用缓存自身close，所以全部原`intervention.closed=false`如实保留。27份预取收据均closed=true/worker_alive=false、loaded=yielded=1000，实际run进程均退出；独立a02改为在这些证据全部成立时确认资源退出，仍拒绝缺失证据，9项回归通过。原失败intent/failed、`postrun_audit_diagnosis_a01.json`、旧审计bundle2e360…全部保留，未改训练、权重、原字段或冻结80e源码。a02独立审计bundle为`code/12789a9c8f1ad00a6bbb42b4f74682e78cf40a49d27c389cf9eec5127a17f655`。
 
-14:29:25+08已通过真实只读预飞并唯一启动513项CPU追踪/评价/分析，协议`tracking_frozen_a01/config.json` SHA为`ac89537c28668959729ea8d1930ca79c8f3ceff2da98c93bd54940467ebfd16d`，六文件bundle为`code/923a3931504debfbf9a85f8b4333637a1d200d4bae565a48bf61a0f89c19ea1a`。首个新adapter已实际调用7719次、195维均有限并完成真实TrackEval/计数门禁，原关联AST除scope和输入调用外不变。全部任务尚未完成，不能读取局部结果修改方案。
+14:29:25+08通过真实只读预飞后唯一启动的513项CPU追踪/评价/分析，已在16:14:59+08全部结束，实际控制器、子任务及launcher退出。协议`tracking_frozen_a01/config.json` SHA为`ac89537c28668959729ea8d1930ca79c8f3ceff2da98c93bd54940467ebfd16d`，六文件bundle为`code/923a3931504debfbf9a85f8b4333637a1d200d4bae565a48bf61a0f89c19ea1a`，原字节不变。首新adapter7719次实际调用/195维/AST及TrackEval门禁保留；没有重跑任务或按中期值改协议。
 
-独立终验器另冻于`code/9bebdef8afd0f7f6f5be114f4b6c9cb1a172461be49aae4fb0a6eb7ee8cbffa0`，6项实际研究环境CPU统计/来源检查通过，尚未实际运行；仅513/分析完整且进程退出后核所有来源、513原结果、270参考、720指标及720断档配对、120指标区间和另列24断档描述，不重推理/TrackEval或训练预算。
+首次独立终验9beb实际失败，根因是检查器将旧五场公开收据的`event_counts`误按七场`sequence_event_counts`读取；原收据、ledger及结果正确保留。独立a02仅适配明确历史status/schema，拒绝未知或混合字段，新增回归先复现同一KeyError，随后8项检查通过。新单文件bundle`code/325f6f9bba5ff927c4d79f403a424ef7ab31929107e00a65b7bb709a3e362def`实际终验通过，核全513来源/MOT/GT计数、270参考、720指标及720断档配对、120指标区间及另24断档描述和真实退出；不重推理、TrackEval或预算。`final_verification_a02/receipt.json` SHA为`71597848f615666395c4ae593dd3488f13f48fe943f4ba8f5762c2ad2a464714`，a01失败收据和旧9beb保留。
+
+[完整结果](POSE_BOUNDED_VELOCITY_LEARNING_A01_RESULTS.md)及根`complete_root_a01.json`已签，根SHA为`6b864d4a136e55744f2da8b3da73ae4dff8cbe6a1aa9c7acc1f6606d847001e6`。七场AssA新T_RS−强motion为−0.0582点，95%t区间[−0.2245,+0.1080]；对原gated−0.0500 [−0.2731,+0.1731]；自身开启−关闭+0.0106 [−0.0524,+0.0736]。额外S的+0.2643 [−0.2472,+0.7758]与真实形状−打乱+0.1164 [−0.0522,+0.2851]均保留不确定性；本轮未建立编码改善或Pose可靠增量，不称等效或所有Pose方法无效。全部负结果保留，测试封存，不重启27臂或513追踪。
 
 训练前准入已真实通过：12项输入/协议/数值CPU检查、三fold×三seed共9张曝光表完整CPU核对，以及三组真实CUDA一步手写/记录循环逐值一致。0/1完整模型、优化器及Python/NumPy/TorchCPU/CUDA RNG均实际读回，6诊断更新/18R/4S另计，诊断权重不进入正式训练。9表最终已知pair打乱特征改变率R为94.986%–97.156%，S为87.031%–87.210%；回退及未变化全部保留，不用bank映射率替代实际覆盖。
 
