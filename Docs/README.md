@@ -1,5 +1,7 @@
 # 技术文档索引
 
+- [一次有边界的错误条件分解](research/BOUNDED_ERROR_DECOMPOSITION_A01.md)及[完整结果](research/BOUNDED_ERROR_DECOMPOSITION_A01_RESULTS.md)：复用27原trace/320752行，63缺失内部来源保留unknown；真实分配准入、全部条件与112描述区间及独立终验已闭合，新增评分/追踪/SGD均0。唯一后续因素为训练R截距校准，尚未验证，不将条件计数当因果或性能增量，测试封存。
+
 项目当前状态与执行授权以[根README](../README.md)、[AGENTS](../AGENTS.md)及[任务状态](../TASK_STATUS_AND_NEXT_STEPS.md)为入口。本目录按工程、生产、研究、运维集中技术说明；历史验收、候选和本机结果不能替代当前准入。
 
 以下主要入口来自已跟踪文档的整理基线；实际是否已提交或推送以Git commit为准。正文中的历史命令、G/D旧路径和收据按当时版本理解，不能据此自动重启旧任务。未提交草稿移入分类目录不等于远端已交付。
