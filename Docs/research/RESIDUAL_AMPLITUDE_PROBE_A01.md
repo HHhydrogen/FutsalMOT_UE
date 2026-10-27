@@ -92,3 +92,9 @@
 实际执行时须先建立状态为`complete2250_extra_real_inputs_verified_processes_absent`的根收据，绑定下载manifest且下载实际退出；再冻结`extra_real_shared_prediction_config_v1`。最小bundle仅五文件：新入口/新输入契约/原冻结v8裁剪/原OrderedPrefetch/存储边界。配置另绑定原v10预测配置SHA `6293539cdd8dfc35b6f3459f6ae27c2bc5fa067a9fda6b547b9d4efe69cd8833`，直接核验原v6协议与相同PT权重。建议输出D研究根`pose/pose_mechanism_a01/extra_R_inputs_a01/shared_predictions_a01`，默认只读预飞，明确`--execute --config-sha256`才执行。完整终态为`complete3_sources2250_frames_not_training_authorized`且真实进程退出，才能进入新窗口构建；旧R/S/PT缓存不重推。
 
 恢复a03之后，预测候选已扩展为严格核验新汇总路径与原失败/旧恢复协议SHA、两源逐记录继承和新增750帧，不更改旧失败文件；CPU门禁增为6项，单独收据`Saved/ResearchBuild/extra_R_prediction_entry_CPU_a03.json`。新准备helper为`close_and_freeze_extra_R_prediction_a03.py`，计划使用独立`prediction_frozen_a03`与`shared_predictions_a03`，目前仅语法检查，尚未冻结或运行；原a01建议路径与helper不直接套用恢复结果。所有数据/模型来源与正式更新0保持，失败历史仍可审计。
+
+2026-10-27实际获取现已闭合：新a03汇总完整2250帧（继承1500、新补750），全部获取身份已退出。根`extra_R_acquisition_complete_root_a03.json` SHA `84c4a9f5affe08c98e9900512b0162de6c3ef9631ad5fb71178a51d2787aa072`核验2259项文件元数据、9个GT/seqinfo/gameinfo小文件SHA；不重哈JPEG或补造旧解码。两份旧失败完整保留。
+
+随后实际执行新a03收尾helper，冻结预测配置SHA `945c554c2b3fc75ccc7bd4ec4ade92ce590778c4ed16f7d357d66708cc001050`、独立5文件bundle `code/5a0ee286f6792d21073fb87d69269b78504ca2906de75c670a135a5838d5ca4e`，3源2250帧只读预飞通过后唯一后台启动。当前预测未完整验收，新增优化0；旧R/S/PT不重推，全部预测保留，GT只供后续标签/指标。实际终态和进程退出后才能建额外R窗口。
+
+额外R窗口候选`extra_real_windows.py`及4项CPU契约通过：仅将原v8载入器一条序列scope白名单替换为061/098/154，其余数值AST与候选/标签/间隔不变；每fold排除heldout、两个允许比赛各500唯一窗口、按原5个gap分层最小SHA选取。新旧来源比赛时间必须不重叠，窗口/观测/源帧引用重叠另核对。它只规划C的额外1000R，不把真实来源伪装S，基础3000R/标准化/质量尺度不改。当前尚未实际建池或训练，独立比赛和非劣效精度仍未闭合。
