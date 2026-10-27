@@ -2,6 +2,10 @@
 
 更新：2026-10-27。用户要求所有后续训练保留全过程，便于论文复核、曲线和表格。记录只是证据，不是新的数据/训练准入。
 
+[有界变化编码学习验证](../research/POSE_BOUNDED_VELOCITY_LEARNING_A01.md)现已实际通过三组CUDA手写/完整记录循环的一步逐值门禁：模型、AdamW、分域loss、梯度/LR及全部RNG相同，0/1检查点实际读回，6诊断更新18R/4S另计。独立新方法身份保存在`bounded_velocity_association_method_state_v1`，原gated初始化/1000步/3000R及RS另1000S不变；不伪装v10或复用诊断权重。
+
+14:05:30+08唯一启动的新27臂中，首个T_R已经真实1000步及21完整检查点读回通过，正在继续后续组。全部逐步日志/干预覆盖/原stdout-stderr保留；27臂尚未闭合，不能把首千步或数值门禁当完整预算或效果通过。训练后独立审计实际567份检查点与27000步/81000R/18000S，来源复用模型新增更新0、历史缺失仍缺失。
+
 七比赛资源对照现已完整闭合：C18000步/378完整检查点及原始CSV归档保留，A/B只读复用新增更新0；392项自由追踪/评价、1323配对单元和105个描述区间已独立核对，实际进程退出。结果见[完整报告](../research/REAL_SUPERVISION_SUBSTITUTION_A01_RESULTS.md)。历史A缺LR/梯度/RNG/中间权重仍如实缺失；原训练审计和归档不重复执行。
 
 2026-10-27资源对照新增独立候选`full_training_record_spec_v2_real_groups`：C每步3基础R+1额外R，明确总4000R/0S，不借S列计账。逐步增加基础/额外R loss、窗口和all/known pair；权重固定`mean(base3R)+mean(extra1R)/3`。检查点/完成schema为`full_training_checkpoint_v2_real_groups`/`full_training_process_complete_v2_real_groups`，其余完整RNG、0/50/1000与last规则保持。原v1路径保留，旧冻结bundle不改。
