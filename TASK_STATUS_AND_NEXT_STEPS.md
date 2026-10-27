@@ -2,19 +2,20 @@
 
 更新：2026-10-27。历史过程见Git及对应运行收据；本页不保留过期PID流水。
 
-## 当前执行：Pose机制诊断与真实资源替代准备
+## 当前状态：七比赛真实资源对照已闭合
 
 - [后续方案](Docs/research/POSE_DIAGNOSIS_AND_REAL_DATA_SUBSTITUTION_PLAN.md)已授权实施。162项机制与108项幅度CPU探针/机会审查及退出已完成，优化更新0，不重跑。关闭/打乱Pose影响很小，调大残差外部仅微升且原heldout下降；不能由此证明训练期Pose作用或必须加外部算法。
 - [额外真实输入阶段](Docs/research/EXTRA_REAL_INPUTS_A03.md)已全部闭合：061/098/154三段2250帧获取/CRC/首次解码、共享固定PT检测/Pose、三fold各1000唯一额外R窗口、九张未来曝光计划及独立核验/进程退出完成。旧两次网络失败原样保留，成功1500帧未重复下载，旧R/S/PT未重推，不重启获取/预测/建池。
 - 每fold排除heldout，两允许比赛各500；与基础R的窗口/观测/源帧引用交集均0，比赛时间不重叠。三fold条目共3000，但全局仅1500唯一窗口/2007源帧引用，不冒充独立样本或新比赛。三段仍属于原game4/6/9，标注工时未测。
-- 额外R输入及C十八臂训练现已全部完成，真实训练/控制器/launcher已退出。基础3000R表、标准化和质量尺度不变；C另立4000R资源问题，不能混入同3000R的Pose主比较。额外R输入根为D研究根`pose/pose_mechanism_a01/extra_R_inputs_a01/inputs_stage_complete_root_a03.json`，原缓存、窗口和论文输入CSV保留。UE/GPU研究任务关闭，当前唯一长任务是下述392项CPU追踪/评价。
+- 额外R输入及C十八臂训练现已全部完成，真实训练/控制器/launcher已退出。基础3000R表、标准化和质量尺度不变；C另立4000R资源问题，不能混入同3000R的Pose主比较。额外R输入根为D研究根`pose/pose_mechanism_a01/extra_R_inputs_a01/inputs_stage_complete_root_a03.json`，原缓存、窗口和论文输入CSV保留。UE/GPU与本轮CPU追踪均已结束，无活动实验任务。
 - 用户2026-10-27选择只报告配对差值和置信区间，不设非劣效/等效界限，不再为界限重复确认。[七比赛方案](Docs/research/REAL_SUPERVISION_SUBSTITUTION_A01.md)已固定7个未评估足球比赛、4790帧和比赛等权95%t区间/bootstrap敏感度，旧五场只作已观察开发参照，不当新盲测。
 - 七场输入a02已完整4790帧/GT/seqinfo/首次解码与实际退出，`validation_inputs_complete_root_a02.json` SHA `c3de03b1f926095b289044441329b78676045b136016647c29af86266e485046`。原a01失败保留，a02继承437成功图只补4353，完整manifest SHA `a948c541523dd886df86acab3f3e2270a812df1bec35529c6ff62fffc47b966b`；不重下、重哈或重解码成功图。测试封存。
 - C终态`complete18_C_training_wait_independent_audit_tracking`、18/18且active为空，独立`C_postrun_audit_a01/actual_budget.json`已真实核验18000更新/54000基础R/18000额外R/S0、378份完整检查点读回、step0初始化/九组两方法顺序/实际pair/LR/梯度及进程退出。R all/known为278136/207504，4诊断更新另计，重放0。协议SHA `e57a5a40d53f0d6b20ed0d790703a24abbb602c14679d135e1a198d5f568733c`及八文件bundle不改、不重启训练。
 - 新七场PT检测/cropPose已全部4790帧完整并实际GPU/launcher退出，`prediction_complete_root_a01.json` SHA `76aa4417f32eec8d03f852d391ec36e87ecf1716b0ba9ad4bb5f633f4a63de81`。90490 raw/63306几何通过/27184 bbox-only仅规则计数；单次stream独立核验缓存/时序/计数，不重推或重哈媒体。原配置SHA `89a789b668da0fbd8d69c00b21487110bc115c9734e2a824ce5cfed0668d0119`及五文件bundle保留，不重启预测。
 - 追踪结果前已实际固定2337可信检测断档proxy（非物理遮挡），`evaluation_inputs_a01/gap_registry.json` SHA `c05fc1f0ac2a39685afec25224f862d17b7103197994d09da002fc17a7cedf04`。无GT坐标的公开receipt供tracker读，完整endpoint_GT仅评价读，GT ID0保留、DO_PREPROC=False，全分母/零分母null。
-- 当前392项已真实预飞并11:38:39唯一后台启动：`tracking_control_a01/driver_state.json`，配置`tracking_frozen_a01/config.json` SHA `fd1b92c70ab91d021a8b055cf89eeb3775d34a506056efe85cb3da90038e9a78`，五文件bundle `abf088088192e2a75442515c62a6171f509911df1547e368c4396cea4044f8e2`。14项PT真实评价门禁通过，继续全部378学习模型，纯CPU线程1，正常活动不重复启动/热改。完整392/自动报告/实际退出前不宣称效果，主motion/次gated仅配对差值和CI，全部负结果保留。
-- 完成后执行独立终验器`code/0b3ee813ca965f1a20ac85a5ddbf649ecec0bb6fde04654666621717a7c370fd/tools/research_ops/verify_substitution_tracking_results.py`（2CPU已过、尚未实际执行），核对392来源、1323配对单元/105描述区间/进程退出再写最终报告；不重训/重推缓存或重算TrackEval。6CPU候选及6实际模型加载既有证据保留，a01零优化接口失败不抹除。
+- 392项自由追踪/TrackEval/自动区间分析已全部结束，state为`complete392_tracking_and_paired_intervals`、active为空，真实控制器/子进程/launcher退出。协议SHA `fd1b92c70ab91d021a8b055cf89eeb3775d34a506056efe85cb3da90038e9a78`及五文件bundle不改、不重启。独立终验器已实际核对392来源/MOT/GT计数、1323配对单元及105个t/bootstrap/逐场留一区间，终态`complete392_sources_all_results_1323_pairs_105_intervals_and_exit_verified`；没有重训、重推缓存、重算TrackEval或重复C预算。
+- [七比赛完整结果](Docs/research/REAL_SUPERVISION_SUBSTITUTION_A01_RESULTS.md)：主motion的AssA B−A为+0.2781点，95%CI [−0.3068,+0.8629]；C−A为+0.2756 [−0.5796,+1.1308]；B−C为+0.0024 [−0.5608,+0.5657]。次gated的B−C为−0.0520 [−0.3855,+0.2814]。B组gated−motion为−0.0082 [−0.1881,+0.1716]；不据区间跨0称等效、可靠Pose增量或节省人工成本。
+- 完成根`pose/real_substitution_a01/complete_root_a01.json` SHA `1fb5af28657d4c849a15b09231f8f03dd8153629e7fa0349e4f524116f321478`，全部392原指标/1323配对CSV、105区间/敏感度、18,000步C记录和378完整检查点保留。该阶段已完成，Pose机制和跨分布效用仍未解决；不自动扩大渲染/加训，测试继续封存。下一步基于完整报告讨论单因素机制或独立数据验证，不由局部正值选择方案。
 
 ## v10已完成与当前状态
 

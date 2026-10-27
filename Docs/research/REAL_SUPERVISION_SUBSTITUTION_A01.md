@@ -1,6 +1,6 @@
 # 真实监督资源对照：七比赛与配对区间方案
 
-更新：2026-10-27。用户选择“暂不设界限，只报告配对差值和置信区间”，覆盖此前以非劣效准入为前置的候选方案。本轮不设δ、不执行等效/非劣效检验、不输出“可替代/效果相当”通过标志。C十八臂训练/预算、七场4790输入及共享PT预测均已实际完整验收/退出，392项CPU自由追踪已唯一启动；14项PT门禁通过，完整配对结果仍待全部任务结束。
+更新：2026-10-27。用户选择“暂不设界限，只报告配对差值和置信区间”，覆盖此前以非劣效准入为前置的候选方案。本轮不设δ、不执行等效/非劣效检验、不输出“可替代/效果相当”通过标志。C十八臂训练/预算、七场4790输入/共享PT预测、392项自由追踪/区间分析及独立终验已全部闭合，实际生产者退出。[完整结果](REAL_SUPERVISION_SUBSTITUTION_A01_RESULTS.md)保留全部组/指标/负项；主motion的B−C AssA为+0.0024点，95%CI [−0.5608,+0.5657]，不能由均值接近或区间跨0宣称真实等效。
 
 ## 实际比赛范围
 
@@ -30,7 +30,7 @@
 - 敏感度：比赛层级百分位bootstrap，固定10000次、seed20261027，及逐场留一均值；不挑更有利的区间。
 - 不把9个训练重复当9场比赛，不从帧/窗口增大n；不将区间覆盖0解释为等效。区间未校正多重比较，不用于挑优或事后宣称显著。
 
-区间原理依[美国NIST均值区间公式](https://www.itl.nist.gov/div898/handbook/eda/section3/eda352.htm)。新C尚无结果，旧B−A的比赛波动不是未来B−C方差；只做敏感度：假设比赛差值SD为0.5/1/2点，七场95%t区间半宽约0.4624/0.9248/1.8497点。该表不是预计收益、功效保证或新性能结论。小样本和便利选片的限制必须与区间同时报告。
+区间原理依[美国NIST均值区间公式](https://www.itl.nist.gov/div898/handbook/eda/section3/eda352.htm)。结果前曾只做精度敏感度：假设比赛差值SD为0.5/1/2点，七场95%t区间半宽约0.4624/0.9248/1.8497点，未把旧B−A波动冒充未来B−C方差或功效保证。实际结果现见完整报告；小样本和便利选片限制与区间同时保留。
 
 ## 数据获取与失败记录
 
@@ -49,7 +49,7 @@
 - `precision_a01/report.json`，只读旧结果与假设方差的CPU精度报告，优化更新0。
 - `validation_input_frozen_a01/config.json`，SHA `7e78354eae2249930466f291b12ba94cf19a6ccedbf795ab9c0b03431e5bb7f6`。
 
-## C的完整记录准备及下一步
+## C的完整记录与实际预算
 
 `training_journal.py`增加独立`full_training_record_spec_v2_real_groups`，每步显式记录3基础R/1额外R、总4R/0S，两类真实loss和pair。检查点采用`full_training_checkpoint_v2_real_groups`，不借v10身份；0/每50/1000保存模型、优化器、完整RNG/曝光链。原v1三R/一S路径保留，旧D执行bundle字节未改。
 
@@ -70,7 +70,7 @@ C所需2250帧共享预测/三fold额外R输入此前已完整验收，七比赛
 
 正式18000次更新，4次诊断/16R单列，重放0。上述为累计曝光，包含跨fold/seed/架构重复，不是独立帧数或等计算量；训练已闭合不等效果验证已完成，不重启C。
 
-A/B只有数值源码、初始化、输入/顺序与预算完全一致才引用；历史A缺失LR/梯度/RNG字段继续标缺失，不补造。若复用条件不成立，先重立公平控制，不追加旧权重。共享PT入口/ledger契约5CPU检查及真实完整输入预飞通过，当前实际运行见下一节；缺帧不跳、不GT筛框。完整A/B/C及PT自由追踪/区间报告仍待完成，当前不宣称资源替代或模型提升。所有阶段向用户汇报，正常等待静默。
+A/B只有数值源码、初始化、输入/顺序与预算完全一致才引用；历史A缺失LR/梯度/RNG字段继续标缺失，不补造。共享PT入口/ledger契约5CPU检查及真实完整输入预飞通过，实际运行及完整效果见下文。全部阶段已按输入→预测→追踪顺序完成，没有由结果反改模型或分析。
 
 ## 七场输入完成与实际共享预测启动
 
@@ -86,15 +86,17 @@ A/B只有数值源码、初始化、输入/顺序与预算完全一致才引用�
 
 在任何本轮追踪结果前，冻结原v8双向唯一IoU端点规则实际登记2337个可信检测断档proxy：依七场顺序为293/423/351/327/375/287/281。`evaluation_inputs_a01/gap_registry.json` SHA `c05fc1f0ac2a39685afec25224f862d17b7103197994d09da002fc17a7cedf04`，无GT坐标的`gap_registry.receipt.json`供追踪读取；完整端点GT只由登记/评价读取。同一注册事件在不同模型下重复评价，不是2337个独立比赛或物理遮挡证据；全分母、无事件null规则保持。
 
-实际追踪协议`tracking_frozen_a01/config.json` SHA `fd1b92c70ab91d021a8b055cf89eeb3775d34a506056efe85cb3da90038e9a78`，必要五文件bundle `code/abf088088192e2a75442515c62a6171f509911df1547e368c4396cea4044f8e2`。完整392矩阵及来源只读预飞通过，11:38:39唯一后台启动。`tracking_control_a01/driver_state.json`和`_launch_tracking_a01`为权威；当前先14项PT真实评价门禁已完整通过（`all_seven_PT_adapter_gate.json`），控制器继续全部378学习模型任务。纯CPU/Torch线程1，未新增训练或改阈值；开始或局部健康不冒充完整结果。
+实际追踪协议`tracking_frozen_a01/config.json` SHA `fd1b92c70ab91d021a8b055cf89eeb3775d34a506056efe85cb3da90038e9a78`，必要五文件bundle `code/abf088088192e2a75442515c62a6171f509911df1547e368c4396cea4044f8e2`。完整392矩阵及来源只读预飞通过，11:38:39唯一后台启动；先14项PT真实评价门禁完整通过，再执行全部378学习模型任务和自动分析。`tracking_control_a01/driver_state.json`现已终态`complete392_tracking_and_paired_intervals`、392齐全/active为空，真实相关进程退出。纯CPU/Torch线程1，未新增训练或改阈值。
 
-完成必须392项全部追踪/评价/自动区间分析齐全、state为`complete392_tracking_and_paired_intervals`、报告为`complete392_all_results_and_paired_intervals`并核对真实控制器/子进程/launcher退出。独立终验器`verify_substitution_tracking_results.py`已2CPU检查并安装单文件bundle `code/0b3ee813ca965f1a20ac85a5ddbf649ecec0bb6fde04654666621717a7c370fd`，尚未实际执行；待完整终态后核对392来源/MOT/GT及分母、1323配对行与105区间/全CSV，不能重跑模型或TrackEval。数值序列化核验容差不是性能非劣效界限。全部原始模型、记录、指标及负结果保留。
+报告已终态`complete392_all_results_and_paired_intervals`。独立终验器`verify_substitution_tracking_results.py`从单文件bundle `code/0b3ee813ca965f1a20ac85a5ddbf649ecec0bb6fde04654666621717a7c370fd`实际执行通过，核对392来源/MOT/GT及全事件分母、1323配对行与105个t/bootstrap/逐场留一区间及完整CSV；`final_verification_a01/receipt.json`终态`complete392_sources_all_results_1323_pairs_105_intervals_and_exit_verified`。未重跑模型、TrackEval或C预算。数值序列化核验容差不是性能非劣效界限。全部原始模型、记录、指标及负结果保留。
 
-## 等待输入期间的独立CPU准备
+[完整结果](REAL_SUPERVISION_SUBSTITUTION_A01_RESULTS.md)中主motion的AssA B−A为+0.2781 [−0.3068,+0.8629]点，C−A为+0.2756 [−0.5796,+1.1308]点，B−C为+0.0024 [−0.5608,+0.5657]点；次gated B−C为−0.0520 [−0.3855,+0.2814]点。所有主区间跨0，不能作等效或可靠提升结论。完成根`complete_root_a01.json` SHA `1fb5af28657d4c849a15b09231f8f03dd8153629e7fa0349e4f524116f321478`。本阶段已闭合，测试封存，研究主线仍有Pose机制、分布泛化与人工成本未决。
+
+## 历史：等待输入期间的独立CPU准备
 
 用户要求保持“输入→共享预测→追踪”的实际执行顺序。下载等待期间只构建后续入口，不提前评价新比赛，也不另训模型或增加渲染/导出性能工作。
 
-- `substitution_tracking_runtime.py`、`substitution_tracking_jobs.py`和`substitution_tracking_control.py`已构建候选：A/B/C×motion/gated×三fold×三seed×七比赛共378项，加PT bbox/static各七项，共392项。先跑14项PT评价门禁，再全部学习模型；已有输出或partial拒绝覆盖/隐式恢复，独立准入和实际只读预飞尚未执行。
+- `substitution_tracking_runtime.py`、`substitution_tracking_jobs.py`和`substitution_tracking_control.py`在等待时构建：A/B/C×motion/gated×三fold×三seed×七比赛共378项，加PT bbox/static各七项，共392项。已有输出或partial拒绝覆盖/隐式恢复；当时尚未冻结/预飞，之后已按上述真实边界完成正式执行。
 - 原冻结v10的单帧scope适配器、TrackEval纯函数与原v8断档规则直接引用，原关联数值/阈值/分配不改，sequence/game不取别名。新C独立v2加载，A/B沿原加载器，不把旧权重追加训练。
 - 断档注册候选只读取共享raw检测与评价GT，在追踪结果前登记全部事件。无GT坐标的公开登记收据只存计数/来源引用，追踪进程只加载该收据；含端点GT坐标的完整账本只由登记/评价读取。GT ID0保留，DO_PREPROC=False，未匹配预测不丢弃，零事件恢复率保留null；这些不是物理遮挡标签。
 - `substitution_tracking_analysis.py`已实现392项完整性门禁、全部原结果及配对单元CSV，缺一项不输出部分汇总。21类配对保留所有63个单元，再每场均9项、七场等权；主motion/次gated及B−A/C−A/B−C不改，PT差值另作次要描述，五指标区间均保留。不输出等效/非劣效标志或据区间选结果。
@@ -103,4 +105,4 @@ A/B只有数值源码、初始化、输入/顺序与预算完全一致才引用�
 
 首个CPU加载诊断a01因新封装给旧B加载器传入空配置，缺`training_protocol`而退出。新增回归先实际复现，再仅补传原训练协议引用，a02通过；a01旧bundle/目录和`failed_root_a01.json`保留，无训练更新或模型改写。冻结的C训练与活动下载源码均未修改。
 
-本机`Saved/ResearchBuild/freeze_seven_match_prediction_a01.py`及后续追踪冻结助手已在真实输入/预测/退出边界实际依次执行，不再重跑。它们保留完整4790帧ledger、GT/seqinfo/物理路径、冻结源码和关键收据，不重复媒体hash或成功图解码。当前实际任务是上述392项CPU追踪，历史CPU准备不冒充完整效果验证。
+本机`Saved/ResearchBuild/freeze_seven_match_prediction_a01.py`及后续追踪冻结助手已在真实输入/预测/退出边界实际依次执行，不再重跑。它们保留完整4790帧ledger、GT/seqinfo/物理路径、冻结源码和关键收据，不重复媒体hash或成功图解码。历史CPU准备与正式完整效果验证分别留证，不重启已完成实验。

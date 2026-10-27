@@ -1,10 +1,12 @@
 # 训练全过程与论文证据
 
-更新：2026-10-26。用户要求所有后续训练保留全过程，便于论文复核、曲线和表格。记录只是证据，不是新的数据/训练准入。
+更新：2026-10-27。用户要求所有后续训练保留全过程，便于论文复核、曲线和表格。记录只是证据，不是新的数据/训练准入。
+
+七比赛资源对照现已完整闭合：C18000步/378完整检查点及原始CSV归档保留，A/B只读复用新增更新0；392项自由追踪/评价、1323配对单元和105个描述区间已独立核对，实际进程退出。结果见[完整报告](../research/REAL_SUPERVISION_SUBSTITUTION_A01_RESULTS.md)。历史A缺LR/梯度/RNG/中间权重仍如实缺失；原训练审计和归档不重复执行。
 
 2026-10-27资源对照新增独立候选`full_training_record_spec_v2_real_groups`：C每步3基础R+1额外R，明确总4000R/0S，不借S列计账。逐步增加基础/额外R loss、窗口和all/known pair；权重固定`mean(base3R)+mean(extra1R)/3`。检查点/完成schema为`full_training_checkpoint_v2_real_groups`/`full_training_process_complete_v2_real_groups`，其余完整RNG、0/50/1000与last规则保持。原v1路径保留，旧冻结bundle不改。
 
-2026-10-27独立C入口增加4项数据/曝光检查，加上5项记账契约均通过。两架构真正调用新记录循环，与手写`mean(base3R)+mean(extra1R)/3`的CUDA更新逐值对照loss、全部权重和优化器；v2检查点实际读回通过，4诊断更新/16R窗口另计，收据为`real_substitution_a01/C_numeric_validation_a01/receipt.json`。C十八臂现已全部完成，首千步21份门禁后串行执行，其后独立审计真实读回全部378份检查点/优化器/RNG及18000步记录，核对72000R（54000基础/18000额外）与全部pair/初始化/曝光链并确认进程退出；`C_postrun_audit_a01/actual_budget.json`保存证据。效果追踪尚未完成，训练记录完整不等于模型收益成立。
+2026-10-27独立C入口增加4项数据/曝光检查，加上5项记账契约均通过。两架构真正调用新记录循环，与手写`mean(base3R)+mean(extra1R)/3`的CUDA更新逐值对照loss、全部权重和优化器；v2检查点实际读回通过，4诊断更新/16R窗口另计，收据为`real_substitution_a01/C_numeric_validation_a01/receipt.json`。C十八臂现已全部完成，首千步21份门禁后串行执行，其后独立审计真实读回全部378份检查点/优化器/RNG及18000步记录，核对72000R（54000基础/18000额外）与全部pair/初始化/曝光链并确认进程退出；`C_postrun_audit_a01/actual_budget.json`保存证据。效果追踪也已完成，但训练记录完整本身不等于模型收益成立。
 
 记录循环新增显式`diagnostic_updates=1`，仅当binding声明`diagnostic_only_one_update_not_formal_training=True`时允许，返回`diagnostic_only`，不生成正式千步完成收据。正式路径仍固定1000步；人工SIGINT和真实输入提前结束继续分别处理，不借诊断开关缩短正式预算。
 
