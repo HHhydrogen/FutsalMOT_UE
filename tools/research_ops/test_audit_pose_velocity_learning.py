@@ -100,6 +100,34 @@ class Tests(unittest.TestCase):
         new['mean'][0] = .2
         with self.assertRaises(ValueError): audit.validate_adapter(state, old, .03, 2., 'game4', windows)
 
+    def test_closed_false_without_complete_exit_evidence_refuses(self):
+        stats = self.stats(); stats['closed'] = False
+        with self.assertRaisesRegex(ValueError, '缓存未闭合'):
+            audit.validate_intervention(stats, 'T_RS')
+
+    def test_joined_prefetch_and_actual_process_exit_release_cache_without_explicit_close(self):
+        stats = self.stats(); stats['closed'] = False
+        prefetch = dict(loaded=1000, yielded=1000, closed=True, worker_alive=False)
+        result = audit.validate_intervention(stats, 'T_RS', prefetch=prefetch,
+            producer_processes_absent=True)
+        self.assertFalse(result['cache_explicit_close_called'])
+        self.assertEqual(result['closure_evidence'], 'producer_joined_and_run_process_exited')
+        self.assertFalse(stats['closed'])
+
+    def test_cache_false_any_missing_join_or_exit_evidence_still_refuses(self):
+        stats = self.stats(); stats['closed'] = False
+        prefetch = dict(loaded=1000, yielded=1000, closed=True, worker_alive=False)
+        for changed in (dict(prefetch, loaded=999), dict(prefetch, yielded=999),
+                        dict(prefetch, closed=False), dict(prefetch, worker_alive=True),
+                        {k: v for k, v in prefetch.items() if k != 'loaded'}):
+            with self.assertRaises(ValueError):
+                audit.validate_intervention(stats, 'T_RS', prefetch=changed, producer_processes_absent=True)
+        with self.assertRaises(ValueError):
+            audit.validate_intervention(stats, 'T_RS', prefetch=prefetch, producer_processes_absent=False)
+        stats['original_gate_preserved'] = False
+        with self.assertRaises(ValueError):
+            audit.validate_intervention(stats, 'T_RS', prefetch=prefetch, producer_processes_absent=True)
+
 
 if __name__ == '__main__':
     unittest.main()

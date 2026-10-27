@@ -17,9 +17,9 @@
 - [七比赛完整结果](Docs/research/REAL_SUPERVISION_SUBSTITUTION_A01_RESULTS.md)：主motion的AssA B−A为+0.2781点，95%CI [−0.3068,+0.8629]；C−A为+0.2756 [−0.5796,+1.1308]；B−C为+0.0024 [−0.5608,+0.5657]。次gated的B−C为−0.0520 [−0.3855,+0.2814]。B组gated−motion为−0.0082 [−0.1881,+0.1716]；不据区间跨0称等效、可靠Pose增量或节省人工成本。
 - 完成根`pose/real_substitution_a01/complete_root_a01.json` SHA `1fb5af28657d4c849a15b09231f8f03dd8153629e7fa0349e4f524116f321478`，全部392原指标/1323配对CSV、105区间/敏感度、18,000步C记录和378完整检查点保留。该阶段已完成，Pose机制和跨分布效用仍未解决；不自动扩大渲染/加训，测试继续封存。下一步基于完整报告讨论单因素机制或独立数据验证，不由局部正值选择方案。
 
-## 当前执行：有界变化学习准入已通过，27臂唯一训练启动
+## 当前执行：有界27臂训练验收完成，513项匹配追踪推进
 
-- 最新用户已明确授权[有界变化编码单因素训练与追踪](Docs/research/POSE_BOUNDED_VELOCITY_LEARNING_A01.md)。三fold×三seed9张原3000R/1000S表已完整CPU核对，真实CUDA三组一步手写/完整记录循环逐值一致并读回0/1模型、AdamW和全部RNG；6诊断更新18R/4S另计。准入根SHA770fc4c67fbd42fbf1614db9628d49c88f30ec5320a2e0ea522414c0fe95d2c2，协议b5c47218…、十文件bundle80e2aac…；14:05:30+08唯一启动27臂控制器，先首千步21检查点验收再继续。实际状态在DResearch/pose/pose_velocity_learning_a01/control_a01/driver_state.json，禁止重复启动/热改。27臂目标27000更新/81000R/18000S尚未宣称完成，测试始终封存。
+- 有界变化27臂已真实完成并退出，独立a02读回567份完整检查点，27000更新/81000R/18000S、R all-known304020/234738、S92574/50382及初始化/UID/epoch/逐步记录和链全验，重放0。a01审计误认为预取会自动cache.close而失败，原closed=false及失败保留；a02严格核prefetch join/1000消费和run真实退出，无训练或原记录变化。完成根6b97afe6…，实际预算postrun_audit_a02/actual_budget.json。14:29:25+08真实只读预飞后唯一启动513 CPU追踪=450新T+63同容量七场缺失参考（新SGD0），首新adapter7719次真实调用/195维/TrackEval门禁通过，实际state在DResearch/pose/pose_velocity_learning_a01/tracking_control_a01/driver_state.json。协议ac89537c…/六文件bundle923a393…，绝不重复启动/热改；完整结果/配对区间尚未完成，不宣称Pose收益。
 - 用户已授权实施[Pose利用验证方案](Docs/research/POSE_UTILIZATION_NEXT_A01.md)。[零更新信息链](Docs/research/POSE_INFORMATION_CHAIN_A01_RESULTS.md)完整54单元/641785行、79465状态行签名及独立终验/进程退出已完成，0优化、无新自由追踪/检测/Pose推理。全部未知与负结果保存，120个质量复核索引已固定但人工关键点真值/复核仍未完成，不报告PCK或OKS。
 - 近motion且实际介入的外部条件行中，平衡池均值正排65/127、线性外推54/127；困难池65/139、53/139，不能当独立事件或AssA。原外推候选实际三fold1000R/11260pair输入合同已通过，只改34通道并保持原gate；若直接重算gate会连带改变8208pair，因此显式分离。暂不启动原27–36臂，转向有界历史变化编码CPU合同；没有新训练或渲染。
 - a01空评分读取失败、a02影子全批/实际enabled批FP32 sigmoid差异失败均原样保留，完成0单元；a03使用原实际代价为权威，49744事件的影子motion分配与实际分配全部一致，代价最大微差1.788e−7不冒充逐值exact。初版独立终验器自匹配问题有单独失败记录和完整文件名回归，未重跑已完成54实验。完成根`pose/pose_information_a01/complete_root_a03.json` SHA `b118b555c232fbb2c763dbf137e27c319a89a4b0e0bec357622947d0368ad90b`。

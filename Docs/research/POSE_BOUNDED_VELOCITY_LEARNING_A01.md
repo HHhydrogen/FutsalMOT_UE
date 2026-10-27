@@ -4,13 +4,23 @@
 
 ## 当前实际阶段
 
+27臂已全部真实完成并退出。独立`postrun_audit_a02/actual_budget.json`实际读回567份完整模型/优化器/RNG，验证27000更新、81000R/18000S、R all/known pair 304020/234738、S 92574/50382，同初始化/曝光顺序/全部逐步loss-LR-梯度/链通过，重放0；6诊断更新另计。完成根`training_complete_root_a01.json` SHA为`6b97afe66bc25d23f709c0527b1dc62b697896b4bff7d1241eb259b09b3cca2c`。此为训练/记录完成，不是Pose增量结论。
+
+`paper_training_archive_a01`也已真实导出27000行原始`steps.csv`、27臂`runs.csv`和全部日志/检查点来源索引。root另逐行核对原loss、空S的显式null、完整R/S UID-epoch与SHA链、总pair及cache原字段，`complete.json` SHA为`cea1e171e068bb749667f1170056e9fe1d49a4b3f32e5932a0b37ec98be05451`。导出器最小bundle为`code/6ef382f17fb52faed05534083d230be0e7c701940ffe3663225f3e936d64f786`，4项CPU检查通过；不加载权重/图片、不读追踪指标、不平滑、0新增更新，原567检查点仍留原目录。
+
+首次独立审计a01对资源关闭有错误假设：原`OrderedPrefetch.close`只join生产线程并释放lease，不调用缓存自身close，所以全部原`intervention.closed=false`如实保留。27份预取收据均closed=true/worker_alive=false、loaded=yielded=1000，实际run进程均退出；独立a02改为在这些证据全部成立时确认资源退出，仍拒绝缺失证据，9项回归通过。原失败intent/failed、`postrun_audit_diagnosis_a01.json`、旧审计bundle2e360…全部保留，未改训练、权重、原字段或冻结80e源码。a02独立审计bundle为`code/12789a9c8f1ad00a6bbb42b4f74682e78cf40a49d27c389cf9eec5127a17f655`。
+
+14:29:25+08已通过真实只读预飞并唯一启动513项CPU追踪/评价/分析，协议`tracking_frozen_a01/config.json` SHA为`ac89537c28668959729ea8d1930ca79c8f3ceff2da98c93bd54940467ebfd16d`，六文件bundle为`code/923a3931504debfbf9a85f8b4333637a1d200d4bae565a48bf61a0f89c19ea1a`。首个新adapter已实际调用7719次、195维均有限并完成真实TrackEval/计数门禁，原关联AST除scope和输入调用外不变。全部任务尚未完成，不能读取局部结果修改方案。
+
+独立终验器另冻于`code/9bebdef8afd0f7f6f5be114f4b6c9cb1a172461be49aae4fb0a6eb7ee8cbffa0`，6项实际研究环境CPU统计/来源检查通过，尚未实际运行；仅513/分析完整且进程退出后核所有来源、513原结果、270参考、720指标及720断档配对、120指标区间和另列24断档描述，不重推理/TrackEval或训练预算。
+
 训练前准入已真实通过：12项输入/协议/数值CPU检查、三fold×三seed共9张曝光表完整CPU核对，以及三组真实CUDA一步手写/记录循环逐值一致。0/1完整模型、优化器及Python/NumPy/TorchCPU/CUDA RNG均实际读回，6诊断更新/18R/4S另计，诊断权重不进入正式训练。9表最终已知pair打乱特征改变率R为94.986%–97.156%，S为87.031%–87.210%；回退及未变化全部保留，不用bank映射率替代实际覆盖。
 
 学习协议SHA为`b5c47218debb3a77dbc3577dda439cffccd9d90f87aa667f65c11f10584ba6b2`，十文件最小bundle为`code/80e2aac068dad1ceb16b8d7acc9c69f03991df83ab873094935b8d09e2706005`，准入根`learning_admission_root_a01.json` SHA为`770fc4c67fbd42fbf1614db9628d49c88f30ec5320a2e0ea522414c0fe95d2c2`，实际环境SHA为`27cb67c561f253ea998009ed7f059abf01c62b56f0ff589304ccf30725ff7aed`。默认只读27臂预飞已通过，14:05:30+08唯一启动`control_a01`，启动不代表27臂完成；真实进度以state及Name/CommandLine为准。不得重复启动或热改冻结源码。
 
-首个正式game4/20261024/T_R已完成1000次实际更新，控制器独立读回21份完整模型/优化器/RNG并核验步链和窗口预算，`first_run_end_to_end_gate.json`为`complete_first_formal1000_full_records21_verified`，重放0。控制器已通过该门禁继续后续RS臂；整批尚未完成，不能将首臂通过当收益或全部预算验收。
+首个正式game4/20261024/T_R先完成1000次实际更新，控制器独立读回21份完整模型/优化器/RNG并核验步链和窗口预算，`first_run_end_to_end_gate.json`为`complete_first_formal1000_full_records21_verified`，重放0；其后才继续其余26臂。如今整批已经上述独立a02审计完成，仍不能将记录验收当收益。
 
-独立训练后审计候选另有6项CPU检查通过，安装于`code/2e3604fd8c89538a96063fc31ac7beacd8958ce2989e636c7f75a44963ee7469`；尚未实际执行。新追踪输入适配已3项CPU检查通过，只替换帧scope和唯一输入调用的AST，Pose关闭仅把各自模型的末gate置0；尚未冻结或运行追踪，不能把候选当450项完成。
+原独立审计a01候选有6项CPU检查，实际失败及后续a02修复见上；新追踪输入适配3项CPU、runtime/jobs8项、control/分析7项、终验器6项均独立复核。新T关闭仅把末gate置0；历史motion_residual参考没有Pose分支，不将其误标为同一个gate0操作。静态检查不代替实际首adapter门禁或完整513验收。
 
 ## 研究问题与唯一表示改动
 

@@ -149,10 +149,17 @@ def validate_adapter(state, old, quality_scale, velocity_clip, fold, windows):
                 normalization_fit_external_or_S=False)
 
 
-def validate_intervention(stats, group, counts=None):
+def validate_intervention(stats, group, counts=None, *, prefetch=None, producer_processes_absent=False):
+    # 原冻结预取只join线程/释放lease，未调用resource.close。不得把真实False重写为True。
+    explicit_close = stats['closed'] is True
+    process_released = (stats['closed'] is False and producer_processes_absent is True
+        and isinstance(prefetch, dict) and prefetch.get('closed') is True
+        and prefetch.get('worker_alive') is False
+        and type(prefetch.get('loaded')) is int and prefetch['loaded'] == 1000
+        and type(prefetch.get('yielded')) is int and prefetch['yielded'] == 1000)
     require(stats['augmentation'] == 'original_v9_both' and stats['original_gate_preserved'] is True
             and stats['GT_donor_selection'] is False and stats['future_donor_used'] is False
-            and stats['closed'] is True and stats['observation_cache_limit'] == 4096
+            and (explicit_close or process_released) and stats['observation_cache_limit'] == 4096
             and stats['feature_cache_limit_bytes'] == 268435456, '增广/gate/负控制边界或缓存未闭合')
     reasons = stats['shuffle_reasons']; attempts = stats['shuffle_unique_attempts']
     require(type(attempts) is int and attempts >= 0
@@ -184,6 +191,9 @@ def validate_intervention(stats, group, counts=None):
     return dict(group=group, attempts_unique_observation_epochs=attempts,
                 reasons=dict(reasons), shuffle_bank=stats.get('shuffle_bank'),
                 actual_pair_coverage=coverage,
+                cache_explicit_close_called=explicit_close, source_cache_closed_flag=stats['closed'],
+                closure_evidence='explicit_cache_close_called' if explicit_close
+                    else 'producer_joined_and_run_process_exited',
                 not_independent_images_or_matches=True)
 
 
@@ -318,7 +328,8 @@ def execute(config, control, output):
                     and receipt['prefetch']['yielded'] == 1000 and receipt['prefetch']['closed'] is True
                     and receipt['prefetch']['worker_alive'] is False and receipt['cache_peak_bytes'] <= 268435456,
                     '实际曝光/预取/缓存未闭合')
-            intervention = validate_intervention(receipt['intervention'], group, counts)
+            intervention = validate_intervention(receipt['intervention'], group, counts,
+                prefetch=receipt['prefetch'], producer_processes_absent=True)
             r_chain = hashlib.sha256(canonical([r['window_uid'] for r in table['real']]).encode()).hexdigest()
             s_chain = hashlib.sha256(canonical([r['window_uid'] for r in table['synthetic']]
                 if group != 'T_R' else []).encode()).hexdigest()

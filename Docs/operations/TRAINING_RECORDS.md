@@ -4,7 +4,11 @@
 
 [有界变化编码学习验证](../research/POSE_BOUNDED_VELOCITY_LEARNING_A01.md)现已实际通过三组CUDA手写/完整记录循环的一步逐值门禁：模型、AdamW、分域loss、梯度/LR及全部RNG相同，0/1检查点实际读回，6诊断更新18R/4S另计。独立新方法身份保存在`bounded_velocity_association_method_state_v1`，原gated初始化/1000步/3000R及RS另1000S不变；不伪装v10或复用诊断权重。
 
-14:05:30+08唯一启动的新27臂中，首个T_R已经真实1000步及21完整检查点读回通过，正在继续后续组。全部逐步日志/干预覆盖/原stdout-stderr保留；27臂尚未闭合，不能把首千步或数值门禁当完整预算或效果通过。训练后独立审计实际567份检查点与27000步/81000R/18000S，来源复用模型新增更新0、历史缺失仍缺失。
+14:05:30+08唯一启动的27臂已全部结束，首千步21检查点门禁后才执行其余26臂，最终独立a02实际读回567份模型/优化器/全部RNG并验证27000步/81000R/18000S、完整UID/epoch/pair/初始化和链。R all/known为304020/234738，S为92574/50382，重放0；来源复用模型新增更新0、历史缺失仍缺失。全部逐步日志/干预覆盖/原stdout-stderr保留，不将记录合格称效果通过。
+
+独立审计a01曾把缓存自身closed字段误当原预取器自动关闭resource；冻结预取代码只join线程/释放lease，原收据closed=false准确保留。a02只在prefetch真实closed/worker退出/1000完整消费及run实际进程退出同时成立时确认资源退出，并如实登记cache_explicit_close_called=false。旧失败及根因JSON保留，未重训、修改原字段或hot改执行bundle。后续513项追踪已唯一启动，所有模型/原始记录继续保留。
+
+新27臂论文原始归档`pose/pose_velocity_learning_a01/paper_training_archive_a01`已完成27000步`steps.csv`、27行`runs.csv`与来源`complete.json`。完整JSON列保留每步原记录、R/S UID/epoch、全部与已知pair、loss/LR/梯度/耗时及曝光链；纯R的synthetic_loss明确写null。独立逐行检查27000条与实际预算一致，原cache字段false及a01失败来源均如实保存，无平滑/补造、0新增更新，不读新追踪指标，567检查点保留原处。
 
 七比赛资源对照现已完整闭合：C18000步/378完整检查点及原始CSV归档保留，A/B只读复用新增更新0；392项自由追踪/评价、1323配对单元和105个描述区间已独立核对，实际进程退出。结果见[完整报告](../research/REAL_SUPERVISION_SUBSTITUTION_A01_RESULTS.md)。历史A缺LR/梯度/RNG/中间权重仍如实缺失；原训练审计和归档不重复执行。
 

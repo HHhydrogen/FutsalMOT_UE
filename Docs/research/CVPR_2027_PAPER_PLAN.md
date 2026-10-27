@@ -2,6 +2,8 @@
 
 更新：2026年10月27日。以下是研究目标，候选贡献不等于已经证实的结果。历史路线见[Pose研究路线](POSE_PIPELINE_HISTORY.md)，训练结果见[v10完整结果](POSE_V10_RESULTS.md)，其后固定权重机制诊断见[首轮执行](POSE_MECHANISM_A01.md)，最新独立资源对照见[七比赛完整结果](REAL_SUPERVISION_SUBSTITUTION_A01_RESULTS.md)。
 
+当前推进[有界变化编码单因素验证](POSE_BOUNDED_VELOCITY_LEARNING_A01.md)：先完成零更新信息诊断，暂缓长gap线性外推；随后仅替换34个历史均值通道及对应基础R标准化，保持网络、门控、初始化和真实曝光预算。27臂/27000更新与567完整检查点现已独立验收，全部原始训练CSV和负结果来源保留；513项匹配追踪已启动、效果仍待完整终验。当前不能宣称Pose增量、方法首创、合成等效真实或官方追踪排名。原三场、两场外部和七场资源面板均已观察，分别作描述性开发分析；测试继续封存，后续确认须先锁定新的train/val比赛身份。
+
 ## 论文要回答的问题
 
 工作名：*FutsalPoseTrack: Controlled Synthetic Data for Pose-Assisted Identity Tracking*。
