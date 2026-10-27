@@ -2,11 +2,11 @@
 
 更新：2026-10-27。历史过程见Git及对应运行收据；本页不保留过期PID流水。
 
-## 当前工作：吞吐已准入，人工盲标输入完成，新T接口诊断准备
+## 当前工作：吞吐已准入，新T接口诊断独立a02准入
 
 - 用户授权继续后，已完成[常驻worker真实性能准入](Docs/operations/ASSOCIATION_WORKER_ADMISSION_A01_RESULTS.md)：六完整任务ABBA，串行104.2444秒→2track+1metric的47.5210秒，实测2.19365倍/耗时−54.4139%。27次完整追踪与评价的原ID/MOT/完整audit/全部指标/gap均与原结果一致，32个worker正常退出，最低可用RAM14.0258GiB。该小样本不外推为训练或513全轮倍数；新SGD/感知推理0，不重跑性能阶段。
-- [120样本盲人工输入](Docs/research/POSE_MANUAL_QUALITY_INPUTS_A01.md)已实际生成及pending验收：120人/2040点全待标注，0人工、0复核，不报准确率；原图只引用，未复制/解码/媒体hash。已询问人员安排，独立其他工作继续。Codex内置浏览器拒绝file://自动预览，页面未完成浏览器视觉验收，由用户本机浏览器手动打开，限制不绕过。
-- [新T分支—决策接口方案](Docs/research/POSE_DECISION_INTERFACE_A01.md)仅固定首seed、三fold各heldout+旧两外部共9原trace×两新模型=18零更新评分，候选正准备2个常驻score worker及独立真实数值准入。trace仅记录非空stage，不能当全部视频事件分母；尚未冻结/实际评分，不称已有机制结论，不新开训练或自由追踪。
+- [120样本盲人工输入](Docs/research/POSE_MANUAL_QUALITY_INPUTS_A01.md)已实际生成及pending验收，随后按用户弃用意向移出必做流程，不再等待人员。120人/2040点仍为0人工、0复核，不报准确率；原索引/空模板/工具归档保留，不删图或记录。Codex内置浏览器拒绝file://自动预览，页面未完成浏览器视觉验收，限制不绕过。
+- [新T分支—决策接口方案](Docs/research/POSE_DECISION_INTERFACE_A01.md)固定首seed、9原trace×两新模型=18零更新评分。a01实际数值通过但来源验证已解析endpoint_GT而元数据误报未读取，完整准入被root拒绝；原代码/收据保留。独立a02只修正声明与合同，16个数值函数AST未变，24CPU合同及实际6模型/9trace/18状态、串行对两spawn逐值准入通过；真实准入进程退出后已唯一启动正式18项score2。配置SHA为`9797db9d6f527c35ed508e003bd5d7e503dc8cd13f99b2274b91a059137d70ff`，权威`pose/pose_velocity_decision_a01/diagnostic_a02/state.json`；方案文档保留冻结时边界，当前状态以本页和实际state为准。trace仅记录非空stage，不当全部视频事件分母；评分白名单不使用GT，不新开训练或自由追踪。
 - 整体成绩口径：系统相对七场PT bbox参考24.1163的AssA已有提升（强motion_RS30.2129），但这包含真实训练与整个关联器，不能归于Pose或合成。最新编码相对原Pose：原三场31.7289→31.3831、旧两场40.0743→40.1277、七场30.2046→30.1547，没有整体继续上升；七场HOTA/IDF1也略降。测试继续封存。
 
 ## 已闭合：七比赛真实资源对照

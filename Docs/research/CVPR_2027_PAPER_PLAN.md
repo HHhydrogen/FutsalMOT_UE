@@ -32,6 +32,12 @@ v8已完成固定共享预训练检测/Pose、motion/pose×R/RS四单元的三�
 
 ## 最近邻研究与创新边界
 
+2026-10-27学术定位核对：当前七场短足球开发片段、比赛等权的强motion_RS为AssA30.2129/HOTA40.8916/IDF145.3909，新T_RS为30.1547/40.8518/45.2855；旧两场约40AssA是另一面板。现有证据应按受控研究原型定位，尚未证明达到成熟体育追踪强基线，不能称领先或给出官方排名。AssA不是“正确追踪球员百分比”。
+
+公开量级仅作背景：[SportsMOT原论文表8](https://openaccess.thecvf.com/content/ICCV2023/papers/Cui_SportsMOT_A_Large_Multi-Object_Tracking_Dataset_in_Multiple_Sports_Scenes_ICCV_2023_paper.pdf)的MixSort-Byte足球测试子集AssA56.3/HOTA66.4/IDF173.6；[作者仓库](https://github.com/MCG-NJU/MixSort#results-on-sportsmot-test-set)完整三运动SportsMOT测试集ByteTrack为52.3/64.1/71.4、OC-SORT为61.5/73.7/74.0。[Deep HM-SORT作者2024预印本表1](https://arxiv.org/pdf/2406.12081)报告72.7/80.1/85.2，不将它称作2026最新排名。不同比赛/检测器/训练量/外观输入及汇总方式不可直接排名、相减算落后幅度或推断哪个组件造成差距。读取公开论文汇总数不涉及打开封存测试包。
+
+当前零更新接口诊断后，应制定同一批已观察开发比赛、同一份raw检测缓存、相同GT/ID0与全预测评价设置下的成熟追踪器对照，优先官方OC-SORT与具备明确外观输入契约的一个强参考。先分开固定检测的关联比较与未来检测前端比较，逐场配对、完整保留负结果和资源耗时；不得把换更大检测器的收益计入Pose或合成增量。这里只登记下一比较方向，尚未安装/运行该成熟基线，不解封test或自动另开训练。
+
 以下为主要原始来源；最后一列是研究判断，不表示已有工作完全没有相应能力。
 
 | 工作 | 已有内容 | 对本项目的约束与区别方向 |
