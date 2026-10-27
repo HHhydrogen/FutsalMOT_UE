@@ -63,4 +63,5 @@
 - [新T决策接口零更新方案](research/POSE_DECISION_INTERFACE_A01.md)与[18项完整结果](research/POSE_DECISION_INTERFACE_A02_RESULTS.md)：实际数值/score2、全部事件与独立终验已完成，0更新。当前原q无可信正确分配转移，q1多为破坏，不支持直接放宽质量gate；下一步准备同缓存成熟追踪器对照，代理不当AssA收益。
 - [120样本盲人工质量输入](research/POSE_MANUAL_QUALITY_INPUTS_A01.md)：空模板与契约已完成，随后本轮不采用，不再等待人员。原索引/工具归档，实际人工GT0，未报PCK/OKS。
 - [官方OC-SORT同缓存12片段协议](research/OCSORT_CACHED12_A01.md)与[全部结果](research/OCSORT_CACHED12_A01_RESULTS.md)：96帧真实准入、12/8165帧追踪/评价、36配对/45指标及9gap描述和独立终验已完成。OC−强motion七场AssA−3.8914点[−11.8842,+4.1015]，原三场/旧两场也均差负；全部负结果和失败保留，不当SOTA或Pose/合成因果结论，测试继续封存。
+- [零更新分数与输出政策账本](research/TRACKING_POLICY_LEDGER_A01.md)及[完整结果](research/TRACKING_POLICY_LEDGER_A01_RESULTS.md)：12唯一源/114旧输出/936212发出行全量终验、进程退出；七场GT几何候选覆盖从`>0.6`的52.1307%到`>0.25`的88.4358%，仅候选机会而非收益。内部状态unknown，下一候选只改单一OC门槛，尚未执行，不扩数据或加训。
 - [常驻关联worker实测](operations/ASSOCIATION_WORKER_ADMISSION_A01_RESULTS.md)：六完整任务、原ID/指标一致，2track+1metric相对新进程串行实测2.19365倍；仅该工作量/后端，不冒充模型成绩或整轮训练倍数。

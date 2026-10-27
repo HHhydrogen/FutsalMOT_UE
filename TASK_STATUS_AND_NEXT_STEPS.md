@@ -2,6 +2,14 @@
 
 更新：2026-10-27。历史过程见Git及对应运行收据；本页不保留过期PID流水。
 
+## 最新闭合：十二片段零更新分数与输出政策账本
+
+- 按用户“按规划进行下一步”完成[固定口径](Docs/research/TRACKING_POLICY_LEDGER_A01.md)和[完整结果](Docs/research/TRACKING_POLICY_LEDGER_A01_RESULTS.md)。19CPU合同/真实NumPy FP32边界、两个后验worker实际12源114条MOT全量分析及8合同/独立终验通过，真实进程退出。8165唯一源帧/149245 raw/113020 GT机会、76315逻辑单元帧、936212原发出行和15924可观测ID片段完整留存；新SGD/模型/追踪/TrackEval/媒体均0，测试封存。
+- 七场GT人物帧的任一`>0.6`几何候选覆盖比赛均值52.1307%，`>0.25`为88.4358%，新增36.3051点；原三场/旧两场新增26.8833/24.1705点。这个候选机会不是DetA或新追踪收益。新增分数段仍约44%–46%无候选或歧义，不将其全当有用，也不将无候选直接称绝对误检。
+- 七场OC实际每帧发出6.1275框，强motion训练单元先场内均值后比赛均值13.0318；输出覆盖差异明确，但MOT不能还原出生/确认/lost/抑制原因，全部unknown。原ByteTracker当前源码只有本次快照，历史逐文件SHA缺失不补造。不能把之前整体领先当孤立关联、Pose或合成优势。
+- 配置`pose/tracking_policy_ledger_a01/frozen_a01/config.json` SHA `14dc1c193cd0149ff821530e29deacc043be048c4d403a3b516ef3fc7ce5ab97`，三文件bundle `70a399c65ff8cf7f2ef7090a0739ab161ff5b59b338c419f54e0c6c1238645f7`；独立终验SHA `aaa5c2bd2161dbb9c0e2ec5e2c8dcf4ac9ff44e984035c2c2169cf88eff45226`。两个worker各6源/join/exit0，53.719秒仅控制器至全汇总、不含准备/终验；RSS采样峰0.1959GiB，不是新串行提速证明。
+- 下一优先单因素候选是OC `det_thresh0.6→0.25`，其余含byteFalse完全不变；先另冻协议和实际准入，再一次同12已观察开发片段自由追踪/配对区间。尚未执行该候选，不搜索阈值，不马上扩数据或加训；独立确认另锁来源身份，最终测试继续封存。
+
 ## 最新闭合：官方OC-SORT同缓存12开发片段
 
 - 按用户新授权完成[版本/参数/输入协议](Docs/research/OCSORT_CACHED12_A01.md)及[全部结果](Docs/research/OCSORT_CACHED12_A01_RESULTS.md)。官方commit固定`8462e7e729a93ccd3bd995c0a79a890336cb3a0b`，三个算法文件原字节；默认det_thresh0.6/byteFalse，输入float32 N5/scale1，原Kalman64位/自然ID/全部core输出，MOTscore常数1。不是2023原字节或官方完整demo成绩。
