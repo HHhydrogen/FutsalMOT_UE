@@ -2,6 +2,10 @@
 
 更新：2026-10-26。用户要求所有后续训练保留全过程，便于论文复核、曲线和表格。记录只是证据，不是新的数据/训练准入。
 
+2026-10-27资源对照新增独立候选`full_training_record_spec_v2_real_groups`：C每步3基础R+1额外R，明确总4000R/0S，不借S列计账。逐步增加基础/额外R loss、窗口和all/known pair；权重固定`mean(base3R)+mean(extra1R)/3`。检查点/完成schema为`full_training_checkpoint_v2_real_groups`/`full_training_process_complete_v2_real_groups`，其余完整RNG、0/50/1000与last规则保持。原v1路径保留，旧冻结bundle不改。
+
+目前只通过5项CPU记账契约（含v1回归及拒绝把额外R记为S），尚未新C的实际GPU数值证明、独立模型加载或1000步门禁。未来新控制器必须先完成这些验证；CPU候选不表示已经新增训练。
+
 ## 新实验的强制记录
 
 研究根为实际`D:/projects/FutsalMOT_Research`；代码在不可变`code/<SHA>`，每次run独立目录。生成媒体只引用G成品，不复制训练图或EXR。

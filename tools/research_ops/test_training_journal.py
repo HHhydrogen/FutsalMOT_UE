@@ -10,6 +10,18 @@ module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
 
 
 class JournalContract(unittest.TestCase):
+    def test_extra_real_group_is4000R_and_zeroS(self):
+        spec=self.spec();spec.update(schema='full_training_record_spec_v2_real_groups',R_per_update=4,S_per_update=0,base_R_per_update=3,extra_R_per_update=1,extra_R_alpha=1/3)
+        records=[dict(window_uid='r'+str(i),epoch=0,domain='real',candidate_pairs=2,labelled_pairs=1) for i in range(3)]
+        extra=dict(window_uid='extra',epoch=0,domain='real',source_allocation='extra_R',candidate_pairs=3,labelled_pairs=2)
+        with tempfile.TemporaryDirectory() as tmp,patch.object(module,'RESEARCH',Path(tmp)):
+            with module.TrainingJournal(Path(tmp)/'C',spec) as journal:
+                with self.assertRaises(ValueError):journal.begin_step(0,records,[extra])
+                journal.begin_step(0,records+[extra],[])
+                journal.commit_step(loss=.2,real_loss=.2,synthetic_loss=None,base_real_loss=.15,extra_real_loss=.15,
+                    learning_rates=[.001],grad_l2=.1,R_pairs=9,S_pairs=0,R_known_pairs=5,S_known_pairs=0,step_wall_seconds=.1)
+                self.assertEqual(journal.totals['R_windows'],4);self.assertEqual(journal.totals['S_windows'],0)
+                self.assertEqual(journal.totals['base_R_windows'],3);self.assertEqual(journal.totals['extra_R_windows'],1)
     def spec(self):
         return dict(schema='full_training_record_spec_v1',updates=1000,R_per_update=3,S_per_update=1,
                     checkpoint_interval=50,test116187_sealed=True,fixture_only=True,

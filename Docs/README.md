@@ -38,7 +38,8 @@
 - [独立运动与困难关联v10协议](research/MULTISEED_HARD_ASSOCIATION_V10.md)和[完整结果](research/POSE_V10_RESULTS.md)：54训练/253项五比赛评价及全过程预算已闭合；两新比赛gated−强motion AssA平衡−0.0417、困难+0.2110点，均未过登记门槛。同3000R混合较纯R小幅提高，不能称Pose可靠增量或合成等价真实，全部负结果保留。
 - [Pose诊断与合成替代真实监督方案](research/POSE_DIAGNOSIS_AND_REAL_DATA_SUBSTITUTION_PLAN.md)及[首轮执行](research/POSE_MECHANISM_A01.md)：162项固定权重CPU诊断、20例视觉复核/额外R可行性/57段元数据及进程退出均已完成，新增优化更新0。Pose分支实际作用很小，下一步先单因素验证利用机制；资源替代另立预算与准入，不把均值接近或新窗口UID当真实等效/标注节省。
 - [残差幅度单因素探针](research/RESIDUAL_AMPLITUDE_PROBE_A01.md)：108项CPU对照/分析/实际退出及CSV已闭合，外部Pose仅微变、原heldout下降；区分训练期补充、Pose推理及一般幅度作用，不声称改大幅度解决问题。
-- [额外真实输入验收](research/EXTRA_REAL_INPUTS_A03.md)：2250新时间片帧、共享PT预测、三fold各1000窗口及9张未来曝光计划已闭合，新增优化0。全局1500唯一窗口/2007源帧引用，非新增比赛；C的4000R训练、独立比赛及事前非劣效精度尚未准入，测试封存。
+- [额外真实输入验收](research/EXTRA_REAL_INPUTS_A03.md)：2250新时间片帧、共享PT预测、三fold各1000窗口及9张未来曝光计划已闭合，新增优化0。全局1500唯一窗口/2007源帧引用，非新增比赛；后续七比赛与无界限区间方案另立，C的4000R尚未训练，测试封存。
+- [七比赛真实资源对照](research/REAL_SUPERVISION_SUBSTITUTION_A01.md)：七个新足球比赛4790帧范围与分析已冻结，用户选择仅报告配对差值/区间，不设等效或非劣效界限。完整验证输入正在获取，C四R完整记录为CPU候选，尚未新训练。
 - [原Pose路线历史](research/POSE_PIPELINE_HISTORY.md)保存原阶段独有决策，不能当作今天的恢复命令。
 
 ## operations：维护与历史

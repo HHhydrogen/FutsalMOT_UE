@@ -32,6 +32,7 @@
 - 用户已授权[v9](Docs/research/POSE_QUALITY_RESIDUAL_V9.md)：分析Pose拖累和外观域差，随后同3000R/额外1000S的质量残差、缺点/噪声消融，重点比较同容量motion分支及v8 motion_RS。主对照三seed，探索消融仅事前登记首seed，不根据结果挑seed或把探索当三seed结论。当前关联器没有RGB输入，颜色/纹理可分不等于拟真不足造成退化；新球衣/成像配对另立数据版本，不改冻结数据。运行状态以任务状态和Saved/ProjectStatus为准。
 - 用户已授权下一轮[独立运动与困难事件v10](Docs/research/MULTISEED_HARD_ASSOCIATION_V10.md)：强motion_RS是主要参照，各组同3000R窗口、混合另1000S；新比赛须确认真实比赛身份不与已观察三场重复，不能把同场新clip称独立比赛。先完成来源/短样/完整采集与预测再冻结训练准入，最终116/187及test包封存。
 - 所有后续训练遵守[全过程记录](Docs/operations/TRAINING_RECORDS.md)：逐步loss/LR/梯度、R/S UID/epoch/全部及已知pair、来源/环境/曝光链、0/每50/最终完整模型+优化器+RNG、原stdout/stderr、失败和全部评价必须保留在DResearch。历史缺失字段明确标缺失，不补造；检查点不用于挑best。记录工具通过不等新实验端到端训练通过。
+- 用户2026-10-27对真实资源替代实验选择“暂不设界限，只报告配对差值和置信区间”。遵守[七比赛方案](Docs/research/REAL_SUPERVISION_SUBSTITUTION_A01.md)，不擅设非劣效/等效界限或通过标志。C为另立的4000R（3000基础R+1000额外R），不伪装S或混入同3000R的Pose结论；新C必须独立schema/实际数值与完整记录门禁。
 - 球衣已有appearance v1的独立seed可复现系统；优先[接回原系统](Docs/engineering/POSE_SEEDED_KIT_INTEGRATION.md)，不再另造随机选择器。Pose固定roster只复用其Jersey/Shorts分配，不套原随机模型/肤色；native模型替换会清空材质，必须随后应用并读回。用户已授权v9闭合后开展同运动/相机配对，但CPU候选不等动态通过，不改当前冻结数据或接号码WIP。
 - v1八组数据保持不变。Pose试产独立输出；不能将历史12点重命名成17点或事后伪造同帧采样。
 - 鼻眼耳按实际渲染mesh校准；可见MPFBVisual与隐藏驱动mesh必须区分。unknown不冒充COCO visible，限定位置准入不等于正式遮挡监督。

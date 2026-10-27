@@ -71,8 +71,13 @@ def replace(source, target):
 class TrainingJournal:
     """优化器调用方先begin，实际step后commit；记录失败不能假称未发生更新。"""
     def __init__(self, directory, spec):
-        require(spec.get('schema') == 'full_training_record_spec_v1' and spec.get('updates') == 1000
-                and spec.get('R_per_update') == 3 and spec.get('S_per_update') in (0, 1)
+        self.real_groups = spec.get('schema') == 'full_training_record_spec_v2_real_groups'
+        budget_ok = (spec.get('R_per_update') == 4 and spec.get('S_per_update') == 0
+                     and spec.get('base_R_per_update') == 3 and spec.get('extra_R_per_update') == 1
+                     and spec.get('extra_R_alpha') == 1/3) if self.real_groups else (
+                     spec.get('schema') == 'full_training_record_spec_v1'
+                     and spec.get('R_per_update') == 3 and spec.get('S_per_update') in (0, 1))
+        require(budget_ok and spec.get('updates') == 1000
                 and spec.get('checkpoint_interval') == 50 and spec.get('test116187_sealed') is True,
                 '缺固定预算/封存或完整记录契约')
         require(isinstance(spec.get('binding'), dict) and spec['binding']
@@ -86,6 +91,8 @@ class TrainingJournal:
         self.events = (self.root/'events.jsonl').open('x', encoding='utf-8')
         self.completed = 0; self.chain = '0'*64; self.pending = None; self.checkpoints = {}
         self.totals = dict(R_windows=0, S_windows=0, R_pairs=0, S_pairs=0, R_known_pairs=0, S_known_pairs=0)
+        if self.real_groups:
+            self.totals.update(base_R_windows=0,extra_R_windows=0,base_R_pairs=0,extra_R_pairs=0,base_R_known_pairs=0,extra_R_known_pairs=0)
         self.closed = False
         self.event('run_started', planned_updates=1000)
 
@@ -100,17 +107,27 @@ class TrainingJournal:
         require(not self.closed and self.pending is None and index == self.completed < 1000,
                 '步序或未闭合事务错误')
         require(not (self.root/'training_complete.json').exists(), '完整run不得追加更新')
-        require(len(real) == 3 and len(synthetic) == self.spec['S_per_update']
+        require(len(real) == self.spec['R_per_update'] and len(synthetic) == self.spec['S_per_update']
                 and all(isinstance(r.get('window_uid'), str) and type(r.get('epoch')) is int
                         for r in real+synthetic), '实际R/S窗口或epoch不完整')
+        if self.real_groups:
+            require(all(r.get('domain')=='real' for r in real)
+                    and all(r.get('source_allocation','base_R')=='base_R' for r in real[:3])
+                    and real[3].get('source_allocation')=='extra_R','4000R必须显式3基础R+1额外R，不能伪装S')
         self.pending = dict(update_index=index, actual_update=index+1, real=deepcopy(real), synthetic=deepcopy(synthetic))
         atomic(self.root/'update_transaction.json', dict(status='started_not_committed', completed_updates_before=index,
                                                          update_index=index))
 
     def commit_step(self, *, loss, real_loss, synthetic_loss, learning_rates, grad_l2,
-                    R_pairs, S_pairs, R_known_pairs, S_known_pairs, step_wall_seconds):
+                    R_pairs, S_pairs, R_known_pairs, S_known_pairs, step_wall_seconds,
+                    base_real_loss=None,extra_real_loss=None):
         require(self.pending is not None and not self.closed, '没有实际启动的step')
         values = [loss, real_loss, grad_l2, step_wall_seconds, *learning_rates]
+        if self.real_groups:
+            require(base_real_loss is not None and extra_real_loss is not None,'4000R缺两类真实loss')
+            values.extend([base_real_loss,extra_real_loss])
+            require(abs(loss-real_loss)<=1e-7 and abs(loss-base_real_loss-extra_real_loss/3)<=1e-6*(1+abs(loss)),
+                    '额外真实损失权重必须基础meanR+额外meanR/3')
         if self.spec['S_per_update']:
             require(synthetic_loss is not None, '混合组缺实际S loss'); values.append(synthetic_loss)
         else:
@@ -123,7 +140,15 @@ class TrainingJournal:
         row = dict(self.pending, loss=loss, real_loss=real_loss, synthetic_loss=synthetic_loss,
                    learning_rates=list(learning_rates), grad_l2=grad_l2, gradients_clipped=False,
                    R_pairs=R_pairs, S_pairs=S_pairs, R_known_pairs=R_known_pairs, S_known_pairs=S_known_pairs,
-                   R_windows=3, S_windows=self.spec['S_per_update'], step_wall_seconds=step_wall_seconds)
+                   R_windows=self.spec['R_per_update'], S_windows=self.spec['S_per_update'], step_wall_seconds=step_wall_seconds)
+        if self.real_groups:
+            real=self.pending['real'];base=real[:3];extra=real[3:]
+            group_counts=dict(base_R_windows=3,extra_R_windows=1,
+                base_R_pairs=sum(x['candidate_pairs'] for x in base),extra_R_pairs=sum(x['candidate_pairs'] for x in extra),
+                base_R_known_pairs=sum(x['labelled_pairs'] for x in base),extra_R_known_pairs=sum(x['labelled_pairs'] for x in extra))
+            require(group_counts['base_R_pairs']+group_counts['extra_R_pairs']==R_pairs
+                    and group_counts['base_R_known_pairs']+group_counts['extra_R_known_pairs']==R_known_pairs,'实际额外R/all/known pair不符')
+            row.update(group_counts,base_real_loss=base_real_loss,extra_real_loss=extra_real_loss)
         chain = hashlib.sha256((self.chain+canonical(row)).encode()).hexdigest()
         self._line(self.steps, dict(row, chain_sha256=chain))
         self.completed += 1; self.chain = chain; self.pending = None
@@ -160,7 +185,7 @@ class TrainingJournal:
         cuda_rng = torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None
         require(cuda_rng is not None or self.spec['runtime'].get('device') == 'cpu_fixture',
                 '正式GPU实验缺实际CUDA RNG')
-        payload = dict(schema='full_training_checkpoint_v1', binding=self.spec['binding'],
+        payload = dict(schema='full_training_checkpoint_v2_real_groups' if self.real_groups else 'full_training_checkpoint_v1', binding=self.spec['binding'],
             completed_updates=self.completed, exposure_chain=self.chain,
             model={k: v.detach().cpu().clone() for k, v in model.state_dict().items()},
             optimizer=optimizer.state_dict(), rng_python=random.getstate(), rng_numpy=np.random.get_state(),
@@ -172,11 +197,14 @@ class TrainingJournal:
         return target
 
     def finish(self):
-        require(self.completed == 1000 and self.pending is None and self.totals['R_windows'] == 3000
+        require(self.completed == 1000 and self.pending is None and self.totals['R_windows'] == 1000*self.spec['R_per_update']
                 and self.totals['S_windows'] == 1000*self.spec['S_per_update']
                 and set(range(0, 1001, 50)) <= set(self.checkpoints), '预算未完成或0/50/最终检查点缺失')
+        if self.real_groups:
+            require(self.totals['base_R_windows']==3000 and self.totals['extra_R_windows']==1000 and self.totals['S_windows']==0,
+                    '4000R的基础/额外窗口账本未闭合')
         self.event('training_complete', actual_updates=1000, exposure_chain=self.chain)
-        value = dict(schema='full_training_process_complete_v1', status='complete', actual_updates=1000,
+        value = dict(schema='full_training_process_complete_v2_real_groups' if self.real_groups else 'full_training_process_complete_v1', status='complete', actual_updates=1000,
                      totals=self.totals, exposure_chain=self.chain, steps_sha256=sha(self.root/'steps.jsonl'),
                      checkpoints=[self.checkpoints[i] for i in sorted(self.checkpoints)], selection='step1000_last_no_best',
                      manifest_sha256=sha(self.root/'run_manifest.json'), test116187_read=False)
