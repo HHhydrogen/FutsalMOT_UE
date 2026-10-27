@@ -1,19 +1,21 @@
 # 当前任务与下一步
 
-更新：2026-10-26。历史过程见Git及对应运行收据；本页不保留过期PID流水。
+更新：2026-10-27。历史过程见Git及对应运行收据；本页不保留过期PID流水。
 
 ## 当前执行：Pose机制诊断与资源替代可行性
 
 - 用户已授权按[后续方案](Docs/research/POSE_DIAGNOSIS_AND_REAL_DATA_SUBSTITUTION_PLAN.md)实施，[首轮执行](Docs/research/POSE_MECHANISM_A01.md)已完成五场raw/后验标签/无GT形状交换库存、20例固定抽样视觉复核及额外R窗口可行性核验。可见几何有效骨架仍有错位，视觉复核不是人工关键点GT或准确率。
 - 162项CPU诊断及分析19:55已实际全部结束，CIM确认全部相关进程退出；54共同强motion状态MOT/audit均与原结果一致，108关闭/打乱Pose自由追踪全部评价。新增优化更新0，独立完成链`D:/projects/FutsalMOT_Research/pose/pose_mechanism_a01/diagnostics_complete_root_a01.json`及两份论文CSV已闭合，不重复启动。
 - 外部两场关闭Pose相对原Pose AssA平衡−0.062989、困难−0.001038点，打乱为−0.060679/−0.069006；作用很小且seed不稳定。同状态可信困难子集只修正1行并破坏2行；固定gate/基分支下283个错误/并列行有270个超出当前残差幅度可修正范围。这不是总体错误率或完美Pose上界，未知历史单列保留。
-- 三fold额外1000未用R窗口与基础池约92%源帧重叠，仅新增101–108个源帧，不能称新增图像/标注节省。官方train57段实际只属于原三场；061/098/154非重叠片段已登记为额外R输入候选2250帧，但尚未下载图像/GT、预测、建池或训练，不作独立验证比赛。
+- 三fold额外1000未用R窗口与基础池约92%源帧重叠，仅新增101–108个源帧，不能称新增图像/标注节省。官方train57段实际只属于原三场；061/098/154非重叠片段已登记为额外R输入2250帧。061/098各750帧已首次解码及CRC通过，154仍在恢复；尚未新预测、建池或训练，不作独立验证比赛。
 - [残差幅度探针](Docs/research/RESIDUAL_AMPLITUDE_PROBE_A01.md)108项追踪/评价/分析及实际退出已全部闭合，`complete_root_a01.json`和论文CSV核验通过，零新增优化。上限0.5→2.0后外部Pose AssA仅+0.056140/+0.007494点，原heldout−0.201368/−0.593648；同容量motion也有涨跌，不能将相对转正当Pose本身改善。不重复启动。
 - 原54份trace的候选机会审查也已完成，只读行内代理、零新推理：可信未介入且足三历史/正负候选子集中，Pose与自己关闭分支没有新增排序翻转。不是新策略自由追踪或总体Pose无用证明；下一步核验表示/信息与训练期对照，不盲目同时放宽候选、gate和损失。
 - 原固定的额外R三片段061/098/154已另冻结2250帧获取准入并启动，输出`D:/projects/FutsalMOT_Research/public/real_substitution_train_a01`，不提取/用det，不模型预测或训练。A/B/C仍须另冻结4000R资源控制及更多独立比赛/非劣效精度；这些片段不是新比赛，不重启旧采集/清理，测试封存。
-- 当前下载仍在大范围网络读取，manifest只在真正完成/异常时落盘，实际Name/CommandLine优先，不能据没有JPEG/manifest自动重启。已设置本聊天阶段接续，健康静默；完整数据/共享预测/额外R输入闭合后汇报并移除跟进，不能提前声称C训练/等效完成。
+- a01及独立a02均在第三段154的网络范围读取失败，原两份失败manifest及1500帧保留。a02记录180105721字节请求实际仅返回16518914字节，随后连接重置；上游设备原因未知，154尚无输出。已另冻结a03，仅补154，沿用原读取器/三次有界重试、顺序4MiB范围，不重下前两段，不开发渲染/导出加速。
+- 当前唯一获取入口为`recover_extra_real_clip.py`，权威准入`extra_R_acquisition_recovery_a03/config.json`，新结果为`public/real_substitution_train_a01/manifest_recovery_a03.json`；a01/a02及原获取入口禁止重启。5项CPU针对检查与实际只读继承预飞通过，已唯一后台启动，尚未完成2250帧验收。原`manifest.json`仍为失败，不能改为成功。健康静默；完整数据/共享预测/额外R输入闭合后汇报并移除跟进，不能提前声称C训练/等效完成。
 - 下载等待期已完成额外R独立预测输入候选`extra_real_prediction_inputs.py`及五项CPU边界检查。只接受实际complete三源manifest、显式零/一基映射、GT不入模型；尚无真实2250帧输入验收、推理bundle、GPU准入或新预测。根CPU收据`Saved/ResearchBuild/extra_R_prediction_inputs_CPU_a01.json`，不把夹具当实际数据完成。
 - 独立执行入口`extra_real_prediction_cache.py`候选及五项CPU门禁已通过，原raw/attach与裁剪/预取数值复用、不套旧18源schema。尚未安装D执行bundle、签新预测配置或GPU运行；实际下载/退出根收据和真实输入预飞仍是前置。收据`Saved/ResearchBuild/extra_R_prediction_entry_CPU_a01.json`，活动下载源码不改。
+- a03恢复链已加入预测候选，6项CPU检查通过，另保留`extra_R_prediction_entry_CPU_a03.json`；核验原失败SHA、两源逐记录继承、实际750新帧及获取进程退出。旧a01收尾helper不直接运行，新a03实际验收/冻结helper已准备但尚未执行；不能通过覆盖失败manifest绕过来源边界。
 
 ## v10已完成与当前状态
 

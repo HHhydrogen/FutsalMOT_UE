@@ -43,11 +43,29 @@ def admission(cfg,manifest,completion):
         and completion.get('download_processes_absent') is True,'获取/实际退出尚未完整验收')
 
 
+def recovery_chain(manifest,recovery,parent,previous):
+    """只允许登记a03显式继承，不能改写原失败或将partial升级为成功。"""
+    require(recovery.get('schema')=='extra_real_train_recovery_v2'
+        and recovery.get('recovery_only_sequence')=='SNMOT-154'
+        and Path(recovery['result_manifest'])==DATA/'manifest_recovery_a03.json'
+        and recovery['range_block_bytes']==4194304,'恢复范围/协议变化')
+    require(parent.get('status')==previous.get('status')=='failed_preserved_no_replay'
+        and [s['sequence'] for s in parent['sequences']]==['SNMOT-061','SNMOT-098']
+        and previous.get('newly_downloaded_images')==0
+        and previous['inherited_failed_manifest']==recovery['failed_manifest']
+        and previous['files']==parent['files'],'父失败或原成功继承链不符')
+    require(manifest['inherited_failed_manifest']==recovery['failed_manifest']
+        and manifest['sequences'][:2]==parent['sequences']
+        and manifest['files'][:len(parent['files'])]==parent['files']
+        and manifest.get('inherited_images')==1500 and manifest.get('newly_downloaded_images')==750
+        and manifest.get('old_failed_manifest_modified') is False,'新汇总不是原成功两源加实际750新帧')
+
+
 def check_processes(rows,current_pid):
     by_id={r['ProcessId']:r for r in rows};own=set();cursor=current_pid
     while cursor in by_id and cursor not in own:
         own.add(cursor);cursor=by_id[cursor].get('ParentProcessId')
-    markers=('prediction_cache.py','acquire_extra_real_clips.py','v10_training_control.py','v10_tracking_control.py',
+    markers=('prediction_cache.py','acquire_extra_real_clips.py','recover_extra_real_clip.py','v10_training_control.py','v10_tracking_control.py',
              'pose_mechanism_control.py','pose_mechanism_jobs.py','residual_amplitude_probe.py')
     blocked=[r for r in rows if r['ProcessId'] not in own and (r['Name'].lower().startswith('unrealeditor')
         or (r['Name'].lower().startswith('python') and any(x in (r.get('CommandLine') or '').lower() for x in markers)))]
@@ -70,9 +88,19 @@ def preflight(config):
     storage=module('extra_real_prediction_storage',ROOT/'python/src/grf_ue_bridge/storage_policy.py');storage.physical_child(ROOT,R/'code')
     for p in entries:storage.physical_child(ROOT/p,ROOT)
     manifest=read(checked(cfg['acquisition_manifest']));completion=read(checked(cfg['acquisition_completion']));admission(cfg,manifest,completion)
-    require(Path(cfg['acquisition_manifest']['path'])==DATA/'manifest.json'
+    acquisition_path=Path(cfg['acquisition_manifest']['path'])
+    require(acquisition_path in (DATA/'manifest.json',DATA/'manifest_recovery_a03.json')
         and manifest['protocol']==cfg['acquisition_config'],'独立获取来源/协议未闭合')
-    checked(cfg['acquisition_config']);storage.physical_child(cfg['acquisition_manifest']['path'],DATA)
+    acquisition=read(checked(cfg['acquisition_config']));storage.physical_child(acquisition_path,DATA)
+    if acquisition_path.name=='manifest_recovery_a03.json':
+        parent=read(checked(acquisition['failed_manifest']));previous=read(checked(acquisition['previous_recovery_manifest']))
+        require(Path(acquisition['failed_manifest']['path'])==DATA/'manifest.json'
+            and Path(acquisition['previous_recovery_manifest']['path'])==DATA/'manifest_recovery_a02.json','恢复父路径不符')
+        original=read(checked(acquisition['original_config']))
+        require(parent['protocol']==acquisition['original_config'],'原失败协议不符')
+        for source_cfg in (acquisition,original):
+            for f in source_cfg['files']:require(sha(Path(source_cfg['bundle'])/f['path'])==f['sha256'],'获取执行源码变化')
+        recovery_chain(manifest,acquisition,parent,previous)
     source=read(checked(cfg['v10_prediction_source']));require(cfg['v10_prediction_source']['sha256']==V10_SOURCE_SHA,'原v10固定预测来源改变')
     source_files={r['path']:r for r in source['code_files']}
     require(cfg['detector_checkpoint']==source['detector_checkpoint'] and cfg['v6_protocol']==source['v6_protocol']
