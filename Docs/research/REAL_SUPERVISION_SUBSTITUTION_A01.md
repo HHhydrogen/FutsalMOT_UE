@@ -1,6 +1,6 @@
 # 真实监督资源对照：七比赛与配对区间方案
 
-更新：2026-10-27。用户选择“暂不设界限，只报告配对差值和置信区间”，覆盖此前以非劣效准入为前置的候选方案。本轮不设δ、不执行等效/非劣效检验、不输出“可替代/效果相当”通过标志。C十八臂训练及独立预算已全部完成；七场4790帧验证输入已实际完整验收/退出，11:29唯一启动共享PT预测。尚无本轮新追踪指标。
+更新：2026-10-27。用户选择“暂不设界限，只报告配对差值和置信区间”，覆盖此前以非劣效准入为前置的候选方案。本轮不设δ、不执行等效/非劣效检验、不输出“可替代/效果相当”通过标志。C十八臂训练/预算、七场4790输入及共享PT预测均已实际完整验收/退出，392项CPU自由追踪已唯一启动；14项PT门禁通过，完整配对结果仍待全部任务结束。
 
 ## 实际比赛范围
 
@@ -78,7 +78,17 @@ A/B只有数值源码、初始化、输入/顺序与预算完全一致才引用�
 
 共享预测已独立冻结`prediction_frozen_a01/config.json` SHA `89a789b668da0fbd8d69c00b21487110bc115c9734e2a824ce5cfed0668d0119`；必要五文件bundle `code/b8a8573fb45fb974b0754230a811de7efa76d9ab6eea2a0454d3809dcb66f6eb`。实际默认只读预飞7源/4790帧通过，11:29:41唯一后台启动，stdout已实际完成首场至少250帧，不能把启动当七源完整完成。权威输出`shared_predictions_a01/manifest.json`及`_launch_shared_prediction_a01`日志；完成须七源4790齐全、manifest终态`complete7_sources4790_frames_not_tracking_authorized`并确认实际GPU/launcher身份退出，再签完成根和断档登记/追踪准入。活动五文件和配置不热改、不重复启动。
 
-原固定PT detector/cropPose、FP32和预取2直接复用，原图检测不GT过滤、所有bbox-only保留，旧R/S/PT缓存不重推，新增优化更新0。当前仅共享预测运行，392项自由追踪未开始。
+原固定PT detector/cropPose、FP32和预取2直接复用，原图检测不GT过滤、所有bbox-only保留，旧R/S/PT缓存不重推，新增优化更新0。该共享预测现已完整结束，后续状态如下。
+
+## 共享预测闭合与392项真实追踪
+
+七场4790帧共享预测已实际完整结束，原GPU/launcher身份退出。独立单次stream核验全部预测JSON的帧顺序/时序/比赛身份、缓存SHA和实际计数通过，未重读图像；`prediction_complete_root_a01.json` SHA `76aa4417f32eec8d03f852d391ec36e87ecf1716b0ba9ad4bb5f633f4a63de81`。共90490个raw检测、63306个几何规则通过、27184个bbox-only；这是规则通过计数，不是准确率。旧R/S/PT不重推，不改共享缓存。
+
+在任何本轮追踪结果前，冻结原v8双向唯一IoU端点规则实际登记2337个可信检测断档proxy：依七场顺序为293/423/351/327/375/287/281。`evaluation_inputs_a01/gap_registry.json` SHA `c05fc1f0ac2a39685afec25224f862d17b7103197994d09da002fc17a7cedf04`，无GT坐标的`gap_registry.receipt.json`供追踪读取；完整端点GT只由登记/评价读取。同一注册事件在不同模型下重复评价，不是2337个独立比赛或物理遮挡证据；全分母、无事件null规则保持。
+
+实际追踪协议`tracking_frozen_a01/config.json` SHA `fd1b92c70ab91d021a8b055cf89eeb3775d34a506056efe85cb3da90038e9a78`，必要五文件bundle `code/abf088088192e2a75442515c62a6171f509911df1547e368c4396cea4044f8e2`。完整392矩阵及来源只读预飞通过，11:38:39唯一后台启动。`tracking_control_a01/driver_state.json`和`_launch_tracking_a01`为权威；当前先14项PT真实评价门禁已完整通过（`all_seven_PT_adapter_gate.json`），控制器继续全部378学习模型任务。纯CPU/Torch线程1，未新增训练或改阈值；开始或局部健康不冒充完整结果。
+
+完成必须392项全部追踪/评价/自动区间分析齐全、state为`complete392_tracking_and_paired_intervals`、报告为`complete392_all_results_and_paired_intervals`并核对真实控制器/子进程/launcher退出。独立终验器`verify_substitution_tracking_results.py`已2CPU检查并安装单文件bundle `code/0b3ee813ca965f1a20ac85a5ddbf649ecec0bb6fde04654666621717a7c370fd`，尚未实际执行；待完整终态后核对392来源/MOT/GT及分母、1323配对行与105区间/全CSV，不能重跑模型或TrackEval。数值序列化核验容差不是性能非劣效界限。全部原始模型、记录、指标及负结果保留。
 
 ## 等待输入期间的独立CPU准备
 
@@ -93,4 +103,4 @@ A/B只有数值源码、初始化、输入/顺序与预算完全一致才引用�
 
 首个CPU加载诊断a01因新封装给旧B加载器传入空配置，缺`training_protocol`而退出。新增回归先实际复现，再仅补传原训练协议引用，a02通过；a01旧bundle/目录和`failed_root_a01.json`保留，无训练更新或模型改写。冻结的C训练与活动下载源码均未修改。
 
-输入完成后的五文件预测准入准备脚本位于本机`Saved/ResearchBuild/freeze_seven_match_prediction_a01.py`，已语法检查但未执行。它先验证完整4790帧ledger、文件大小、GT/seqinfo和实际下载/C退出，再写输入完成根收据、安装原数值最小bundle、冻结新预测配置；不重复媒体hash或已成功解码。正式预测、断档注册及追踪各需在真实输入边界完成后独立冻结，不能把CPU准备当生产运行。
+本机`Saved/ResearchBuild/freeze_seven_match_prediction_a01.py`及后续追踪冻结助手已在真实输入/预测/退出边界实际依次执行，不再重跑。它们保留完整4790帧ledger、GT/seqinfo/物理路径、冻结源码和关键收据，不重复媒体hash或成功图解码。当前实际任务是上述392项CPU追踪，历史CPU准备不冒充完整效果验证。
