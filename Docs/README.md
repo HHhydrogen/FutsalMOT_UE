@@ -1,3 +1,4 @@
+- [有效决策机会核查](research/DECISION_OPPORTUNITY_A01_RESULTS.md)：12条既有训练域日志180118行、84区间及独立终验闭合；2835行正负双方Pose结构支持机会中可信错选0/未匹配21/unknown4，不等Pose无用或可纠错保证。下一步仅核已选3000R窗与早期anchor，原strongmotion_RS保持主参照。[事前协议](research/DECISION_OPPORTUNITY_A01.md)。
 - [自由状态R窗口来源验证完整结果](research/STATE_ALIGNED_R_TRAINING_A01_RESULTS.md)：十八臂18000更新/378检查点、180项自由追踪、360来源及60指标/12gap区间均已独立终验闭合；新RS三面板AssA低于原RS，本具体窗口政策未提高追踪能力。原始负结果保留，测试封存；[协议](research/STATE_ALIGNED_R_TRAINING_A01.md)与[事前分析](research/STATE_ALIGNED_R_ANALYSIS_A01.md)。
 # 技术文档索引
 
