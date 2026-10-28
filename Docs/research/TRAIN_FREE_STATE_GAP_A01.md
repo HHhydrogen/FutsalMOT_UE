@@ -80,3 +80,9 @@ a03实际确认原生输出、ID、计数、完整audit和最后hidden state一�
 若选择训练窗口：另外冻结池/完整记录与数值准入后才训练，保持194→64→32→1、FP32、AdamW0.001/wd0.0001、1000更新、每步3R、累计3000R，RS每步另1个原balanced S/累计1000S；3fold×3seed×R/RS=18臂。变的是R窗口内容，UID不同不能称原曝光相同。新池目标1000唯一窗/fold，不足不复制填额；混合/歧义历史不强制赋末次GT，不能将其伪装成原BCE可靠标签。单因素方案应在看新结果前完整固定，全部seed和负结果保留。
 
 后续成绩先列同一3/2/7面板的绝对AssA/HOTA/IDF1，再附配对差值、95%t、固定bootstrap和逐场留一；不合并已观察开发成盲测、不设非劣效界限、不以区间含0称等同。本阶段及后续闭合时同步[训练历史](TRAINING_HISTORY.md)。
+
+### 流式完整准入与a02恢复（2026-10-28 15:22）
+
+完整750帧后验已实际完成，worker close/join/exit0，峰RSS176013312字节，最低可用RAM21456093184字节、commit余量36667961344字节，耗时407.30906秒。准入产物直接继承，新模型前向/追踪/优化更新均0；不将此耗时当并行整体加速。准入根`numeric_admission_a04/receipt.json` SHA `99d28cac4d8cf19726a554546cec3a0a46b83479fc6eab69ec6ab593ab232476`。
+
+另签恢复配置`tracking_frozen_a02/config.json` SHA `a6ae5884ac3536ee092876cc1fcab7e378d21d184882ef6ad5af62664117e03c`，四文件bundle `f4836bf41e099d0203609dbb7a04dca32d8ad9741e3b39e53352d74b688f9ba5`。实际只读预飞通过，15:22:32唯一后台启动；controller与2track+1posthoc真实身份已核。权威新状态为`control_a02/driver_state.json`，初始5观察/3后验（旧2+准入1）；旧a01原样封存。不得重复启动/热改。完整诊断及单因素尚未完成，未生成新AssA。独立流式终验已安装`code/dc88c3bf9caee0e8aa56367601c698a020dc185e45eb71e356c0c886c83205d3/tools/research_ops/verify_state_gap_diagnosis.py`，待全诊断及真实退出后才运行新配置/新control，输出另用`final_verification_a02/receipt.json`。

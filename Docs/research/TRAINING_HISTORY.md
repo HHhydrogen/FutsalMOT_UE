@@ -395,3 +395,9 @@ OC绝对成绩直接读取既有两份12行结果CSV，再在各面板比赛等�
 ## 原始证据索引
 
 各阶段正文链接是阅读入口。[全过程记录规范](../operations/TRAINING_RECORDS.md)说明哪些轮次保留逐步loss/LR/梯度/RNG/检查点、哪些历史字段缺失。[任务状态](../../TASK_STATUS_AND_NEXT_STEPS.md)只描述当前进度，不替代本文的完整历史。[旧路线流水](POSE_PIPELINE_HISTORY.md)保留早期工程上下文，旧段落中的“下一步/正在运行”不能覆盖后续最终完成收据。
+
+### 流式完整准入与a02恢复（2026-10-28 15:22）
+
+完整750帧后验已实际完成，worker close/join/exit0，峰RSS176013312字节，最低可用RAM21456093184字节、commit余量36667961344字节，耗时407.30906秒。准入产物直接继承，新模型前向/追踪/优化更新均0；不将此耗时当并行整体加速。准入根`numeric_admission_a04/receipt.json` SHA `99d28cac4d8cf19726a554546cec3a0a46b83479fc6eab69ec6ab593ab232476`。
+
+另签恢复配置`tracking_frozen_a02/config.json` SHA `a6ae5884ac3536ee092876cc1fcab7e378d21d184882ef6ad5af62664117e03c`，四文件bundle `f4836bf41e099d0203609dbb7a04dca32d8ad9741e3b39e53352d74b688f9ba5`。实际只读预飞通过，15:22:32唯一后台启动；controller与2track+1posthoc真实身份已核。权威新状态为`control_a02/driver_state.json`，初始5观察/3后验（旧2+准入1）；旧a01原样封存。不得重复启动/热改。完整诊断及单因素尚未完成，未生成新AssA。独立流式终验已安装`code/dc88c3bf9caee0e8aa56367601c698a020dc185e45eb71e356c0c886c83205d3/tools/research_ops/verify_state_gap_diagnosis.py`，待全诊断及真实退出后才运行新配置/新control，输出另用`final_verification_a02/receipt.json`。
