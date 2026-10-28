@@ -1,3 +1,4 @@
+- [自由状态R窗口来源验证](research/STATE_ALIGNED_R_TRAINING_A01.md)：三fold各1000唯一R输入已闭合，下一步训练数值与完整记录准入；新训练尚未启动，测试封存。
 # 技术文档索引
 
 - [训练候选与自由状态、历史传播有界诊断](research/TRAIN_FREE_STATE_GAP_A01.md)：首seed强motion R/RS的12训练域rollout，完整三阶段/生命周期和最多60事件的30帧四分支oracle；[完整结果](research/TRAIN_FREE_STATE_GAP_A02_RESULTS.md)已闭合12观察/后验和独立终验，零合格oracle事件，未估计历史/KF效果；下一项仅准备R窗口来源对齐，非新增模型成绩，最终测试封存。

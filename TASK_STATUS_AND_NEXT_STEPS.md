@@ -202,3 +202,7 @@ v8/v9、绿色球衣及v10现均已闭合。用户要求的[后续方案](Docs/r
 完整750帧后验已实际完成，worker close/join/exit0，峰RSS176013312字节，最低可用RAM21456093184字节、commit余量36667961344字节，耗时407.30906秒。准入产物直接继承，新模型前向/追踪/优化更新均0；不将此耗时当并行整体加速。准入根`numeric_admission_a04/receipt.json` SHA `99d28cac4d8cf19726a554546cec3a0a46b83479fc6eab69ec6ab593ab232476`。
 
 另签恢复配置`tracking_frozen_a02/config.json` SHA `a6ae5884ac3536ee092876cc1fcab7e378d21d184882ef6ad5af62664117e03c`，四文件bundle `f4836bf41e099d0203609dbb7a04dca32d8ad9741e3b39e53352d74b688f9ba5`。实际只读预飞通过，15:22:32唯一后台启动；controller与2track+1posthoc真实身份已核。权威新状态为`control_a02/driver_state.json`，初始5观察/3后验（旧2+准入1）；旧a01原样封存。不得重复启动/热改。完整诊断及单因素尚未完成，未生成新AssA。独立流式终验已安装`code/dc88c3bf9caee0e8aa56367601c698a020dc185e45eb71e356c0c886c83205d3/tools/research_ops/verify_state_gap_diagnosis.py`，待全诊断及真实退出后才运行新配置/新control，输出另用`final_verification_a02/receipt.json`。
+
+## 最新输入阶段：自由状态R窗口来源a01
+
+按[新验证协议](Docs/research/STATE_ALIGNED_R_TRAINING_A01.md)完成8CPU合同、真实六R后验来源资格/唯一性审计，以及三fold各1000新R窗原记录/标签读回。game4/6/9各允许两来源各500，无复制填额；all pair13558/13167/15740，known11500/10975/12765，positive435/321/359，unknown2058/2192/2975，无positive窗口565/679/641。原S、normalizer、旧池不改；新SGD/图像预测/追踪均0，尚未训练准入。输入根SHA031e10a5a7cc078030747f901cc1bbe5bce8017542c524e38d47abf3e9d7d74c。下一步仅训练数值/完整记录准入，18臂每1000更新、3000R，RS另1000S；模型/优化器/seed/损失及全部限制见绝对协议。不能称pair/FLOPs公平或状态问题已解决。

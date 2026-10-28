@@ -411,3 +411,7 @@ OC绝对成绩直接读取既有两份12行结果CSV，再在各面板比赛等�
 235切换记录中231此前unknown；另外4条实为同一SNMOT097第245帧在game4/game9×R/RS的重复观测，均仅2条历史、正确raw非唯一、learned_active=false，不能当4独立错误或学习分支错误。eligible0、四分支/前缀推进0，45配对区间全部null，不写效果0或history/KF无影响。旧中断及partial、a04恢复、全部负项原样保留。
 
 下一项仅选择R训练窗口来源对齐作为待验证假设。先审计R-only teacher高分learned-active且可信3条同身份历史的窗口、固定排序/去重，各fold允许两源各500唯一共1000为目标；全高分stage候选保留，不冒称精确评分掩码，unknown仍None，不要求每窗正例，池不足不填重复。R/RS共R源，RS原v10balanced1000S保持。新18臂三fold三seed20261024/25/26×R/RS：194→64→32→1 FP32强motion、原normalizer/init、AdamW学习率0.001/weight_decay0.0001、1000更新，每步3R总3000R，RS另1S总1000S，mean3R+meanS/3、last1000非EMA无best。来源改变同时改变候选/gap等，窗口数公平不等pair/标签/FLOPs公平；先冻结池/schema/完整记录、CPU及实际CUDA一步和首完整1000门禁。目前仅候选实现，未生成正式新池、未训练。测试116/187/test持续封存。
+
+## 最新输入阶段：自由状态R窗口来源a01
+
+按[新验证协议](STATE_ALIGNED_R_TRAINING_A01.md)完成8CPU合同、真实六R后验来源资格/唯一性审计，以及三fold各1000新R窗原记录/标签读回。game4/6/9各允许两来源各500，无复制填额；all pair13558/13167/15740，known11500/10975/12765，positive435/321/359，unknown2058/2192/2975，无positive窗口565/679/641。原S、normalizer、旧池不改；新SGD/图像预测/追踪均0，尚未训练准入。输入根SHA031e10a5a7cc078030747f901cc1bbe5bce8017542c524e38d47abf3e9d7d74c。下一步仅训练数值/完整记录准入，18臂每1000更新、3000R，RS另1000S；模型/优化器/seed/损失及全部限制见绝对协议。不能称pair/FLOPs公平或状态问题已解决。
