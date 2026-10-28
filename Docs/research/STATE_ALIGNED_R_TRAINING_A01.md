@@ -18,7 +18,7 @@ teacher固定为原纯R强motion、同fold、seed20261024。只收高分stage、
 
 ## 下一步训练准入与绝对条件
 
-正式训练尚未准入或启动。新18臂为R/RS×fold game4/game6/game9×seed20261024/20261025/20261026。模型194→64→32→1、ReLU、FP32，全部原强motion可训练线性层，标准化后170个Pose通道置0；不追加旧权重，使用每seed原初始化。normalizer仍仅引用原baseR，不在新池重拟合。源码核验更正：原v10强motion走v8 FeatureCache，仅原features→normalizer(use_pose=False)，没有按epoch施加扰动增广。本轮augmentation=none_original_strongmotion，不接T/gated的stateless both；只换R窗口来源。R曝光序使用原exposures SHA排序算法，S直接复制原v10表的synthetic列；新window UID与原五档gap身份明确区分。
+训练现已按以下事前条件完成并独立验收，具体实际预算与证据见末尾最新闭合段。新18臂为R/RS×fold game4/game6/game9×seed20261024/20261025/20261026。模型194→64→32→1、ReLU、FP32，全部原强motion可训练线性层，标准化后170个Pose通道置0；不追加旧权重，使用每seed原初始化。normalizer仍仅引用原baseR，不在新池重拟合。源码核验更正：原v10强motion走v8 FeatureCache，仅原features→normalizer(use_pose=False)，没有按epoch施加扰动增广。本轮augmentation=none_original_strongmotion，不接T/gated的stateless both；只换R窗口来源。R曝光序使用原exposures SHA排序算法，S直接复制原v10表的synthetic列；新window UID与原五档gap身份明确区分。
 
 每臂1000实际更新，AdamW学习率0.001、weight_decay0.0001；每步3R窗口，累计3000R。RS每步另1个原v10balanced S窗，累计1000S，S源及顺序不变；R和RS共用同fold新R来源及相同R采样顺序。R损失mean(3R)，RS损失mean(3R)+mean(1S)/3。每臂last1000，非EMA、无best选择；18臂总18000更新、54000R窗口次、9000S窗口次。这里batch以窗口计，动态候选pair数须逐步与累计实记；同窗口数不等pair/标签/FLOPs公平。
 
@@ -43,3 +43,11 @@ teacher固定为原纯R强motion、同fold、seed20261024。只收高分stage、
 权威state为DResearch/pose/state_aligned_training_a01/training_control_a01/driver_state.json，日志_launch_training_a01及training_control_a01/logs。独立审计已安装code/9609623d0cca265f971114fdf4417cb521f58255e755814b8582e5a6f353ff0a/tools/research_ops/audit_state_aligned_training.py，尚未真实执行；十八臂齐及实际parent/child/launcher全退后，才以--config绝对protocol --control绝对training_control_a01 --output绝对postrun_audit_a01/actual_budget.json --execute运行，CUDA_VISIBLE_DEVICES=-1。需核378完整checkpoint、18000步/全部UIDepoch/all-knownpair/原init/norm/S及真实退出；cache无显式close不伪造true，保留实际预取join和run退出证据。
 
 冻结时计划原bytes快照training_frozen_a01/plan_snapshot.md SHA755851787d2e21cc8cbcf1e16b0b1d761a72f06588fbb35450ad74a8be4a20f6保留；本文件后续更新不改该快照或活动协议。下一阶段才冻结新18模型×每fold10来源=180自由追踪，原匹配基线只读引用，原3/旧2/七场分别报告，未通过加载/GT隔离/cold-ABA准入不执行。全部负结果保留，测试封存。
+
+## 最新闭合：十八臂训练、独立预算及真实退出
+
+2026-10-28十八臂均已完成，各1000实际更新。独立审计实际核18000步、378完整模型/AdamW/PythonNumPyTorchCPU-CUDA RNG检查点、step0原初始化、原normalizer、九组R/RS相同R顺序及原S顺序、逐步loss/LR/grad/UIDepoch/all-knownpair/链与全部实际退出。正式总量：54000R窗口次、9000S窗口次；R all/known pair764370/634320，S46287/25191。8诊断更新（CPU4、CUDA4）及24R/4S另计。重放0，原日志和所有权重/负结果保留。新自由追踪/TrackEval完成数仍0，没有新AssA/HOTA/IDF1。
+
+训练完成根`pose/state_aligned_training_a01/training_complete_root_a01.json` SHA `62646594150716226b4cb90087731b8d2c76fb836bd22a3218a776031ebf5a33`；独立审计`postrun_audit_a01/actual_budget.json` SHA `d551bb377a8d33b6f454fa5f119723c06c085555c85c37c55b5080f53d671212`，status complete18_state_aligned_R_actual_budget_full_records_and_exit_verified。实际使用独立审计单文件bundle `code/710811cbb5a35744ce7d8ae376c11fb473d89446d7d823f17f8fe07348325f77`，将CPU与CUDA诊断全部另计；原960候选未执行且保留，不修改活动训练11文件或协议。
+
+下一阶段使用[结果前追踪分析规则](STATE_ALIGNED_R_ANALYSIS_A01.md)：180新任务与匹配180旧基线来源，三原/旧二/七场分开。主要新RS−旧RS，另新R−旧R、新RS−新R及两者合成增量交互，五指标共60个未多比较校正描述区间；每场先均匹配seed/fold再比赛等权，t95自由度2/1/6、10000比赛bootstrap固定seed20261028/逐场留一。先绝对成绩再差值/CI；无δ/等效通过标志。候选加载runtime已做6CPU夹具检查，真实新模型加载/GT隔离/cold-ABA/spawn和完整worker/control冻结准入尚未执行，不能当180追踪已完成。测试116/187/test持续封存。

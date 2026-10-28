@@ -31,6 +31,14 @@ def physical(path):
         if part.exists() or part.is_symlink():require(not part.is_symlink() and not getattr(part.lstat(),'st_file_attributes',0)&0x400,'拒绝junction/符号链接')
     return p
 def matrix():return [dict(fold=f,seed=s,regime=r) for f in FOLDS for s in SEEDS for r in REGIMES]
+
+def diagnostic_budget(admission,cpu,cuda):
+    require(admission['diagnostic_CPU_updates']==cpu['actual_CPU_diagnostic_optimizer_updates']==4
+        and admission['diagnostic_CUDA_updates']==cuda['actual_diagnostic_optimizer_updates']==4
+        and cpu['CPU_diagnostic_R_windows']==cuda['diagnostic_R_windows']==12
+        and cpu['CPU_diagnostic_S_windows']==cuda['diagnostic_S_windows']==2,'CPU/CUDA独立诊断预算缺失或混同正式更新')
+    return dict(diagnostic_updates_separate=8,diagnostic_CPU_updates_separate=4,diagnostic_CUDA_updates_separate=4,
+        diagnostic_R_separate=24,diagnostic_S_separate=4)
 def validate_state(state,cfg):
     require(cfg['training_matrix']==matrix(),'事前18臂矩阵不同')
     require(state['status']=='complete18_state_aligned_training_wait_independent_audit_tracking' and state['active'] is None
@@ -148,7 +156,8 @@ def execute(config,control,output):
         import torch
         import numpy as np
         torch.set_num_threads(1);require(not torch.cuda.is_available(),'审计仅CPU，须CUDA_VISIBLE_DEVICES=-1')
-        rt.validate_learning_admission(config,cfg)
+        admission=rt.validate_learning_admission(config,cfg)
+        diagnostics=diagnostic_budget(admission,read(rt.checked(admission['input_contract'])),read(rt.checked(admission['numeric_validation'])))
         first=read(control/'first_run_end_to_end_gate.json')
         require(first['status']=='complete_first_state_aligned1000_full21_checkpoints_verified' and first['actual_updates']==1000
             and first['checkpoints_read']==21 and first['R']==3000 and first['S']==0 and first['optimizer_replay']==0,'首千步实际21检查点门禁缺失')
@@ -203,7 +212,7 @@ def execute(config,control,output):
         result=dict(schema='independent_state_aligned18_budget_audit_v1',status=STATUS,protocol=dict(path=str(config),sha256=sha(config)),
             control_state=dict(path=str(state_path),sha256=state_sha),auditor=dict(path=str(Path(__file__).resolve()),sha256=sha(__file__)),
             actual_totals=dict(totals),runs=items,complete_checkpoints_read_back=checkpoints,nine_paired_R_RS_exposures_equal=True,
-            training_processes_absent=True,diagnostic_updates_separate=4,diagnostic_R_separate=12,diagnostic_S_separate=2,new_optimizer_updates=0,
+            training_processes_absent=True,**diagnostics,new_optimizer_updates=0,
             optimizer_replay=0,model_prediction=False,test_read=False,numerical_loss_serialization_check_not_performance_equivalence=True)
         rt.write_new(output,result);return {k:result[k] for k in ('status','actual_totals','complete_checkpoints_read_back','training_processes_absent')}
     except BaseException:

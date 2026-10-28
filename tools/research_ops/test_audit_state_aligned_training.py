@@ -65,4 +65,13 @@ class Contracts(unittest.TestCase):
         with self.assertRaises(ValueError):a.validate_prefetch(r,producer_processes_absent=False)
         with self.assertRaises(ValueError):a.validate_prefetch(dict(r,cache_peak_bytes=268435457),producer_processes_absent=True)
 
+class DiagnosticBudget(unittest.TestCase):
+    def test_CPU_and_CUDA_are_both_separate_from_formal(self):
+        admission=dict(diagnostic_CPU_updates=4,diagnostic_CUDA_updates=4)
+        cpu=dict(actual_CPU_diagnostic_optimizer_updates=4,CPU_diagnostic_R_windows=12,CPU_diagnostic_S_windows=2)
+        cuda=dict(actual_diagnostic_optimizer_updates=4,diagnostic_R_windows=12,diagnostic_S_windows=2)
+        result=a.diagnostic_budget(admission,cpu,cuda)
+        self.assertEqual((result['diagnostic_updates_separate'],result['diagnostic_R_separate'],result['diagnostic_S_separate']),(8,24,4))
+        with self.assertRaises(ValueError):a.diagnostic_budget(admission,dict(cpu,actual_CPU_diagnostic_optimizer_updates=0),cuda)
+
 if __name__=='__main__':unittest.main()
