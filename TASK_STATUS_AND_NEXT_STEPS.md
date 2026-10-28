@@ -2,7 +2,20 @@
 
 更新：2026-10-28。历史过程见Git及对应运行收据；本页不保留过期PID流水。
 
-## 当前：诊断异常保留与独立流式恢复准入
+## 当前：诊断已验闭合，准备唯一R窗口来源验证
+
+
+## 本轮诊断已闭合：训练候选与自由状态差异
+
+独立终验于2026-10-28 19:21完成且实际退出，12观察/12后验、9000逻辑帧/2250唯一源帧、27000stage/180118stage-row及3000自然池窗口全部核验。优化更新0、图像推理0，无新AssA/HOTA/IDF1。完整结果见[诊断结果](Docs/research/TRAIN_FREE_STATE_GAP_A02_RESULTS.md)（根目录入口使用Docs/research/路径）。完成根DResearch/pose/state_gap_diagnosis_a01/complete_root_a02.json SHA ad2eed7e78f5551e38c8db0c29a903348af2b5c6765e89b30c4f18f139a9804b。
+
+原自然池每fold1000、历史3条、query gap1/5/10/20/30各200，候选数中位3、gap中位10帧。自由R六任务90226 stage-row、候选中位15、gap中位1，history1/2/3为14083/7768/68375；RS相应89892行、14864/7876/67152。全stage与自然池不是同分母，不能直接称全部实际SGD/learned评分分布；不据此认定因果主瓶颈。
+
+235切换记录中231此前unknown；另外4条实为同一SNMOT097第245帧在game4/game9×R/RS的重复观测，均仅2条历史、正确raw非唯一、learned_active=false，不能当4独立错误或学习分支错误。eligible0、四分支/前缀推进0，45配对区间全部null，不写效果0或history/KF无影响。旧中断及partial、a04恢复、全部负项原样保留。
+
+下一项仅选择R训练窗口来源对齐作为待验证假设。先审计R-only teacher高分learned-active且可信3条同身份历史的窗口、固定排序/去重，各fold允许两源各500唯一共1000为目标；全高分stage候选保留，不冒称精确评分掩码，unknown仍None，不要求每窗正例，池不足不填重复。R/RS共R源，RS原v10balanced1000S保持。新18臂三fold三seed20261024/25/26×R/RS：194→64→32→1 FP32强motion、原normalizer/init、AdamW学习率0.001/weight_decay0.0001、1000更新，每步3R总3000R，RS另1S总1000S，mean3R+meanS/3、last1000非EMA无best。来源改变同时改变候选/gap等，窗口数公平不等pair/标签/FLOPs公平；先冻结池/schema/完整记录、CPU及实际CUDA一步和首完整1000门禁。目前仅候选实现，未生成正式新池、未训练。测试116/187/test持续封存。
+
+历史恢复过程：
 
 2026-10-28异常更正：旧控制器与worker已实际退出，原state停在10:29:47，完成5项750帧观察及2项后验，不能再按文字状态称运行中。最后可用RAM139603968字节、commit余量282320896字节；未取得确证终止原因或退出码，不断言Windows主动终止。旧源码、state、成功与partial原样保留；异常收据为DResearch/pose/state_gap_diagnosis_a01/interruption_a01/receipt.json（SHA be17115bb93061888ae7790e4b07864a282b017f0c1f249eab07c3d12fea0f8e）。
 

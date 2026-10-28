@@ -1,6 +1,6 @@
 # 技术文档索引
 
-- [训练候选与自由状态、历史传播有界诊断](research/TRAIN_FREE_STATE_GAP_A01.md)：首seed强motion R/RS的12训练域rollout，完整三阶段/生命周期和最多60事件的30帧四分支oracle；当前数值准入，非新增模型成绩，完整未知和失败保留，最终测试封存。
+- [训练候选与自由状态、历史传播有界诊断](research/TRAIN_FREE_STATE_GAP_A01.md)：首seed强motion R/RS的12训练域rollout，完整三阶段/生命周期和最多60事件的30帧四分支oracle；[完整结果](research/TRAIN_FREE_STATE_GAP_A02_RESULTS.md)已闭合12观察/后验和独立终验，零合格oracle事件，未估计历史/KF效果；下一项仅准备R窗口来源对齐，非新增模型成绩，最终测试封存。
 
 - [模型训练历史总览](research/TRAINING_HISTORY.md)：从最初bbox迁移到Pose微调、身份关联、真实资源对照和截距校准，按版本解释训练对象、动机、数据split、绝对预算/成绩与局限；完成阶段持续更新，失败和零更新诊断单列。
 
