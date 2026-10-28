@@ -3,6 +3,7 @@ from copy import deepcopy
 from pathlib import Path
 import sys
 import unittest
+import weakref
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import state_gap_analysis as core
@@ -38,6 +39,46 @@ def rollout_fixture():
 
 
 class StateGapPosthocContracts(unittest.TestCase):
+    def test_one_shot_rollout_iterator_matches_all_original_fields(self):
+        frames, source = rollout_fixture(), source_fixture()
+        expected_annotation = core.annotate_rollout(frames, source, META)
+        self.assertEqual(core.annotate_rollout(iter(frames), source, META), expected_annotation)
+        expected_events = core.select_first_errors(frames, source, META)
+        self.assertEqual(core.select_first_errors(iter(frames), source, META), expected_events)
+
+    def test_streamed_annotation_sink_retains_every_row_and_exact_summary(self):
+        frames, source = rollout_fixture(), source_fixture()
+        expected = core.annotate_rollout(frames, source, META)
+        written = []
+        result = core.annotate_rollout(iter(frames), source, META,
+            row_sink=written.append, retain_rows=False)
+        self.assertEqual(written, expected['rows'])
+        self.assertEqual(result, dict(expected, rows=[]))
+
+    def test_stream_consumers_do_not_retain_previous_complete_frames(self):
+        class TrackedFrame(dict):
+            pass
+
+        def frames(references):
+            for frame in rollout_fixture():
+                # for循环进入下一帧时，调用方至多还持有上一帧原对象。
+                self.assertLessEqual(sum(reference() is not None for reference in references), 1)
+                value = TrackedFrame(deepcopy(frame))
+                references.append(weakref.ref(value))
+                yield value
+                del value
+
+        source = source_fixture()
+        references = []
+        result = core.annotate_rollout(frames(references), source, META,
+            row_sink=lambda row: None, retain_rows=False)
+        self.assertEqual(result['total_frames'], 34)
+        self.assertFalse(any(reference() is not None for reference in references))
+        references = []
+        events = core.select_first_errors(frames(references), source, META)
+        self.assertEqual(len(events['events']), 1)
+        self.assertFalse(any(reference() is not None for reference in references))
+
     def test_mutual_unique_exact_threshold_ID0_and_conflict_unknown(self):
         gt = [dict(gt_id=0, bbox_xywh_px=[0., 0., 10., 10.])]
         labels = core.match_labels([dict(uid='a', bbox_xywh_px=[0., 0., 10., 5.])], gt)

@@ -2,7 +2,11 @@
 from copy import deepcopy
 from collections import Counter
 from pathlib import Path
+import gzip
+import json
 import sys
+import tempfile
+import tracemalloc
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -105,6 +109,42 @@ def fixture(with_event=True):
     return cfg, state, report, readref, data
 
 
+def recovered_fixture():
+    cfg, state, report, readref, data = fixture()
+    def put(value):
+        key = 'recovery_'+str(len(data)); data[key] = value
+        return dict(path=key, sha256=verify.digest(value))
+    for key in verify.RECOVERY_SOURCE_KEYS:
+        cfg.setdefault(key, dict(fixed_source=key))
+    cfg.update(bundle='new_frozen_bundle', bundle_manifest=dict(path='new_manifest', sha256='c'*64), in_flight_estimate_bytes=3221225472)
+    old = deepcopy(cfg); old['worker_profile'] = dict(track_workers=4, posthoc_workers=2)
+    old_protocol = put(old); protocol = dict(path='new_config', sha256='d'*64)
+    inherited_observes = dict(list(report['observe'].items())[:5])
+    inherited_posts = {key: report['posthoc'][key] for key in list(inherited_observes)[:2]}
+    old_state = put(dict(protocol=old_protocol, observe=inherited_observes, posthoc=inherited_posts))
+    failure = put(dict(source_state=old_state, actual_research_controller_and_spawn_processes_absent=True,
+        actual_exit_codes=None, partial_actual_frame_advances=None))
+    admission_job = list(inherited_observes)[2]
+    admission = put(dict(status='complete_streamed750_posthoc_and_bounded_memory_gate', bundle=cfg['bundle'],
+        bundle_manifest=cfg['bundle_manifest'], worker_exited=True, exit_code=0, peak_worker_RSS_bytes=1073741824,
+        minimum_available_RAM_bytes=17179869184, minimum_commit_headroom_bytes=12884901888,
+        job_id=admission_job, posthoc=report['posthoc'][admission_job]))
+    recovery = dict(source_protocol=old_protocol, source_state=old_state, interruption=failure,
+        inherit_observe=inherited_observes, inherit_posthoc=inherited_posts,
+        restart_incomplete_jobs_explicit=[job['job_id'] for job in cfg['jobs'] if job['job_id'] not in inherited_observes], streaming_admission=admission)
+    cfg['recovery'] = state['recovery'] = report['recovery'] = recovery; report['protocol'] = protocol
+    for job, value in report['observe'].items():
+        readref(value)['protocol'] = old_protocol if job in inherited_observes else protocol
+    for value in report['replay'].values():
+        readref(value)['protocol'] = protocol
+    readref(cfg['numeric_admission'])['selected_worker_profile'] = old['worker_profile']
+    report['budget']['execution_attempt_budget'] = dict(inherited_complete_first_pass_frame_advances=3750,
+        new_successful_first_pass_frame_advances=5250, interrupted_partial_actual_frame_advances=None,
+        interrupted_partial_count=3, partial_preserved=True, logical_budget_includes_inherited_success=True,
+        physical_retry_work_not_claimed_zero=True, interruption=failure)
+    return cfg, state, report, readref, data
+
+
 class TerminalContracts(unittest.TestCase):
     def setUp(self):
         self.cfg, self.state, self.report, self.read, self.data = fixture()
@@ -190,6 +230,88 @@ class TerminalContracts(unittest.TestCase):
         self.assertTrue(verify.absent([reused], state)['observer_processes_absent'])
         reused['CommandLine'] = 'from multiprocessing.spawn import spawn_main; spawn_main(parent_pid=500)'
         with self.assertRaisesRegex(ValueError, '实际控制器'): verify.absent([reused], state)
+
+
+class DiskRowsContracts(unittest.TestCase):
+    def test_full_terminal_checks_equal_memory_fixture_with_disk_rows(self):
+        cfg, state, report, read, data = fixture()
+        expected = verify.verify_records(cfg, state, report, read)
+        with tempfile.TemporaryDirectory() as temporary:
+            disk = {}
+            for key, value in data.items():
+                if isinstance(value, list):
+                    path = Path(temporary)/(key+'.jsonl.gz')
+                    with gzip.open(path, 'wt', encoding='utf-8') as stream:
+                        for row in value:
+                            stream.write(json.dumps(row)+'\n')
+                    disk[key] = verify.DiskRowsView(path, expected_rows=len(value))
+            actual = verify.verify_records(cfg, state, report, lambda reference: disk.get(reference['path'], data[reference['path']]))
+            self.assertEqual(actual, expected)
+
+    def test_reiterable_disk_rows_do_not_materialize_full_trace(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary)/'trace.jsonl.gz'
+            with gzip.open(path, 'wt', encoding='utf-8') as stream:
+                for number in range(64):
+                    stream.write(json.dumps(dict(number=number, payload='x'*262144))+'\n')
+            tracemalloc.start()
+            rows = verify.DiskRowsView(path, expected_rows=64)
+            self.assertEqual(len(rows), 64)
+            self.assertEqual(sum(row['number'] for row in rows), sum(range(64)))
+            self.assertEqual(rows[17]['number'], 17)
+            self.assertEqual(rows[-1]['number'], 63)
+            self.assertEqual([row['number'] for row in rows], list(range(64)))
+            _, peak = tracemalloc.get_traced_memory(); tracemalloc.stop()
+            self.assertLess(peak, 4*1024*1024, '整日志物化会随64帧载荷累计占用内存')
+            self.assertFalse(hasattr(rows, 'rows'))
+
+    def test_disk_rows_reject_wrong_row_count_and_truncated_gzip(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary)/'trace.jsonl.gz'
+            with gzip.open(path, 'wt', encoding='utf-8') as stream:
+                stream.write('{"number":0}\n')
+            with self.assertRaisesRegex(ValueError, '压缩记录行数'):
+                list(verify.DiskRowsView(path, expected_rows=2))
+            path.write_bytes(path.read_bytes()[:-8])
+            with self.assertRaises((EOFError, OSError)):
+                list(verify.DiskRowsView(path, expected_rows=1))
+
+
+class RecoveryContracts(unittest.TestCase):
+    def setUp(self):
+        self.cfg, self.state, self.report, self.read, self.data = recovered_fixture()
+
+    def check(self):
+        return verify.verify_records(self.cfg, self.state, self.report, self.read)
+
+    def test_recovery_keeps_five_two_and_actual_admission_sources(self):
+        self.assertEqual(self.check()['jobs'], 12)
+
+    def test_old_interrupted_exit_and_partial_cannot_be_invented(self):
+        body = self.read(self.cfg['recovery']['interruption']); body['actual_exit_codes'] = [0]*6
+        with self.assertRaisesRegex(ValueError, '旧失联'): self.check()
+
+    def test_inherited_success_protocol_cannot_be_relabelled_new(self):
+        key = next(iter(self.cfg['recovery']['inherit_observe']))
+        self.read(self.report['observe'][key])['protocol'] = self.report['protocol']
+        with self.assertRaisesRegex(ValueError, '旧/新实际协议'): self.check()
+
+    def test_admission_posthoc_cannot_be_replaced_or_partial_memory_gate(self):
+        body = self.read(self.cfg['recovery']['streaming_admission']); body['minimum_commit_headroom_bytes'] = 1
+        with self.assertRaisesRegex(ValueError, '实际750'): self.check()
+
+    def test_recovery_source_parameters_and_retry_budget_must_be_absolute(self):
+        old = self.read(self.cfg['recovery']['source_protocol']); old['tracker_parameters']['match_thresh'] = .9
+        with self.assertRaisesRegex(ValueError, '恢复改变'): self.check()
+
+    def test_new_observation_and_replay_cannot_claim_old_protocol(self):
+        key = self.cfg['recovery']['restart_incomplete_jobs_explicit'][0]
+        self.read(self.report['observe'][key])['protocol'] = self.cfg['recovery']['source_protocol']
+        with self.assertRaisesRegex(ValueError, '旧/新实际协议'): self.check()
+
+    def test_recovery_unknown_retry_work_cannot_be_declared_zero(self):
+        self.report['budget']['execution_attempt_budget']['interrupted_partial_actual_frame_advances'] = 0
+        with self.assertRaisesRegex(ValueError, '旧partial未知推进'): self.check()
 
 
 if __name__ == '__main__': unittest.main()

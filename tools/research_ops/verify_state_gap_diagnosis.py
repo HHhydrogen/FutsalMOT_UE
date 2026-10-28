@@ -22,6 +22,8 @@ FOLDS = ('game4', 'game6', 'game9')
 BRANCHES = ('original', 'history_only', 'motion_only', 'both')
 PLAN_KEYS = {'event_id', 'frame_number', 'track_id', 'wrong_uid', 'correct_uid'}
 OUTCOMES = ('same_trusted_anchor', 'other_trusted_identity', 'unknown_measurement', 'unmatched_or_no_measurement')
+RECOVERY_SOURCE_KEYS = ('inventory', 'sources', 'jobs', 'inputs_source', 'original_tracking_source', 'track_guard_source',
+    'worker_support', 'source_velocity_protocol', 'tracker_parameters', 'diagnostic_parameters', 'analysis_parameters', 'worker_service')
 
 
 def require(ok, message):
@@ -62,17 +64,50 @@ def reference(path):
     return dict(path=str(physical(path)), sha256=file_sha(path))
 
 
+class DiskRowsView:
+    """可重复迭代的只读磁盘视图；每次仅解码一行，完整消费时核对行数和gzip尾部。"""
+    def __init__(self, path, *, expected_rows=None):
+        self.path = Path(path)
+        require(expected_rows is None or type(expected_rows) is int and expected_rows >= 0, '压缩记录行数声明无效')
+        self.expected_rows = expected_rows
+
+    def __iter__(self):
+        count = 0
+        with gzip.open(self.path, 'rt', encoding='utf-8') as stream:
+            for line in stream:
+                if not line.strip():
+                    continue
+                value = json.loads(line); count += 1
+                yield value
+        require(self.expected_rows is None or count == self.expected_rows, '压缩记录行数不同')
+        if self.expected_rows is None:
+            self.expected_rows = count
+
+    def __len__(self):
+        if self.expected_rows is None:
+            for _ in self:
+                pass
+        return self.expected_rows
+
+    def __getitem__(self, index):
+        require(type(index) is int, '磁盘日志只允许按单个帧索引读取，禁止整段物化')
+        if index < 0:
+            index += len(self)
+        if index < 0 or index >= len(self):
+            raise IndexError(index)
+        for number, value in enumerate(self):
+            if number == index:
+                return value
+        raise IndexError(index)
+
+
 def read_reference(value):
     """终验数据读取仅本轮新记录；禁止借嵌套ref重新打开GT/权重/旧cache。"""
     require(isinstance(value, dict) and set(value)>={'path', 'sha256'} and re.fullmatch('[0-9a-f]{64}', value['sha256']), '完整来源引用缺失')
     p = physical(value['path'], child=EXP)
     require(file_sha(p) == value['sha256'], '新记录SHA变化：'+str(p))
     if p.name.endswith('.jsonl.gz'):
-        with gzip.open(p, 'rt', encoding='utf-8') as stream:
-            rows = [json.loads(line) for line in stream if line.strip()]
-        if 'rows' in value:
-            require(len(rows) == value['rows'], '压缩记录行数不同')
-        return rows
+        return DiskRowsView(p, expected_rows=value.get('rows'))
     require(p.suffix == '.json', '终验只读取新JSON/压缩JSONL记录')
     return json.loads(p.read_text(encoding='utf-8-sig'))
 
@@ -205,6 +240,49 @@ def branch_summary_check(summary, records):
     return paired
 
 
+def recovery_check(cfg, state, report, readref):
+    """独立核旧成功来源、完整750流式准入与异常预算；不将旧进程冒充正常退出。"""
+    recovery = cfg.get('recovery')
+    if not recovery:
+        require(not state.get('recovery') and not report.get('recovery'), '未授权恢复来源被注入')
+        return None
+    require(state.get('recovery') == report.get('recovery') == recovery and report.get('protocol') is not None,
+        '恢复配置/状态/报告的完整来源不同')
+    old, interrupted = readref(recovery['source_protocol']), readref(recovery['source_state'])
+    failure = readref(recovery['interruption'])
+    require(all(cfg[key] == old[key] for key in RECOVERY_SOURCE_KEYS) and cfg['numeric_admission'] == old['numeric_admission'],
+        '恢复改变原模型/来源/矩阵/数值与统计')
+    require(interrupted['protocol'] == recovery['source_protocol'] and failure['source_state'] == recovery['source_state']
+        and failure['actual_research_controller_and_spawn_processes_absent'] is True
+        and failure['actual_exit_codes'] is None and failure['partial_actual_frame_advances'] is None,
+        '旧失联进程/partial退出码或实际推进数被补造')
+    observes, annotations = recovery['inherit_observe'], recovery['inherit_posthoc']
+    require(observes == interrupted['observe'] and annotations == interrupted['posthoc'] and len(observes) == 5
+        and len(annotations) == 2 and set(annotations) <= set(observes), '只允许继承旧五观察/二后验成功收据')
+    missing = [job['job_id'] for job in cfg['jobs'] if job['job_id'] not in observes]
+    require(recovery['restart_incomplete_jobs_explicit'] == missing and len(missing) == 7,
+        '七项缺失观察未明确登记或重复执行已成功观察')
+    require(all(report['observe'][key] == value for key, value in observes.items())
+        and all(report['posthoc'][key] == value for key, value in annotations.items()), '恢复成功来源被替换')
+    admission = readref(recovery['streaming_admission'])
+    require(admission['status'] == 'complete_streamed750_posthoc_and_bounded_memory_gate'
+        and admission['bundle'] == cfg['bundle'] and admission['bundle_manifest'] == cfg['bundle_manifest']
+        and admission['worker_exited'] is True and type(admission['exit_code']) is int and admission['exit_code'] == 0
+        and admission['peak_worker_RSS_bytes'] <= 3221225472 and admission['minimum_available_RAM_bytes'] >= 8589934592
+        and admission['minimum_commit_headroom_bytes'] >= 6442450944, '实际750流式/内存/退出准入未闭合')
+    job = admission['job_id']
+    require(job in observes and job not in annotations and report['posthoc'][job] == admission['posthoc'],
+        '完整750流式准入必须继承且不能重做旧成功后验')
+    require(cfg['worker_profile']['track_workers'] == 2 and cfg['worker_profile']['posthoc_workers'] == 1
+        and cfg['in_flight_estimate_bytes'] == 3221225472, '恢复的2track/1posthoc或3GiB在飞预留变化')
+    expected = dict(inherited_complete_first_pass_frame_advances=3750, new_successful_first_pass_frame_advances=5250,
+        interrupted_partial_actual_frame_advances=None, interrupted_partial_count=3, partial_preserved=True,
+        logical_budget_includes_inherited_success=True, physical_retry_work_not_claimed_zero=True, interruption=recovery['interruption'])
+    require(report['budget'].get('execution_attempt_budget') == state['budget'].get('execution_attempt_budget') == expected,
+        '旧partial未知推进与继承/新执行预算未完整独立披露')
+    return dict(old=old, observes=observes, old_protocol=recovery['source_protocol'])
+
+
 def verify_records(cfg, state, report, readref):
     """纯函数；readref可由只读SHA验证器或内存测试夹具提供。"""
     require(cfg.get('schema') == 'state_gap_diagnosis_protocol_v1' and cfg.get('approved_by') == 'root'
@@ -224,12 +302,16 @@ def verify_records(cfg, state, report, readref):
     observes, annotations = _refs(report['observe']), _refs(report['posthoc'])
     require(state['observe'] == observes and state['posthoc'] == annotations, '状态与报告来源映射不同')
     require(set(observes) == set(annotations) == set(jobmap), '12原追踪/后验来源缺失')
+    recovery = recovery_check(cfg, state, report, readref)
     fingerprints, stage_count, row_count, annotation_events, event_frame_evidence = {}, 0, 0, [], {}
     for key, job in jobmap.items():
         receipt = readref(observes[key])
         require(receipt['schema'] == 'state_gap_observe_receipt_v1' and receipt['status'] == 'complete'
             and receipt['job'] == job and receipt['frames'] == 750 and receipt['frames_log']['rows'] == 750
             and receipt['source_cache'] == cfg['sources'][job['sequence']]['cache'] and receipt['observer_enabled'] is True, '原完整rollout身份/预算不符')
+        if report.get('protocol') is not None:
+            expected_protocol = recovery['old_protocol'] if recovery and key in recovery['observes'] else report['protocol']
+            require(receipt.get('protocol') == expected_protocol, '观察收据旧/新实际协议来源不同')
         proof(receipt)
         logs = readref(receipt['frames_log']); states, natives, counts = logs_check(logs)
         require(receipt['frame_counts'] == counts and receipt['native_sha256'] == digest([row['native_output'] for row in logs])
@@ -304,6 +386,8 @@ def verify_records(cfg, state, report, readref):
         require(replay['schema'] == 'state_gap_replay_receipt_v1' and replay['status'] == 'complete' and replay['job'] == jobmap[key]
             and replay['plans'] == plans[key] and replay['original_observe'] == observes[key] and replay['prefix_frames'] == maximum
             and replay['branch_frame_advances'] == len(values)*124 and replay['future_branch_frames'] == len(values)*120, '重建/四支预算或来源不符')
+        if report.get('protocol') is not None:
+            require(replay.get('protocol') == report['protocol'], '新四分支必须绑定恢复后的实际协议')
         prefix = readref(replay['prefix'])
         require(len(prefix) == maximum and [row['frame_number'] for row in prefix] == list(range(1, maximum+1))
             and [row['full_state_sha256'] for row in prefix] == fingerprints[key]['states'][:maximum]
@@ -349,7 +433,7 @@ def verify_records(cfg, state, report, readref):
     require(report['budget']['numeric_admission'] == cfg['numeric_admission'], '数值准入消费必须另列')
     numeric = readref(cfg['numeric_admission'])
     require(numeric['status'] == 'complete_real_observer_original_ABA_spawn_snapshot_resource_admission' and numeric['all_workers_exited'] is True
-        and numeric['selected_worker_profile'] == cfg['worker_profile'] and numeric['diagnostic_frame_advances'] > 0
+        and numeric['selected_worker_profile'] == (recovery['old']['worker_profile'] if recovery else cfg['worker_profile']) and numeric['diagnostic_frame_advances'] > 0
         and numeric['optimizer_updates'] == numeric['new_image_predictions'] == 0 and numeric['test_read'] is False, '真实数值/进程/硬件准入未闭合')
     require(report['worker_exits'] == state['worker_exits'] and len(state['worker_exits']) == cfg['worker_profile']['track_workers']+cfg['worker_profile']['posthoc_workers']
         and all(item.get('process_exited') is True and item.get('exit_code') == 0 and item.get('joined') is True for item in state['worker_exits']), '每个实际worker未正常close/join/exit0')

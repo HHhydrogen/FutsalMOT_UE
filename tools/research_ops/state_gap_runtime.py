@@ -155,8 +155,28 @@ class Context:
 def load_own(cfg,name):
     return module(source(cfg,'tools/research_ops/'+name+'.py'),'state_gap_'+name)
 
+def iter_rows(reference):
+    """先核不可变来源SHA，再逐行读取；不把完整压缩轨迹展开到内存。"""
+    path=checked(reference);count=0
+    with gzip.open(path,'rt',encoding='utf-8') as f:
+        for line in f:
+            count+=1
+            yield json.loads(line)
+    require('rows' not in reference or count==reference['rows'],'完整日志行数不同')
+
 def read_rows(reference):
-    with gzip.open(checked(reference),'rt',encoding='utf-8') as f: return [json.loads(line) for line in f]
+    """只供有界短准入夹具；正式观察、重放、后验使用iter_rows。"""
+    return list(iter_rows(reference))
+
+class ArrayDigest:
+    """逐项构造与canonical(list)逐字节相同的JSON数组SHA。"""
+    def __init__(self):
+        self.hash=hashlib.sha256(b'[');self.count=0
+    def add(self,value):
+        if self.count:self.hash.update(b',')
+        self.hash.update(canonical(value).encode('utf-8'));self.count+=1
+    def hexdigest(self):
+        value=self.hash.copy();value.update(b']');return value.hexdigest()
 
 class RowsWriter:
     def __init__(self,path):
@@ -188,10 +208,14 @@ def observe_job(context,job,output,*,prefix=None,original=False):
         artifact=None
     else:
         writer=RowsWriter(out/'frames.jsonl.gz')
+        native_digest,state_digest=ArrayDigest(),ArrayDigest()
+        def frame_sink(row):
+            writer.write(row)
+            native_digest.add(row['native_output']);state_digest.add(row['full_state_sha256'])
         try:
             with context.torch.no_grad():
                 payload=core.run_rollout(tracker,frames,observer_kwargs=observer_kwargs(tracker),id_class=context.BaseTrack,
-                    frame_sink=writer.write,retain_frames=False)
+                    frame_sink=frame_sink,retain_frames=False)
         finally: artifact=writer.close()
     require(context.torch.equal(before_rng,context.torch.get_rng_state()),'诊断改变Torch随机状态')
     proof=context.checkpoint();context.jobs+=1
@@ -201,8 +225,9 @@ def observe_job(context,job,output,*,prefix=None,original=False):
     receipt=compose_observe_receipt(payload,proof,metadata)
     if original: receipt['native_sha256']=core.digest(receipt.pop('native_frames'))
     else:
-        records=read_rows(artifact);receipt['native_sha256']=core.digest([r['native_output'] for r in records])
-        receipt['state_sequence_sha256']=core.digest([r['full_state_sha256'] for r in records])
+        require(native_digest.count==state_digest.count==receipt['frames']==artifact['rows'],'逐帧记录与摘要计数不同')
+        receipt['native_sha256']=native_digest.hexdigest()
+        receipt['state_sequence_sha256']=state_digest.hexdigest()
     write_new(out/'receipt.json',receipt)
     return ref(out/'receipt.json')
 
@@ -211,30 +236,40 @@ def replay_job(context,job,task,output):
     plans=read_ref(task['plans']);plans=plans['plans']
     require(0<len(plans)<=40 and all(set(p)=={'event_id','frame_number','track_id','wrong_uid','correct_uid'} for p in plans),'oracle计划只能携带五个无GT框字段')
     original=read_ref(task['observe']);require(original['job']==job and original['status']=='complete','原rollout不同')
-    expected=read_rows(original['frames_log']);frames=context.frames(job['sequence'])
-    maximum=max(p['frame_number'] for p in plans);snaps={};snaprefs={}
+    expected=iter_rows(original['frames_log']);frames=context.frames(job['sequence'])
+    maximum=max(p['frame_number'] for p in plans);snaprefs={}
     writer=RowsWriter(out/'prefix_reconstruction.jsonl.gz');tracker=context.new_tracker(job)
     def snapshot_sink(number,value):
-        p=out/'snapshots'/f'{number:04d}.json';write_new(p,value);snaprefs[number]=ref(p);snaps[number]=value
+        p=out/'snapshots'/f'{number:04d}.json';write_new(p,value);snaprefs[number]=ref(p)
     def frame_sink(row):
-        require(row==expected[row['frame_index']],'固定事件后的前缀重建未逐值复现原完整日志')
+        require(row==next(expected),'固定事件后的前缀重建未逐值复现原完整日志')
         writer.write(dict(frame_number=row['frame_number'],full_state_sha256=row['full_state_sha256'],native_sha256=core.digest(row['native_output'])))
     before_rng=context.torch.get_rng_state().clone();started=time.perf_counter()
     try:
         with context.torch.no_grad():
             core.run_rollout(tracker,frames[:maximum],observer_kwargs=observer_kwargs(tracker),id_class=context.BaseTrack,
                 snapshot_sink=snapshot_sink,snapshot_frames={p['frame_number'] for p in plans},frame_sink=frame_sink,retain_frames=False)
-    finally: prefix_ref=writer.close()
+    finally:
+        expected.close();prefix_ref=writer.close()
     results=[]
     for plan in plans:
         number=plan['frame_number'];segment=frames[number-1:number+30];require(len(segment)==31,'每入选事件必须错误帧+完整后30帧')
-        old=expected[number-1:number+30];branches={}
+        old_native,old_hashes,error_row=[],[],None
+        with __import__('contextlib').closing(iter_rows(original['frames_log'])) as old_rows:
+            for row in old_rows:
+                frame_number=row['frame_number']
+                if frame_number<number:continue
+                if frame_number>number+30:break
+                if frame_number==number:error_row={k:v for k,v in row.items() if k!='native_output'}
+                old_native.append(row['native_output']);old_hashes.append(row['full_state_sha256'])
+        require(error_row is not None and len(old_native)==len(old_hashes)==31,'事件原始31帧记录不完整')
+        branches={}
         for branch in ('original','history_only','motion_only','both'):
             with context.torch.no_grad():
-                value=core.replay_branch(snaps[number],segment,plan,new_tracker=lambda:context.new_tracker(job),branch=branch,
+                value=core.replay_branch(read_ref(snaprefs[number]),segment,plan,new_tracker=lambda:context.new_tracker(job),branch=branch,
                     observer_kwargs=observer_kwargs(tracker),id_class=context.BaseTrack,
-                    expected_error_log={k:v for k,v in old[0].items() if k!='native_output'},
-                    expected_native_frames=[v['native_output'] for v in old],expected_state_hashes=[v['full_state_sha256'] for v in old])
+                    expected_error_log=error_row,
+                    expected_native_frames=old_native,expected_state_hashes=old_hashes)
             sink=RowsWriter(out/'events'/plan['event_id']/(branch+'.jsonl.gz'))
             for row,native in zip(value.pop('frame_states'),value.pop('native_frames')): sink.write(dict(row,native_output=native))
             value['frames_log']=sink.close();write_new(out/'events'/plan['event_id']/(branch+'.json'),value)
@@ -262,11 +297,15 @@ class PosthocContext:
     def annotate(self,job,task,output):
         out=safe(output,EXP);require(not out.exists(),'已有后验partial拒绝覆盖');out.mkdir(parents=True)
         original=read_ref(task['observe']);require(original['job']==job and original['frames']==750,'必须完整对应750源帧')
-        logs=read_rows(original['frames_log']);labeled=self.labeled(job['sequence'])
-        annotation=self.analysis.annotate_rollout(logs,labeled,job);events=self.analysis.select_first_errors(logs,labeled,job)
+        labeled=self.labeled(job['sequence'])
         rows=RowsWriter(out/'all_rows.jsonl.gz')
-        for row in annotation.pop('rows'): rows.write(row)
-        annotation['all_rows']=rows.close()
+        try:
+            annotation=self.analysis.annotate_rollout(iter_rows(original['frames_log']),labeled,job,
+                row_sink=rows.write,retain_rows=False)
+        finally:all_rows=rows.close()
+        require(not annotation.pop('rows'),'正式流式后验不能驻留全部候选行')
+        annotation['all_rows']=all_rows
+        events=self.analysis.select_first_errors(iter_rows(original['frames_log']),labeled,job)
         write_new(out/'annotation.json',dict(**annotation,source_label_counts=labeled['counts'],events=events,observe=task['observe'],job=job))
         self.jobs+=1;return ref(out/'annotation.json')
     def branch_summary(self,job,task,output):
@@ -275,7 +314,7 @@ class PosthocContext:
         for item in replay['events']:
             event=next(v for v in events if v['event_id']==item['event_id']);branches={}
             for name,reference in item['branches'].items():
-                result=read_ref(reference);outcome=self.analysis.branch_outcomes(read_rows(result['frames_log']),labeled,event['track_id'],event['anchor_GT_id'],event['frame_number'])
+                result=read_ref(reference);outcome=self.analysis.branch_outcomes(iter_rows(result['frames_log']),labeled,event['track_id'],event['anchor_GT_id'],event['frame_number'])
                 outcome['exact_original_reproduction']=result['original_branch_exact_checked'] if name=='original' else None
                 outcome['intervention']=result['intervention'];branches[name]=outcome
             records.append(dict(**{k:event[k] for k in ('event_id','fold','sequence','regime','model_id','track_id','frame_number')},branches=branches))

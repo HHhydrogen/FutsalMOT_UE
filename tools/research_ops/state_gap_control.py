@@ -34,6 +34,35 @@ PROFILE_BASE=dict(numeric_threads=1,reserve_RAM_bytes=8589934592,reserve_commit_
     startup_estimate_bytes=536870912,model_cache_limit_bytes=268435456,model_cache_max_entries=3,
     frame_cache_limit_bytes=134217728,frame_cache_max_entries=2)
 
+RECOVERY_SOURCE_KEYS=('inventory','sources','jobs','inputs_source','original_tracking_source','track_guard_source','worker_support','source_velocity_protocol','tracker_parameters','diagnostic_parameters','analysis_parameters','worker_service')
+
+def recovery_inheritance(cfg):
+    """只承认成功收据；旧失联状态和partial不能冒充正常退出或完成。"""
+    r=cfg['recovery'];old=read_ref(r['source_protocol']);state=read_ref(r['source_state']);failure=read_ref(r['interruption'])
+    require(all(cfg[k]==old[k] for k in RECOVERY_SOURCE_KEYS),'恢复不得改变模型/来源/十二矩阵/数值与统计')
+    require(state['protocol']==r['source_protocol'] and cfg['numeric_admission']==old['numeric_admission'],'旧状态协议或原数值准入漂移')
+    require(failure['source_state']==r['source_state'] and failure['actual_research_controller_and_spawn_processes_absent'] is True
+        and failure['actual_exit_codes'] is None and failure['partial_actual_frame_advances'] is None,'失联/partial不得补造退出或推进数')
+    observe=r['inherit_observe'];post=r['inherit_posthoc'];jobs={j['job_id']:j for j in cfg['jobs']}
+    require(observe==state['observe'] and post==state['posthoc'] and len(observe)==5 and len(post)==2,'只继承原五观察/二后验')
+    require(r['restart_incomplete_jobs_explicit']==[j['job_id'] for j in cfg['jobs'] if j['job_id'] not in observe],'七个未完成任务必须明确登记')
+    for jid,value in observe.items():
+        p=read_ref(value);require(p['status']=='complete' and p['frames']==750 and p['frames_log']['rows']==750
+            and p['job']==jobs[jid] and p['protocol']==r['source_protocol'] and p['observer_enabled'] is True
+            and p['source_cache']==cfg['sources'][jobs[jid]['sequence']]['cache'] and p['GT_guard']['blocked_open_attempts']==0
+            and p['models_unchanged'] is True and p['inputs_unchanged'] is True,'继承观察不完整或来源不符')
+    def postcheck(jid,value):
+        p=read_ref(value);require(jid in observe and p['total_frames']==750 and p['observe']==observe[jid] and p['job']==jobs[jid]
+            and p['all_rows']['rows']==p['summary']['absolute_counts']['windows'],'继承后验行数或来源不符')
+    for jid,value in post.items():postcheck(jid,value)
+    admission=read_ref(r['streaming_admission']);require(admission['status']=='complete_streamed750_posthoc_and_bounded_memory_gate'
+        and admission['bundle']==cfg['bundle'] and admission['bundle_manifest']==cfg['bundle_manifest']
+        and admission['worker_exited'] is True and admission['exit_code']==0 and admission['peak_worker_RSS_bytes']<=3221225472
+        and admission['minimum_available_RAM_bytes']>=8589934592 and admission['minimum_commit_headroom_bytes']>=6442450944,
+        '完整750流式/内存/真实退出准入未闭合')
+    jid=admission['job_id'];require(jid not in post,'准入不得重做成功后验');postcheck(jid,admission['posthoc'])
+    return dict(observe),dict(post,**{jid:admission['posthoc']})
+
 def validate(path):
     cfg=json.loads(Path(path).read_text(encoding='utf-8-sig'))
     require(cfg['schema']=='state_gap_diagnosis_protocol_v1' and cfg['approved_by']=='root' and cfg['test_sealed'] is True
@@ -52,6 +81,11 @@ def validate(path):
     for key,value in PROFILE_BASE.items(): require(cfg['worker_profile'][key]==value,'线程/资源/缓存变化')
     require((cfg['worker_profile']['track_workers'],cfg['worker_profile']['posthoc_workers']) in ((2,1),(4,2)),'仅有界2+1/4+2')
     if cfg['phase']=='formal':
+        if cfg.get('recovery'):
+            require(cfg['execute_authorized'] is True and cfg['worker_profile']['track_workers']==2 and cfg['worker_profile']['posthoc_workers']==1
+                and cfg['in_flight_estimate_bytes']==3221225472,'恢复只准2track+1posthoc、每在飞任务预留3GiB')
+            recovery_inheritance(cfg)
+            cfg['_protocol_ref']=ref(path);return cfg
         p=read_ref(cfg['numeric_admission']);require(p['status']=='complete_real_observer_original_ABA_spawn_snapshot_resource_admission'
             and p['all_workers_exited'] is True and p['selected_worker_profile']==cfg['worker_profile'],'真实数值和资源准入未闭合')
         n=read_ref(p['config'])
@@ -186,12 +220,16 @@ def execute(path,cfg):
     support=rt.module(cfg['worker_support'],'state_gap_support');profile=cfg['worker_profile'];started=time.perf_counter();services=[]
     state=dict(schema='state_gap_control_state_v1',status='starting_workers',protocol=ref(path),controller_pid=os.getpid(),
         created_utc=datetime.now(timezone.utc).isoformat(),workers=[],worker_exits=[],resources=[],active=[],observe={},posthoc={},replay={},branch_posthoc={},optimizer_updates=0,test_read=False)
+    if cfg.get('recovery'):
+        state['observe'],state['posthoc']=recovery_inheritance(cfg);state['recovery']=cfg['recovery']
     def save():
         p=out/'state.pending.json';p.write_text(canonical(state),encoding='utf-8');os.replace(p,out/'driver_state.json')
     def run_pair(op,items,primary,secondary):
         pending=deque(items);post=deque();running={};postop='posthoc' if op=='observe' else 'branch_posthoc'
+        if op=='observe':post.extend(dict(job_id=jid,observe=value) for jid,value in primary.items() if jid not in secondary)
         while pending or post or running:
             require(not(out/'STOP').exists(),'用户停止，保留partial')
+            require(all(s.process.is_alive() for s in services),'含闲置worker在内的进程意外退出')
             snap=support.resource_snapshot()
             import psutil
             rss=0
@@ -202,6 +240,10 @@ def execute(path,cfg):
             for s in services:
                 queue=pending if s.kind=='track' else post
                 if s.busy is not None or not queue or not support.enough_memory(snap,profile): continue
+                # 当前可用量尚未反映在飞任务未来的JSON/快照峰值；逐次扣减保守预留。
+                estimate=cfg.get('in_flight_estimate_bytes',0)
+                reserved=estimate*(len(running)+1)
+                if snap['available_RAM_bytes']<profile['reserve_RAM_bytes']+reserved or snap['commit_available_bytes']<profile['reserve_commit_bytes']+reserved:continue
                 item=queue.popleft();operation=op if s.kind=='track' else postop;jid=item['job_id']
                 s.busy=(operation,jid);running[s.busy]=s;s.parent.send(dict(item,op=operation,output=str(out/operation/jid)))
             state['active']=[dict(op=k[0],job_id=k[1],pid=s.process.pid) for k,s in running.items()];save()
@@ -222,7 +264,7 @@ def execute(path,cfg):
             for i in range(profile[key]):
                 service=Service(kind,cfg,out/'logs'/f'{kind}_{i}.log');services.append(service);state['workers'].append(service.ready);save()
         state['status']='observing12_train_rollouts_and_separate_posthoc';save()
-        run_pair('observe',[dict(job_id=j['job_id']) for j in cfg['jobs']],state['observe'],state['posthoc'])
+        run_pair('observe',[dict(job_id=j['job_id']) for j in cfg['jobs'] if j['job_id'] not in state['observe']],state['observe'],state['posthoc'])
         require(len(state['observe'])==len(state['posthoc'])==12,'12rollout/后验缺项')
         analysis=rt.load_own(cfg,'state_gap_analysis');events=[]
         for value in state['posthoc'].values(): events+=read_ref(value)['events']['events']
@@ -253,12 +295,17 @@ def execute(path,cfg):
         prefix=sum(read_ref(v)['prefix_frames'] for v in state['replay'].values());branches=sum(read_ref(v)['branch_frame_advances'] for v in state['replay'].values())
         budget=dict(first_pass_frame_advances=9000,prefix_frame_advances=prefix,branch_frame_advances=branches,total_formal_frame_advances=9000+prefix+branches,
             selected_events=len(selection['selected']),optimizer_updates=0,new_image_predictions=0,numeric_admission=cfg['numeric_admission'])
+        if cfg.get('recovery'):
+            budget['execution_attempt_budget']=dict(inherited_complete_first_pass_frame_advances=3750,new_successful_first_pass_frame_advances=5250,
+                interrupted_partial_actual_frame_advances=None,interrupted_partial_count=3,partial_preserved=True,
+                logical_budget_includes_inherited_success=True,physical_retry_work_not_claimed_zero=True,interruption=cfg['recovery']['interruption'])
         require(prefix<=9000 and branches<=7440 and budget['total_formal_frame_advances']<=25440,'诊断越过事前帧预算')
         report=dict(schema='state_gap_diagnosis_report_v1',status='complete12_train_rollouts_and_bounded_state_propagation_diagnosis',protocol=ref(path),
             observe=state['observe'],posthoc=state['posthoc'],selection=state['selected_events'],plans=state['plans'],replay=state['replay'],branch_posthoc=state['branch_posthoc'],
             clean_pool_structures=clean,oracle_summary=summary,budget=budget,worker_exits=state['worker_exits'],worker_profile=profile,
             independent_factor_validation_started=False,performance_scores_not_computed=True,all_negative_and_unknown_preserved=True,test_read=False,
             wall_seconds=time.perf_counter()-started,limitations=['三个已见train比赛，首seed，非独立泛化','局部GT辅助状态修复，不是可部署重分配','不计算或伪造新的AssA/HOTA/IDF1'])
+        if cfg.get('recovery'):report['recovery']=cfg['recovery']
         write_new(out/'analysis_a01/report.json',report);state.update(status=STATUS,analysis=ref(out/'analysis_a01/report.json'),active=[],budget=budget);save();return report
     except BaseException:
         state.update(status='failed_preserved_no_implicit_replay',traceback=traceback.format_exc());save();raise

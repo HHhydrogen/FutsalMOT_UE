@@ -179,12 +179,16 @@ def _window_summary(history, candidate_uids, pair_labels, labels, current_frame,
         empty=not candidate_uids, stage=stage, learned_active=active, lost_gap=lost_gap)
 
 
-def aggregate_window_rows(rows):
-    counts = Counter({key: 0 for key in ('windows', 'candidate_count', 'positive', 'known_negative', 'unknown',
-        'no_positive_windows', 'all_unknown_windows', 'empty_windows', 'nonconsecutive_history_windows',
-        'history_consecutiveness_unknown_windows', 'learned_active_windows', 'lost_gap_windows')})
-    hist, candidate, gaps, stages = Counter(), Counter(), Counter(), Counter()
-    for row in rows:
+class WindowAccumulator:
+    """只累计原绝对分母及直方图；不持有候选行或完整轨迹。"""
+    def __init__(self):
+        self.counts = Counter({key: 0 for key in ('windows', 'candidate_count', 'positive', 'known_negative', 'unknown',
+            'no_positive_windows', 'all_unknown_windows', 'empty_windows', 'nonconsecutive_history_windows',
+            'history_consecutiveness_unknown_windows', 'learned_active_windows', 'lost_gap_windows')})
+        self.hist, self.candidate, self.gaps, self.stages = Counter(), Counter(), Counter(), Counter()
+
+    def add(self, row):
+        counts = self.counts
         counts['windows'] += 1
         for key in ('candidate_count', 'positive', 'known_negative', 'unknown'):
             counts[key] += row[key]
@@ -194,12 +198,22 @@ def aggregate_window_rows(rows):
         counts['history_consecutiveness_unknown_windows'] += int(row['history_consecutive'] is None)
         counts['learned_active_windows'] += int(row.get('learned_active') is True)
         counts['lost_gap_windows'] += int(row.get('lost_gap') is True)
-        hist[str(row['history_count'])] += 1
-        candidate[str(row['candidate_count'])] += 1
-        gaps[str(row['actual_observation_gap_frames'])] += 1
-        stages[str(row['stage'])] += 1
-    return dict(absolute_counts=dict(counts), history_count_histogram=dict(hist), candidate_count_histogram=dict(candidate),
-        gap_frames_histogram=dict(gaps), stage_windows=dict(stages), windows_are_not_independent_images=True)
+        self.hist[str(row['history_count'])] += 1
+        self.candidate[str(row['candidate_count'])] += 1
+        self.gaps[str(row['actual_observation_gap_frames'])] += 1
+        self.stages[str(row['stage'])] += 1
+
+    def result(self):
+        return dict(absolute_counts=dict(self.counts), history_count_histogram=dict(self.hist),
+            candidate_count_histogram=dict(self.candidate), gap_frames_histogram=dict(self.gaps),
+            stage_windows=dict(self.stages), windows_are_not_independent_images=True)
+
+
+def aggregate_window_rows(rows):
+    accumulator = WindowAccumulator()
+    for row in rows:
+        accumulator.add(row)
+    return accumulator.result()
 
 
 def summarize_clean_windows(windows, labels=None):
@@ -273,14 +287,21 @@ def annotate_stage(stage, source, metadata):
         actual_matches=len(matches)), new_solver_calls=0)
 
 
-def annotate_rollout(frame_records, source, metadata):
+def annotate_rollout(frame_records, source, metadata, *, row_sink=None, retain_rows=True):
+    """逐帧消费；正式日志可逐行落盘，汇总不保留全部候选行。"""
     rows, stages, lifecycle = [], [], Counter()
+    accumulator, total_frames = WindowAccumulator(), 0
     for original in frame_records:
+        total_frames += 1
         frame = normalize_rollout_frame(original)
         for stage in frame['stages']:
             bound_stage = dict(stage, frame_number=frame['frame_number'])
             result = annotate_stage(bound_stage, source, metadata)
-            rows.extend(result['rows']); stages.append(result['empty_stage_record'])
+            for row in result['rows']:
+                accumulator.add(row)
+                if row_sink is not None: row_sink(row)
+                if retain_rows: rows.append(row)
+            stages.append(result['empty_stage_record'])
         for event in frame.get('lifecycle', []):
             lifecycle[event['event']] += 1
             if event['event'] == 'activate': lifecycle['birth'] += 1
@@ -288,7 +309,7 @@ def annotate_rollout(frame_records, source, metadata):
                 and event.get('after', {}).get('is_activated') is True:
                 lifecycle['confirmation_by_actual_update'] += 1
     return dict(schema=SCHEMA, rows=rows, stage_records=stages, lifecycle_counts=dict(lifecycle),
-        summary=aggregate_window_rows(rows), total_frames=len(frame_records), new_solver_calls=0,
+        summary=accumulator.result(), total_frames=total_frames, new_solver_calls=0,
         evaluation='train_domain_conditional_diagnosis_not_heldout_tracking_score')
 
 
@@ -296,9 +317,9 @@ def select_first_errors(frame_records, source, metadata):
     """每track首个可观察trusted切换；此前unknown不默认正确，严格资格拒绝。"""
     labels, states, records = source['labels'], {}, []
     final_frame = max((row['frame_number'] for row in source['frame_rows']), default=0)
-    numbers = [frame['frame_number'] for frame in frame_records]
-    require(numbers == list(range(1, len(numbers)+1)), '首错诊断必须从第一帧完整连续处理，不能截取已知好历史')
-    for original in frame_records:
+    for expected_number, original in enumerate(frame_records, 1):
+        require(original['frame_number'] == expected_number,
+            '首错诊断必须从第一帧完整连续处理，不能截取已知好历史')
         frame = normalize_rollout_frame(original)
         number = frame['frame_number']
         before = {track['track_id']: track for track in frame.get('tracks_before', [])}
@@ -307,7 +328,7 @@ def select_first_errors(frame_records, source, metadata):
             track, uid = observation['track_id'], observation['uid']
             require(uid in labels and labels[uid]['frame_number'] == number, '实际写入必须当前rawUID')
             label = labels[uid]
-            state = states.setdefault(track, dict(anchor=None, prior_unknown=False, prior_wrong=False, seen_UIDs=[],
+            state = states.setdefault(track, dict(anchor=None, prior_unknown=False, prior_wrong=False, observation_count=0,
                 seen_trusted_ids=set(), emitted_switch=False))
             current = observation.get('before', before.get(track, {}))
             history = _hist_uids(current)
@@ -381,11 +402,11 @@ def select_first_errors(frame_records, source, metadata):
             else:
                 state['seen_trusted_ids'].add(str(label['gt_id']))
                 if anchor is not None and str(label['gt_id']) != anchor: state['prior_wrong'] = True
-            state['seen_UIDs'].append(uid)
+            state['observation_count'] += 1
     # 未建立可信anchor或没有观察到trusted switch的轨迹也保留，不能从分母消失。
     terminals = []
     for track, state in states.items():
-        terminals.append(dict(metadata, track_id=track, observations=len(state['seen_UIDs']),
+        terminals.append(dict(metadata, track_id=track, observations=state['observation_count'],
             anchor_GT_id=state['anchor'], prior_unknown=state['prior_unknown'], prior_wrong=state['prior_wrong'],
             observed_switch=state['emitted_switch'], terminal_reason='observed_switch' if state['emitted_switch'] else
                 ('no_trusted3_anchor' if state['anchor'] is None else 'no_observed_trusted_switch')))
