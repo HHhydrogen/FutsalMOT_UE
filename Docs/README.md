@@ -1,5 +1,7 @@
 # 技术文档索引
 
+- [训练候选与自由状态、历史传播有界诊断](research/TRAIN_FREE_STATE_GAP_A01.md)：首seed强motion R/RS的12训练域rollout，完整三阶段/生命周期和最多60事件的30帧四分支oracle；当前数值准入，非新增模型成绩，完整未知和失败保留，最终测试封存。
+
 - [模型训练历史总览](research/TRAINING_HISTORY.md)：从最初bbox迁移到Pose微调、身份关联、真实资源对照和截距校准，按版本解释训练对象、动机、数据split、绝对预算/成绩与局限；完成阶段持续更新，失败和零更新诊断单列。
 
 - [训练R截距单因素](research/TRAINR_INTERCEPT_CALIBRATION_A01.md)与[完整结果](research/TRAINR_INTERCEPT_CALIBRATION_A01_RESULTS.md)：18拟合/180正式追踪/360来源、270指标270gap配对与45+9描述独立终验全部闭合。七场R/RS AssA变化−0.1329/+0.0525点，主CI均跨0，未建立整体改善；额外18000R监督计算另列，全部负结果保留，测试封存。
