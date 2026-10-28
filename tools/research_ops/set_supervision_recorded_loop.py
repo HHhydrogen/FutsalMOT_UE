@@ -1,0 +1,67 @@
+"""集合监督训练循环：R用候选集合CE，S沿用冻结逐窗BCE。"""
+import signal
+import time
+
+from training_journal import TrainingJournal, require
+
+
+def train(output, spec, model, optimizer, batches, r_domain_loss, s_domain_loss, *,
+          checkpoint_extra=None, diagnostic_updates=None):
+    import torch
+    require(spec['runtime'].get('device') != 'cpu_fixture', '夹具不能成为正式训练入口')
+    require(diagnostic_updates is None or (diagnostic_updates == 1
+            and spec['binding'].get('diagnostic_only_one_update_not_formal_training') is True),
+            '单步诊断必须显式登记，不得缩减正式预算')
+    stop = [False]
+    previous = signal.signal(signal.SIGINT, lambda *args: stop.__setitem__(0, True))
+    start = time.perf_counter()
+    try:
+        with TrainingJournal(output, spec) as journal:
+            journal.save_checkpoint(model, optimizer, extra=checkpoint_extra)
+            for batch in batches:
+                if stop[0]:
+                    break
+                clock = time.perf_counter()
+                require(batch['index'] == journal.completed, '实际优化步序变化')
+                require(not batch.get('extra_real') and not batch.get('r_extra'),
+                        '本协议不允许额外R域或混淆其身份')
+                journal.begin_step(batch['index'], batch['r'], batch['s'])
+                optimizer.zero_grad(set_to_none=True)
+                r_loss = r_domain_loss(model, batch['real'])
+                s_loss = s_domain_loss(model, batch['synthetic']) if batch['s'] else None
+                loss = r_loss + s_loss / 3 if s_loss is not None else r_loss
+                require(torch.isfinite(loss).item(), '实际loss非有限')
+                loss.backward()
+                gradients = [p.grad.detach().reshape(-1) for p in model.parameters() if p.grad is not None]
+                require(gradients and torch.isfinite(torch.cat(gradients)).all().item(), '实际梯度非有限')
+                grad_l2 = float(torch.linalg.vector_norm(torch.cat(gradients)))
+                rates = [float(g['lr']) for g in optimizer.param_groups]
+                optimizer.step()
+                journal.commit_step(loss=float(loss.detach()), real_loss=float(r_loss.detach()),
+                    synthetic_loss=float(s_loss.detach()) if s_loss is not None else None,
+                    learning_rates=rates, grad_l2=grad_l2,
+                    R_pairs=sum(w['candidate_pairs'] for w in batch['real']),
+                    S_pairs=sum(w['candidate_pairs'] for w in batch['synthetic']),
+                    R_known_pairs=sum(w['known_pairs'] for w in batch['real']),
+                    S_known_pairs=sum(w['known_pairs'] for w in batch['synthetic']),
+                    step_wall_seconds=time.perf_counter()-clock)
+                if journal.completed % 50 == 0:
+                    journal.save_checkpoint(model, optimizer, extra=checkpoint_extra)
+                if diagnostic_updates is not None and journal.completed == diagnostic_updates:
+                    break
+            require(journal.completed == 1000 or stop[0] or journal.completed == diagnostic_updates,
+                    '输入提前结束，不能伪造成取消或完成')
+            journal.event('training_wall_seconds', seconds=time.perf_counter()-start,
+                          includes_checkpoints=True, includes_prefetch_wait=True)
+            if journal.completed == 1000:
+                return journal.finish()
+            if diagnostic_updates is not None:
+                journal.save_checkpoint(model, optimizer, extra=checkpoint_extra)
+                journal.event('diagnostic_only_not_formal1000', actual_diagnostic_updates=journal.completed)
+                return dict(status='diagnostic_only', completed_updates=journal.completed)
+            if journal.completed not in journal.checkpoints:
+                journal.save_checkpoint(model, optimizer, extra=checkpoint_extra)
+            journal.event('user_SIGINT_safely_paused_no_replay', completed_updates=journal.completed)
+            return dict(status='safely_paused', completed_updates=journal.completed)
+    finally:
+        signal.signal(signal.SIGINT, previous)
