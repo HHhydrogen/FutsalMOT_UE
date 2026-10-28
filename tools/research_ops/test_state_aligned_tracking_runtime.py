@@ -57,5 +57,15 @@ class Contracts(unittest.TestCase):
     def test_model_loading_requires_CPU_before_any_metadata(self):
         with patch.dict('os.environ',{'CUDA_VISIBLE_DEVICES':'0'}):
             with self.assertRaises(ValueError):rt.load_model({}, {})
+    def test_learning_local_import_scope_restores_on_success_and_failure(self):
+        bundle=rt.R/'code'/('b'*64);reference=dict(path=str(bundle/'tools/research_ops/state_aligned_training_inputs.py'),sha256='a'*64)
+        before=list(sys.path)
+        with patch.object(rt,'read_ref',return_value=dict(bundle=str(bundle))),patch.object(rt,'source',return_value=reference),patch.object(rt,'safe',side_effect=Path):
+            with rt.learning_import_scope(dict(learning_protocol={})):
+                self.assertEqual(sys.path[0],str(bundle/'tools/research_ops'))
+            self.assertEqual(sys.path,before)
+            with self.assertRaises(RuntimeError):
+                with rt.learning_import_scope(dict(learning_protocol={})):raise RuntimeError('fixture')
+            self.assertEqual(sys.path,before)
 
 if __name__=='__main__':unittest.main()

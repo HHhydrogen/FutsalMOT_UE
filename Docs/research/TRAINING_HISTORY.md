@@ -435,3 +435,11 @@ OC绝对成绩直接读取既有两份12行结果CSV，再在各面板比赛等�
 训练完成根`pose/state_aligned_training_a01/training_complete_root_a01.json` SHA `62646594150716226b4cb90087731b8d2c76fb836bd22a3218a776031ebf5a33`；独立审计`postrun_audit_a01/actual_budget.json` SHA `d551bb377a8d33b6f454fa5f119723c06c085555c85c37c55b5080f53d671212`，status complete18_state_aligned_R_actual_budget_full_records_and_exit_verified。实际使用独立审计单文件bundle `code/710811cbb5a35744ce7d8ae376c11fb473d89446d7d823f17f8fe07348325f77`，将CPU与CUDA诊断全部另计；原960候选未执行且保留，不修改活动训练11文件或协议。
 
 下一阶段使用[结果前追踪分析规则](STATE_ALIGNED_R_ANALYSIS_A01.md)：180新任务与匹配180旧基线来源，三原/旧二/七场分开。主要新RS−旧RS，另新R−旧R、新RS−新R及两者合成增量交互，五指标共60个未多比较校正描述区间；每场先均匹配seed/fold再比赛等权，t95自由度2/1/6、10000比赛bootstrap固定seed20261028/逐场留一。先绝对成绩再差值/CI；无δ/等效通过标志。候选加载runtime已做6CPU夹具检查，真实新模型加载/GT隔离/cold-ABA/spawn和完整worker/control冻结准入尚未执行，不能当180追踪已完成。测试116/187/test持续封存。
+
+## 自由状态R来源追踪准入与唯一启动（2026-10-28 21:09）
+
+十八臂训练及独立18000更新/378检查点预算已闭合，本阶段新增优化更新0、检测/Pose图像推理0。新独立模型加载、cold/ABA/双spawn实际96唯一源帧、336诊断推进通过，五份MOT/原生帧/审计逐值一致、五worker及parent真实退出；a02成功收据SHA f41436086f66066179ef4e3fe6b10e00cad07567014286d3416be48fdeb53325。a01局部导入搜索路径缺失在任何追踪帧前失败，成功payload0，原源码/配置/failed保留，独立a02仅绑定原训练bundle导入域；没有重训、重审计或重放成功任务。
+
+180新模型×源任务与180原基线引用、原3/旧2/七场面板、四比较/五指标60区间及另12gap区间已在结果前冻结。模型14593参数、194→64→32→1 ReLU/FP32，last1000、170Pose标准化列置0；原high0.25/low0.10/new0.25/buffer30/match0.80/lowassign0.50/unconfirmed0.70/fuse_score=True，dt≤1.2/面积0.25..4/中心≤2/模型概率0.50，没有截距。全3690原gap事件不重登记，GT仅独立metric。完整绝对AssA/HOTA/IDF1尚未产生，本阶段不宣称追踪上升。
+
+21:09:02唯一后台启动，首R/RS两源完整TrackEval/GT计数/ID0/全预测门禁已真实通过，再继续其余178。2track+1metric常驻CPU、数值线程1，输入128MiB最多2源、模型256MiB最多3项，RAM保留8GiB/commit6GiB；不抢UE/GPU或改活动冻结源码。tracking_frozen_a01/config SHA 5aa553b7d4d5734ee748e410157f5cf8ae0287e593bb04e75cbe816229a8411b，四文件bundle code/53bf25ceef65e2f2fe8bf277da4e3a189e84c57430e3c297f31e8cb0d7219b47。完整180/分析/真实退出后再执行已安装独立终验，结果、负项和区间全部留存，116/187/test仍封存。[完整协议与失败来源](STATE_ALIGNED_R_TRAINING_A01.md)。

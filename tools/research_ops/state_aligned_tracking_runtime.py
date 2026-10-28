@@ -1,5 +1,6 @@
 """新R来源模型追踪的独立身份及只读加载；不施加截距，不执行追踪。"""
 from copy import deepcopy
+from contextlib import contextmanager
 import hashlib
 import importlib.util
 import json
@@ -109,6 +110,21 @@ def learning_loader(cfg):
     loader=module(reference,'aligned_completed_training_loader');loader.validate_protocol(checked(cfg['learning_protocol']))
     return loader
 
+@contextmanager
+def learning_import_scope(cfg):
+    """完整训练loader的局部导入只取原不可变闭包，并恢复调用方搜索路径。"""
+    protocol=read_ref(cfg['learning_protocol'])
+    inputs=source(protocol,'tools/research_ops/state_aligned_training_inputs.py')
+    existing=sys.modules.get('state_aligned_training_inputs')
+    if existing is not None:require(safe(existing.__file__)==checked(inputs),'训练输入模块缓存来自不同闭包')
+    previous=list(sys.path)
+    try:
+        sys.path[:0]=[str(safe(protocol['bundle'])/'tools/research_ops'),str(safe(protocol['bundle'])/'tools/performance')]
+        yield
+        loaded=sys.modules.get('state_aligned_training_inputs')
+        if loaded is not None:require(safe(loaded.__file__)==checked(inputs),'实际训练输入导入来源不同')
+    finally:sys.path[:]=previous
+
 def load_model(cfg,spec):
     """独立v1完整记录加载器，不包装β，不借旧模型schema。只在CPU专用进程调用。"""
     require(os.environ.get('CUDA_VISIBLE_DEVICES')=='-1','追踪加载只准CPU')
@@ -118,7 +134,9 @@ def load_model(cfg,spec):
     receipt=read_ref(spec['training_receipt']);read_ref(spec['training_complete'])
     require(receipt['schema']=='state_aligned_full_recorded_training_run_v1' and receipt['status']=='complete'
         and receipt['completed_updates']==1000 and receipt['epoch_augmentation'] is False,'完整独立run身份不足')
-    loader=learning_loader(cfg);_,numeric,model,normalizer,binding=loader.complete_model(checked(cfg['learning_protocol']),safe(spec['run']),all_checkpoints=False)
+    loader=learning_loader(cfg)
+    with learning_import_scope(cfg):
+        _,numeric,model,normalizer,binding=loader.complete_model(checked(cfg['learning_protocol']),safe(spec['run']),all_checkpoints=False)
     require(binding==receipt['binding'] and binding['initialization_sha256']==spec['expected_initialization_sha256']
         and all(binding[k]==spec[k] for k in ('fold','seed','regime')) and binding['method']=='motion','新last1000/原初始化身份不符')
     original=read_ref(spec['original_normalizer']);require(normalizer.state()==original,'新模型不得重拟合原baseR标准化')

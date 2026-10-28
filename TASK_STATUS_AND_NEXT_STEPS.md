@@ -226,3 +226,7 @@ v8/v9、绿色球衣及v10现均已闭合。用户要求的[后续方案](Docs/r
 训练完成根`pose/state_aligned_training_a01/training_complete_root_a01.json` SHA `62646594150716226b4cb90087731b8d2c76fb836bd22a3218a776031ebf5a33`；独立审计`postrun_audit_a01/actual_budget.json` SHA `d551bb377a8d33b6f454fa5f119723c06c085555c85c37c55b5080f53d671212`，status complete18_state_aligned_R_actual_budget_full_records_and_exit_verified。实际使用独立审计单文件bundle `code/710811cbb5a35744ce7d8ae376c11fb473d89446d7d823f17f8fe07348325f77`，将CPU与CUDA诊断全部另计；原960候选未执行且保留，不修改活动训练11文件或协议。
 
 下一阶段使用[结果前追踪分析规则](Docs/research/STATE_ALIGNED_R_ANALYSIS_A01.md)：180新任务与匹配180旧基线来源，三原/旧二/七场分开。主要新RS−旧RS，另新R−旧R、新RS−新R及两者合成增量交互，五指标共60个未多比较校正描述区间；每场先均匹配seed/fold再比赛等权，t95自由度2/1/6、10000比赛bootstrap固定seed20261028/逐场留一。先绝对成绩再差值/CI；无δ/等效通过标志。候选加载runtime已做6CPU夹具检查，真实新模型加载/GT隔离/cold-ABA/spawn和完整worker/control冻结准入尚未执行，不能当180追踪已完成。测试116/187/test持续封存。
+
+### 最新阶段：180自由状态R来源追踪已准入并唯一启动
+
+2026-10-28 21:09:02唯一后台，cold/ABA/双spawn实际96唯一帧/336诊断推进及五worker退出通过；首R/RS两源完整metric/GT/ID0门禁已过，2track+1metric继续余178并自动分析。权威state为DResearch/pose/state_aligned_training_a01/tracking_control_a01/driver_state.json，配置SHA5aa553b7d4d5734ee748e410157f5cf8ae0287e593bb04e75cbe816229a8411b，冻结四文件bundle53bf25ce。a01加载导入失败0帧已保留，a02独立修复成功；不重训/重审计/重启第二controller。先等180/分析/真实全部退出，再执行独立终验code/6dc4a6de的verify_state_aligned_tracking.py，--config绝对tracking_frozen_a01/config.json --control绝对tracking_control_a01 --output绝对tracking_final_verification_a01/receipt.json --execute。新AssA结论尚未闭合，每轮即时历史已更新，测试封存。
