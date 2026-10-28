@@ -1,7 +1,7 @@
-- [自由状态R窗口来源验证](research/STATE_ALIGNED_R_TRAINING_A01.md)：三fold各1000唯一R输入、真实CPU/CUDA准入及十八臂18000更新/378检查点独立预算已闭合，下一步[180项追踪准入](research/STATE_ALIGNED_R_ANALYSIS_A01.md)，成绩尚未生成，测试封存。
+- [自由状态R窗口来源验证完整结果](research/STATE_ALIGNED_R_TRAINING_A01_RESULTS.md)：十八臂18000更新/378检查点、180项自由追踪、360来源及60指标/12gap区间均已独立终验闭合；新RS三面板AssA低于原RS，本具体窗口政策未提高追踪能力。原始负结果保留，测试封存；[协议](research/STATE_ALIGNED_R_TRAINING_A01.md)与[事前分析](research/STATE_ALIGNED_R_ANALYSIS_A01.md)。
 # 技术文档索引
 
-- [训练候选与自由状态、历史传播有界诊断](research/TRAIN_FREE_STATE_GAP_A01.md)：首seed强motion R/RS的12训练域rollout，完整三阶段/生命周期和最多60事件的30帧四分支oracle；[完整结果](research/TRAIN_FREE_STATE_GAP_A02_RESULTS.md)已闭合12观察/后验和独立终验，零合格oracle事件，未估计历史/KF效果；下一项仅准备R窗口来源对齐，非新增模型成绩，最终测试封存。
+- [训练候选与自由状态、历史传播有界诊断](research/TRAIN_FREE_STATE_GAP_A01.md)：首seed强motion R/RS的12训练域rollout，完整三阶段/生命周期和最多60事件的30帧四分支oracle；[完整结果](research/TRAIN_FREE_STATE_GAP_A02_RESULTS.md)已闭合12观察/后验和独立终验，零合格oracle事件，未估计历史/KF效果；后续R窗口来源单因素已完整验证并保留负结果，最终测试封存。
 
 - [模型训练历史总览](research/TRAINING_HISTORY.md)：从最初bbox迁移到Pose微调、身份关联、真实资源对照和截距校准，按版本解释训练对象、动机、数据split、绝对预算/成绩与局限；完成阶段持续更新，失败和零更新诊断单列。
 

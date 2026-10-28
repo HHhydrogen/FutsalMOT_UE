@@ -78,6 +78,13 @@ def read(reference):
     return json.loads(path.read_text(encoding='utf-8-sig'))
 
 
+def same_signed_file(left,right):
+    """引用路径允许系统分隔符差异；双方须真实SHA一致且是同一物理文件。"""
+    first,second=checked(left),checked(right)
+    # 不只比较摘要，也不只替换斜杠；显式核当前bytes，不能把同hash副本当同源。
+    return first==second and left['sha256']==right['sha256'] and sha(first)==left['sha256'] and sha(second)==right['sha256']
+
+
 def close(a,b):
     return type(a) in (int,float) and type(b) in (int,float) and math.isfinite(a) and math.isfinite(b) and abs(a-b)<=TOLERANCE_PP
 
@@ -501,7 +508,7 @@ def terminal_gate(cfg,state,manifest,analysis,protocol):
         and manifest['tracking']==[state['completed_track'][j['job_id']] for j in cfg['jobs']]
         and manifest['worker_exits']==state['worker_exits'],'实际manifest顺序/新180出处不同')
     require(analysis['schema']=='state_aligned_tracking_paired_analysis_v1' and analysis['status']==ANALYSIS_DONE
-        and analysis['protocol']==protocol and analysis['new_tracking_evaluations']==analysis['historical_reference_evaluations']==180
+        and same_signed_file(analysis['protocol'],protocol) and analysis['new_tracking_evaluations']==analysis['historical_reference_evaluations']==180
         and analysis['all_results']==analysis['paired_cells']==analysis['paired_gap_cells']==360 and analysis['paired_matches']==48
         and analysis['metric_interval_descriptions']==60 and analysis['gap_interval_descriptions']==12,'全部分析尚未闭合')
 

@@ -230,3 +230,7 @@ v8/v9、绿色球衣及v10现均已闭合。用户要求的[后续方案](Docs/r
 ### 最新阶段：180自由状态R来源追踪已准入并唯一启动
 
 2026-10-28 21:09:02唯一后台，cold/ABA/双spawn实际96唯一帧/336诊断推进及五worker退出通过；首R/RS两源完整metric/GT/ID0门禁已过，2track+1metric继续余178并自动分析。权威state为DResearch/pose/state_aligned_training_a01/tracking_control_a01/driver_state.json，配置SHA5aa553b7d4d5734ee748e410157f5cf8ae0287e593bb04e75cbe816229a8411b，冻结四文件bundle53bf25ce。a01加载导入失败0帧已保留，a02独立修复成功；不重训/重审计/重启第二controller。先等180/分析/真实全部退出，再执行独立终验code/6dc4a6de的verify_state_aligned_tracking.py，--config绝对tracking_frozen_a01/config.json --control绝对tracking_control_a01 --output绝对tracking_final_verification_a01/receipt.json --execute。新AssA结论尚未闭合，每轮即时历史已更新，测试封存。
+
+### 最新闭合：自由状态R来源单因素完整负结果
+
+18臂训练/180项新追踪/完整配对区间/独立终验a02及实际退出已闭合。主新RS绝对AssA原3/旧2/七场为27.8857/37.1806/27.8556，原RS31.8642/40.1160/30.2129；没有提高，12场比赛均值均下降。纯R也下降，不能归因S；具体R政策退化不等于所有状态对齐训练无效。完整绝对成绩、60+12区间和失败证据见Docs/research/STATE_ALIGNED_R_TRAINING_A01_RESULTS.md。禁止重训/重审计/重放180；本轮结果不采用替换原参照，不自动继续搜参数或新因素。历史即时更新，测试继续封存。本轮收尾精确push后删除实验跟进，不重建已删除的每日history automation。

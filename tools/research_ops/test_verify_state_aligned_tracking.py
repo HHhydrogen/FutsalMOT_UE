@@ -44,6 +44,30 @@ def metric_body():
 
 
 class IndependentVerifier(unittest.TestCase):
+    def test_terminal_protocol_slashes_identify_same_actual_signed_file(self):
+        with TemporaryDirectory() as folder:
+            path=Path(folder)/'config.json';path.write_text('{}',encoding='utf-8')
+            with patch.object(v,'R',Path(folder)):
+                protocol=v.ref(path);slash=dict(protocol,path=path.as_posix())
+                state=dict(schema='state_aligned_tracking_control_v1',status=v.DONE,protocol=protocol,active=[],completed_track={},completed_metric={},worker_exits=[])
+                manifest=dict(schema='state_aligned_tracking_manifest_v1',status='complete180_state_aligned_tracking_and_evaluation',config_sha256=protocol['sha256'],
+                    new_optimizer_updates=0,test_read=False,reports=[],tracking=[],worker_exits=[])
+                analysis=dict(schema='state_aligned_tracking_paired_analysis_v1',status=v.ANALYSIS_DONE,protocol=slash,new_tracking_evaluations=180,
+                    historical_reference_evaluations=180,all_results=360,paired_cells=360,paired_gap_cells=360,paired_matches=48,metric_interval_descriptions=60,gap_interval_descriptions=12)
+                v.terminal_gate(dict(jobs=[]),state,manifest,analysis,protocol)
+
+    def test_signed_file_rejects_same_hash_different_path_and_different_hash(self):
+        with TemporaryDirectory() as folder:
+            root=Path(folder);first=root/'first.json';other=root/'other.json';first.write_text('{}',encoding='utf-8');other.write_text('{}',encoding='utf-8')
+            with patch.object(v,'R',root):
+                reference=v.ref(first);copy=v.ref(other)
+                self.assertEqual(reference['sha256'],copy['sha256'])
+                self.assertFalse(v.same_signed_file(reference,copy))
+                with self.assertRaises(ValueError):v.same_signed_file(reference,dict(reference,sha256='0'*64))
+                # 已检查缓存不能替代当前bytes实核。
+                first.write_text('{"changed":true}',encoding='utf-8')
+                self.assertFalse(v.same_signed_file(reference,reference))
+
     def test_numeric_saved_payload_SHA_full_ABA_spawn_and_exit(self):
         names=('bundle','bundle_manifest','inventory','learning_protocol','training_budget','training_complete','source_inventory','source_velocity_protocol',
             'source_worker_framework','original_inputs_source','sources','panels','registries','jobs','tracker_parameters','worker_profile','gate_job_ids','analysis_plan','track_guard_source','expected_GT_rows')

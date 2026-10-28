@@ -61,3 +61,9 @@ teacher固定为原纯R强motion、同fold、seed20261024。只收高分stage、
 实际成功数值收据tracking_numeric_a02/receipt.json SHA f41436086f66066179ef4e3fe6b10e00cad07567014286d3416be48fdeb53325；四文件追踪bundle code/53bf25ceef65e2f2fe8bf277da4e3a189e84c57430e3c297f31e8cb0d7219b47，正式tracking_frozen_a01/config.json SHA 5aa553b7d4d5734ee748e410157f5cf8ae0287e593bb04e75cbe816229a8411b。完整180矩阵与结果前60指标/12gap区间计划已冻结，原180基线仅读引用，所有负项/fold/seed/null保留。
 
 已唯一后台启动tracking_control_a01/driver_state.json，2track+1独立metric常驻CPU进程，数值线程1，输入LRU128MiB最多2源、模型LRU256MiB最多3模型，物理RAM保留8GiB、commit保留6GiB。首R/RS两源完整追踪/GT计数/ID0/全预测门禁后才派其余178；控制器自动完整分析。活动源码/配置不热改，禁止第二控制器、手工散跑和重训。started不等完成，完整180/分析/全部进程退出后才实际运行独立终验；终验器单文件code/6dc4a6de9f91e1816a6fa730db081cfbd2ef4704ecba3cb24f38edd7cfd5d907。当前尚无完整新AssA/HOTA/IDF1结论，测试116/187/test继续封存。
+
+## 最新完整闭合
+
+180新追踪/评价、180原参照、360指标及360gap配对、60指标/12gap区间已独立终验a02成功，真实controller/launcher/worker全部退出。原3场 原R30.9138/新R27.7659/原RS31.8642/新RS27.8857；旧外部2场39.7281/37.8590/40.1160/37.1806；七场29.9348/27.2240/30.2129/27.8556。主新RS−原RS分别−3.9784pp(t95[−5.3438,−2.6131])、−2.9353pp([−20.1140,14.2433])、−2.3573pp([−3.9810,−0.7335])，12场比赛均值均下降。旧2场t跨0而bootstrap低于0，全部保留。纯R同样下降，不能归因S；本具体R窗口政策未提高追踪能力，不替换原参照。完整HOTA/IDF1/DetA/MOTA绝对值、全部60+12区间、每场/seed/fold/负项及局限见[完整结果](STATE_ALIGNED_R_TRAINING_A01_RESULTS.md)。
+
+完成根SHA 7c76521e315cf08e7152540907465dc1581ffe033b9a0ee1e43f293d8a4ed7ae。终验a01路径字面差异失败及a02解释保留，不改原冻结分析，不重跑成功实验。
