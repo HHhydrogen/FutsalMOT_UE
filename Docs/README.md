@@ -1,5 +1,7 @@
 # 技术文档索引
 
+- [训练R截距校准单因素](research/TRAINR_INTERCEPT_CALIBRATION_A01.md)：原R/RS十八模型只拟合各自一个偏置，完整18000校准窗口及独立终验已闭合，原权重不变/SGD0；实际追踪数值准入已过，180项正式追踪正在执行。新增监督预算另列，全部负结果/CI保留，未宣称收益，测试封存。
+
 - [一次有边界的错误条件分解](research/BOUNDED_ERROR_DECOMPOSITION_A01.md)及[完整结果](research/BOUNDED_ERROR_DECOMPOSITION_A01_RESULTS.md)：复用27原trace/320752行，63缺失内部来源保留unknown；真实分配准入、全部条件与112描述区间及独立终验已闭合，新增评分/追踪/SGD均0。唯一后续因素为训练R截距校准，尚未验证，不将条件计数当因果或性能增量，测试封存。
 
 项目当前状态与执行授权以[根README](../README.md)、[AGENTS](../AGENTS.md)及[任务状态](../TASK_STATUS_AND_NEXT_STEPS.md)为入口。本目录按工程、生产、研究、运维集中技术说明；历史验收、候选和本机结果不能替代当前准入。
