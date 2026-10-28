@@ -2,13 +2,14 @@
 
 更新：2026-10-28。历史过程见Git及对应运行收据；本页不保留过期PID流水。
 
-## 当前：训练R截距单因素正式追踪
+## 最新闭合：训练R截距单因素
 
-- [固定方案](Docs/research/TRAINR_INTERCEPT_CALIBRATION_A01.md)只给原强motion R/RS十八冻结模型增加各自一个训练R拟合截距，原权重、特征、候选、原stage批次、门槛与历史不变。52CPU合同、六真实模型/384诊断窗口次与全训练池来源准入已过；十八拟合一次全齐，独立终验核完整18000clean R窗口次/67560all pair/52164known/15396unknown及迭代/FP32/实际退出，SGD0。额外监督计算另列，不称严格同总曝光或零监督。
-- 拟合完成根SHA `8bceed51386e9302ca44425df5210fadf2b45a2ba2e6ff260a01c9265b683313`。两个worker控制至拟合记录12.9157秒（不含前置准备/准入/终验），全部18偏置有正有负且非零，不据开发结果改方向/幅度。NLL下降只为拟合描述，不是追踪收益。
-- 真实96源帧/528诊断帧消费已验证原β0完整ID/MOT/native输出/audit逐值一致、常驻A→B→A及两个独立spawn一致、缓存清空/正常退出和评价GT坐标隔离。原训练R标签派生metadata会被解析，如实声明，不冒称从未读过任何GT派生字段。
-- 正式180矩阵只读预飞已过并唯一启动2track+1metric常驻CPU：先R/RS两项实际完整评价门禁，再其余178，自动270配对单元/45指标区间与9gap描述。历史180基线只读引用，不重跑；当前执行状态以研究根`pose/trainR_intercept_calibration_a01/tracking_control_a01/driver_state.json`为准，不把started当完成。配置SHA `e1fb9d52a0af24755cf87bbd6770907450888714849688a48fa4a03e2732819a`，五文件bundle `bdebba859b76a003e8fcf344704a15a4e82c66862bae6e9fa88b62d18f94e3c0`不热改。
-- 原3/旧2/七场均为已观察开发面板，分别报告R校准−原R、RS校准−原RS与差值交互的比赛等权CI，保留全部下降、null及bootstrap/留一。完整追踪/分析/实际退出后才独立终验和结论，当前不宣称成绩提升。测试116/187及test包继续封存，UE关闭，不扩数据或同时改模型容量/外观/历史。
+- 按[固定方案](Docs/research/TRAINR_INTERCEPT_CALIBRATION_A01.md)及[完整结果](Docs/research/TRAINR_INTERCEPT_CALIBRATION_A01_RESULTS.md)，一次有界错误分解后只验证原强motion R/RS十八模型的一维logit偏置。63项CPU合同、六真实模型/384诊断窗口次、十八拟合及全记录独立核查、96源帧/528诊断消费冷启动/常驻/双spawn准入和180正式自由追踪均已真实完成，全部父子/launcher退出。原权重、特征、候选、原stage批次、门槛与历史不改，SGD0。
+- 新增18000clean R模型窗口次/67560all pair/52164known/15396unknown为额外有标签标量拟合预算，不称零监督、严格同总曝光或新独立样本。完整逐窗logit/UID/未知/二分迭代/FP32/原模型引用/RNG与stdout/stderr保留；原180基线只读引用，不重跑，原感知/媒体/渲染0。
+- 当前证据未建立整体追踪提升：七场R校准−原R AssA−0.1329点[−0.3900,+0.1242]（2正5负），RS校准−原RS+0.0525[−0.2650,+0.3700]（4正3负）；HOTA−0.0850/+0.0337、IDF1−0.1196/+0.1032，主区间同跨0。原三场RS−0.5797且三场均值全负；旧两场R/RS−0.0022/+0.1101且区间宽。全部下降保留，不因CI含0称无效/等效。
+- 七场校准差值交互+0.1854，主t区间[−0.0183,+0.3891]，bootstrap[+0.0371,+0.3393]均披露，不挑bootstrap宣称合成作用；原三场交互为负。当前强motion试验也不是Pose增益。原3690gap分母保持，270指标/270gap配对、36比赛汇总、45指标/9gap描述全部独立核查，含360新旧原结果/全部seed/fold/null/留一。
+- 完成根SHA `b80ce600397b3b61e7c17edc9bc6d0a27bda75204650bd43bf4853d5c5f05d5c`；正式配置SHA `e1fb9d52a0af24755cf87bbd6770907450888714849688a48fa4a03e2732819a`、五文件bundle `bdebba859b76a003e8fcf344704a15a4e82c66862bae6e9fa88b62d18f94e3c0`不改。2track+1metric控制至完整分析952.9619秒，采样RSS峰1.4265GiB、最低可用RAM16.7238GiB；不含准备/拟合/准入/终验，不当新串行提速。状态为`complete180_trainR_intercept_tracking_and_paired_analysis`，独立终验`complete180_trainR_intercept_sources360_results270_pairs45_metric9_gap_intervals_and_exit_verified`，无需重跑。
+- 维持原主参照，校准版完整归档，不继续搜β或挑seed/符号。下一研究候选优先澄清训练候选与自由状态差异、历史传播条件，需另立协议，不由本轮直接推导应扩大模型或大批补采。原3/旧2/七场全为已观察开发，确认性泛化须另锁新train/val；测试116/187及test包始终封存，UE保持关闭。本轮闭合不冒称整研究主线完成。
 
 ## 最新闭合：一次有边界的错误条件分解
 

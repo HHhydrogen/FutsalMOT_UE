@@ -1,6 +1,6 @@
 # 技术文档索引
 
-- [训练R截距校准单因素](research/TRAINR_INTERCEPT_CALIBRATION_A01.md)：原R/RS十八模型只拟合各自一个偏置，完整18000校准窗口及独立终验已闭合，原权重不变/SGD0；实际追踪数值准入已过，180项正式追踪正在执行。新增监督预算另列，全部负结果/CI保留，未宣称收益，测试封存。
+- [训练R截距单因素](research/TRAINR_INTERCEPT_CALIBRATION_A01.md)与[完整结果](research/TRAINR_INTERCEPT_CALIBRATION_A01_RESULTS.md)：18拟合/180正式追踪/360来源、270指标270gap配对与45+9描述独立终验全部闭合。七场R/RS AssA变化−0.1329/+0.0525点，主CI均跨0，未建立整体改善；额外18000R监督计算另列，全部负结果保留，测试封存。
 
 - [一次有边界的错误条件分解](research/BOUNDED_ERROR_DECOMPOSITION_A01.md)及[完整结果](research/BOUNDED_ERROR_DECOMPOSITION_A01_RESULTS.md)：复用27原trace/320752行，63缺失内部来源保留unknown；真实分配准入、全部条件与112描述区间及独立终验已闭合，新增评分/追踪/SGD均0。唯一后续因素为训练R截距校准，尚未验证，不将条件计数当因果或性能增量，测试封存。
 
