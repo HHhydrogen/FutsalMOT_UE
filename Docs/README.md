@@ -1,8 +1,10 @@
 # 技术文档索引
 
+- [模型训练历史总览](research/TRAINING_HISTORY.md)：从最初bbox迁移到Pose微调、身份关联、真实资源对照和截距校准，按版本解释训练对象、动机、数据split、绝对预算/成绩与局限；完成阶段持续更新，失败和零更新诊断单列。
+
 - [训练R截距单因素](research/TRAINR_INTERCEPT_CALIBRATION_A01.md)与[完整结果](research/TRAINR_INTERCEPT_CALIBRATION_A01_RESULTS.md)：18拟合/180正式追踪/360来源、270指标270gap配对与45+9描述独立终验全部闭合。七场R/RS AssA变化−0.1329/+0.0525点，主CI均跨0，未建立整体改善；额外18000R监督计算另列，全部负结果保留，测试封存。
 
-- [一次有边界的错误条件分解](research/BOUNDED_ERROR_DECOMPOSITION_A01.md)及[完整结果](research/BOUNDED_ERROR_DECOMPOSITION_A01_RESULTS.md)：复用27原trace/320752行，63缺失内部来源保留unknown；真实分配准入、全部条件与112描述区间及独立终验已闭合，新增评分/追踪/SGD均0。唯一后续因素为训练R截距校准，尚未验证，不将条件计数当因果或性能增量，测试封存。
+- [一次有边界的错误条件分解](research/BOUNDED_ERROR_DECOMPOSITION_A01.md)及[完整结果](research/BOUNDED_ERROR_DECOMPOSITION_A01_RESULTS.md)：复用27原trace/320752行，63缺失内部来源保留unknown；真实分配准入、全部条件与112描述区间及独立终验已闭合，新增评分/追踪/SGD均0。其后唯一训练R截距校准已独立完成，结果见上方对应入口；不将条件计数当因果或性能增量，测试封存。
 
 项目当前状态与执行授权以[根README](../README.md)、[AGENTS](../AGENTS.md)及[任务状态](../TASK_STATUS_AND_NEXT_STEPS.md)为入口。本目录按工程、生产、研究、运维集中技术说明；历史验收、候选和本机结果不能替代当前准入。
 

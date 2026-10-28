@@ -4,6 +4,8 @@
 
 ## 从这里开始
 
+- [从第一次训练到现在](Docs/research/TRAINING_HISTORY.md)：面向用户的持续训练历史，说明每版训练什么、为什么、用了哪些数据、绝对参数/成绩和结论边界。
+
 - [文档索引](Docs/README.md)：工程契约、生产、研究与运维说明。
 - [当前任务](TASK_STATUS_AND_NEXT_STEPS.md)：实际阶段与下一步，不以历史命令代替当前状态。
 - [Agent规则](AGENTS.md)：Git、存储、UE生命周期及研究边界。
