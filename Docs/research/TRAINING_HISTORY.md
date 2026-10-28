@@ -415,3 +415,15 @@ OC绝对成绩直接读取既有两份12行结果CSV，再在各面板比赛等�
 ## 最新输入阶段：自由状态R窗口来源a01
 
 按[新验证协议](STATE_ALIGNED_R_TRAINING_A01.md)完成8CPU合同、真实六R后验来源资格/唯一性审计，以及三fold各1000新R窗原记录/标签读回。game4/6/9各允许两来源各500，无复制填额；all pair13558/13167/15740，known11500/10975/12765，positive435/321/359，unknown2058/2192/2975，无positive窗口565/679/641。原S、normalizer、旧池不改；新SGD/图像预测/追踪均0，尚未训练准入。输入根SHA031e10a5a7cc078030747f901cc1bbe5bce8017542c524e38d47abf3e9d7d74c。下一步仅训练数值/完整记录准入，18臂每1000更新、3000R，RS另1000S；模型/优化器/seed/损失及全部限制见绝对协议。不能称pair/FLOPs公平或状态问题已解决。
+
+## 当前训练阶段：准入与首正式千步通过
+
+2026-10-28已完成21项输入/runtime/controller/数值CPU合同，另6项独立预算审计合同。原源码核验纠正：强motion没有按epoch扰动增广，明确none_original_strongmotion；不是T/gated的both。域loss为每窗known-pair BCE均值后窗口均值，不能改成pair加权均值。
+
+实际CPU完整核九表及全部3000新R窗口/35240known-pair特征194维、原normalizer/后170零、九初始化/R顺序/原S顺序；CPU两组手写对原loss共4诊断更新12R/2S。实际CUDA两组手写对完整记录循环模型/AdamW/全部RNG/0和1检查点逐值一致，共4诊断更新12R/2S。合计8诊断更新24R/4S另计，不当正式训练。学习准入根SHA c56c9da4b15fe2d79790146987dcf248cd956bf121d4c03186d14bf3fc22f9bf。
+
+协议training_frozen_a01/protocol.json SHA 2acc7642109c317b9ca694d3649a864c5553e177f20425d24726de1781c7d3c6，必要11文件bundle code/1f9a22471b51d11879ca6f20aa5449fc279bbfbba2835772469809af991ac983；不热改。正式18000更新/54000R/9000S的十八臂20:33:38唯一启动。首game4/seed20261024/R已实际1000更新/3000R/S0，21完整模型+AdamW+四RNG检查点读回通过，控制器才继续后续臂。首臂含准备/记录/检查点/读回24.6310秒，不外推全部阶段加速。当前训练仍在执行，不称十八臂/预算/追踪已完成，也没有新AssA/HOTA/IDF1。
+
+权威state为DResearch/pose/state_aligned_training_a01/training_control_a01/driver_state.json，日志_launch_training_a01及training_control_a01/logs。独立审计已安装code/9609623d0cca265f971114fdf4417cb521f58255e755814b8582e5a6f353ff0a/tools/research_ops/audit_state_aligned_training.py，尚未真实执行；十八臂齐及实际parent/child/launcher全退后，才以--config绝对protocol --control绝对training_control_a01 --output绝对postrun_audit_a01/actual_budget.json --execute运行，CUDA_VISIBLE_DEVICES=-1。需核378完整checkpoint、18000步/全部UIDepoch/all-knownpair/原init/norm/S及真实退出；cache无显式close不伪造true，保留实际预取join和run退出证据。
+
+冻结时计划原bytes快照training_frozen_a01/plan_snapshot.md SHA755851787d2e21cc8cbcf1e16b0b1d761a72f06588fbb35450ad74a8be4a20f6保留；本文件后续更新不改该快照或活动协议。下一阶段才冻结新18模型×每fold10来源=180自由追踪，原匹配基线只读引用，原3/旧2/七场分别报告，未通过加载/GT隔离/cold-ABA准入不执行。全部负结果保留，测试封存。
