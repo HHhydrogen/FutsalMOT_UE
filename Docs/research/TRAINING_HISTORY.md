@@ -546,4 +546,14 @@ OC绝对成绩直接读取既有两份12行结果CSV，再在各面板比赛等�
 
 依据完整证据按事前顺序只登记R候选资格mask，不同时过滤无正例+unknown整窗、anchor或改CE/null/history/KF/Pose监督。候选mask和decision已保存，但本轮不执行新训练。下一步另冻协议，逐R窗mask内known-BCE重新求均值，空窗带图零梯度，原3R/step、RS原1S与S系数1/3、1000更新/last1000不变；明确有效监督下降。matched-control为已闭合aligned-BCE十八臂（须先来源/静态/CPU/CUDA/记录匹配门禁），原strongmotion_RS仍是追踪能力改善的正式目标；是否改善必须完整自由追踪和全部置信区间后回答。
 
+## R候选资格mask实现与合成CPU检查（2026-10-29，正式更新0）
+
+承接上述已闭合诊断，仅实现[唯一因素候选](R_CANDIDATE_ELIGIBILITY_MASK_A01.md)的方法、独立训练runtime及新记录扩展；不改原known特征/标签/拼接前向、S损失、旧journal/冻结源码或推理参数。R对资格内known重新逐窗mean、三个R固定mean、RS加原S-BCE/3，空有效窗带图零/不重采样或跳step；原all/known字段不变，额外有效正/负/unknown(实际loss中为0)、排除known、空窗和双SHA进入原步链。原strongmotion_RS保持主参照，aligned-BCE18只作条件matched-control，未宣称来源数值实际准入通过。
+
+原始数据未读取；全部使用合成小张量和纯metadata夹具，模型194→64→32→1 ReLU/14593参数/FP32/后170列置0，CPU线程1、CUDA_VISIBLE_DEVICES=-1。25项针对检查通过：方法4metadata+4真实Torch玩具损失/梯度+1跨模块记录集成、runtime6、loop10。loop使用的1000optimizer接口及21checkpoint纯内存stub不是真更新/文件。真实玩具模型验证全true原BCE loss/梯度/CPU RNG逐值、partial手写、空窗全部参数zero-grad、S原函数/3与一次完整known前向；未执行实际原初始化、真实R/S、AdamW一步或CUDA检查。
+
+a01成功后新增known UID/label记录并明确空集为`(loss_part*0).sum()`，保留旧收据，独立a02检查；另新增1次集成。累计玩具前向17次/86张量行、真实R/S窗口0、optimizer更新0、图像推理/追踪/TrackEval0；这些是下一候选阶段预算，不覆盖上一诊断阶段0前向。Saved/ResearchBuild/R_eligibility_CPU_fixtures_a01、a02和R_eligibility_CPU_integration_a01保留原源码SHA/日志与成功证据。测试116/187/test未读。
+
+下一步先生成并独立验证完整三fold侧表，冻结新输入/训练JSON及最小SHA闭包，真实CPU/CUDA一步/AdamW/四RNG/完整记录准入后，才首完整1000更新/21checkpoint验收及其余17。当前未执行这些门禁、未正式训练或产生新追踪成绩。绝对参数、有效曝光减少、全部负结果与后续75指标/15gap区间事前要求已写入候选文档，未根据开发成绩调门槛。
+
 计划先流式只读小准入与独立核查，再完整有界扫描，依据记录最多选R候选资格mask或无正例歧义窗口的监督资格之一；不足则停止，不合并因素/扩数据/调阈值。原3/旧2/七场结果只作为封闭背景不用于反复挑规则，最终116/187/test继续封存。本段是方案记录，不是模型版本或训练成果。

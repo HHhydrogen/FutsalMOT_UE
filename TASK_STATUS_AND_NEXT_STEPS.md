@@ -10,6 +10,8 @@
 
 下一门禁：另冻该唯一因素训练协议及matched-control身份，先静态/CPU/真实CUDA与完整记录准入。每R窗对mask内known重新求BCE均值、空集带图零梯度，不重采样/跳步；1000更新/每步3R共3000R、RS另1S共1000S和S系数1/3仍事前固定，实际有效标签数/空窗/梯度预算另记，不能称有效监督相同。此前aligned-BCE十八臂仅在所有源/数值/记录完全匹配时作为只读控制；原strongmotion_RS仍是正式追踪改善目标。目前仅候选mask/决策已登记，尚无新训练协议执行或新训练。测试116/187/test持续封存，每阶段即时历史/精确push。
 
+[唯一mask候选](Docs/research/R_CANDIDATE_ELIGIBILITY_MASK_A01.md)的方法/runtime/记录扩展已实现并完成25项针对检查；原known一次前向、S/3及原记录字段保留，新有效监督/空窗/双SHA进入原步链。合成CPU a01/a02与新增集成累计17玩具前向/86张量行，真实R/S读取0、optimizer更新0、CUDA0；不冒充真实CPU/CUDA或正式训练准入。下一实质工作仍是三fold完整侧表/输入冻结及独立核验，然后新协议真实一步、首1000/21checkpoint门禁。没有活动正式训练/追踪后台或新性能成绩。
+
 ## 历史诊断已闭合：训练候选与自由状态差异
 
 独立终验于2026-10-28 19:21完成且实际退出，12观察/12后验、9000逻辑帧/2250唯一源帧、27000stage/180118stage-row及3000自然池窗口全部核验。优化更新0、图像推理0，无新AssA/HOTA/IDF1。完整结果见[诊断结果](Docs/research/TRAIN_FREE_STATE_GAP_A02_RESULTS.md)（根目录入口使用Docs/research/路径）。完成根DResearch/pose/state_gap_diagnosis_a01/complete_root_a02.json SHA ad2eed7e78f5551e38c8db0c29a903348af2b5c6765e89b30c4f18f139a9804b。
