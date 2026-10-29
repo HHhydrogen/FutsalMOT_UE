@@ -484,3 +484,10 @@ OC绝对成绩直接读取既有两份12行结果CSV，再在各面板比赛等�
 
 
 正式训练更新0，新追踪/TrackEval0；下一步首1000/21检查点门禁后才继续其余17臂。原strongmotion_RS主参照及测试封存保持。
+
+
+## 正式训练首千步门禁与唯一启动（2026-10-29）
+
+真实CPU/CUDA数值准入已闭合并随d041fef推送，唯一正式控制器已启动。首game4/seed20261024/R完成1000实际更新、3000R/S0，21完整检查点含原初始化、AdamW实际步数、全部RNG、方法状态及UID/epoch/all-known-pair链核查通过，随后才继续其余17臂。正式预算为18臂×1000=18000更新、54000R/9000S；当前只是首臂准入闭合，不称全18训练完成或追踪提高。
+
+权威状态为DResearch/pose/r_set_supervision_a01/training_control_a01/driver_state.json；日志在control的logs与_launch_training_a01。固定7文件bundle a536124f、协议SHA301eb84a保持不可变。GPU训练使用prefetch2、256MiB特征缓存，数值线程1，保留RAM8GiB/commit6GiB/VRAM2GiB。18臂和真实退出后才运行独立预算审计，不重放旧实验或准入成功步骤；SNMOT116/187/test封存。
