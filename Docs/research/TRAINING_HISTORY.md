@@ -556,4 +556,24 @@ a01成功后新增known UID/label记录并明确空集为`(loss_part*0).sum()`�
 
 下一步先生成并独立验证完整三fold侧表，冻结新输入/训练JSON及最小SHA闭包，真实CPU/CUDA一步/AdamW/四RNG/完整记录准入后，才首完整1000更新/21checkpoint验收及其余17。当前未执行这些门禁、未正式训练或产生新追踪成绩。绝对参数、有效曝光减少、全部负结果与后续75指标/15gap区间事前要求已写入候选文档，未根据开发成绩调门槛。
 
-计划先流式只读小准入与独立核查，再完整有界扫描，依据记录最多选R候选资格mask或无正例歧义窗口的监督资格之一；不足则停止，不合并因素/扩数据/调阈值。原3/旧2/七场结果只作为封闭背景不用于反复挑规则，最终116/187/test继续封存。本段是方案记录，不是模型版本或训练成果。
+上述最初方案阶段曾计划先流式准入再诊断选一因素；该诊断现已闭合，当前唯一因素为R候选资格mask。原3/旧2/七场不用于反复挑规则，最终116/187/test继续封存。
+
+## R资格mask输入冻结过程与失败即时登记（2026-10-29，正式更新0）
+
+用户授权继续完整单因素验证。input_frozen_a01冻结原3000窗/42465候选及原九R表来源，必要两文件bundle为e32679b48724931661bdaee0803478e81be4db9e3030a54109e272893d2632f4，规则与旧池/标签不变。首次用P1执行，在窗口读取与输出目录创建前因资源门禁import psutil而失败；P1未装该库，未给P1装Torch/psutil或修改冻结源码。input_attempt_a01/failed.json、原配置和stdout/stderr保留，输入窗口实际读取0、模型/SGD/追踪0。
+
+另签input_frozen_a02（SHA ec018d659e8a940c5ddd1968bf312cdd973fe57e1a4e4ffe877deb1021f37d23），仅切已配置研究Python的CPU环境和独立inputs_a02输出；同一源码/来源/资格/标签。实际三fold各1000侧表及binding生成成功，原pool和曝光未改，尚待独立核查闭合才能作训练输入。
+
+独立核查a02 preflight将无扩展名输出目录误送文件白名单而拒绝；在任何原pool/新侧表逐行核查前停止，失败收据input_verifier_attempt_a02/failed.json保留。只修新核查器callsite，让audit.json完整文件路径进入原文件白名单/SHA/无junction检查，不放宽读文件范围；不重跑成功inputs_a02。a03在第一窗检查既有候选声明时，核查器误用labels_unchanged/labels_changed，而真实字段为label_values_unchanged。input_verification_a03/failed.json及旧两版核查bundle保留；数据未改，下一新核查器严格对真实字段补回归，仍不重建输入。以上均无新增优化/模型前向/图像推理/追踪/GT坐标读取/TrackEval，不声称真实CPU/CUDA训练准入已通过。
+
+## R资格mask输入、真实CPU/CUDA和首千步门禁闭合（2026-10-29）
+
+原3000R窗/42465候选及标签、九R曝光表不变，inputs_a02已生成并经独立a04逐行核查。有效known6153（1092正/5061负）、unknown2081不监督；2007非空/993空。输入完成根SHA48e50a9acb3f0d8e0afffc49b6f070e6ab2467af01e660e31aeca672ec0c1ffb，独立核查40988c1a5ff2d9327ba9740d8d48744c4e4d8e30ccc8ce06e56835ab2adb4009；原P1/核查器两次失败全部保留，没有重建成功输入。
+
+[实际执行说明](R_CANDIDATE_ELIGIBILITY_EXECUTION_A01.md)记录完整绝对条件：强motion194→64→32→1 ReLU/14593参数/FP32/后170归一Pose列0，无RGB/epoch增广；R资格内known逐窗BCE mean、三个R固定mean，RS加原v10balanced S-BCE/3，空R带图零不重采样/跳AdamW。AdamW LR0.001/wd0.0001/betas(0.9,0.999)/eps1e-8；18臂R/RS×fold4/6/9×seed20261024/25/26，各1000步/每步3R、RS另1S、last1000非EMA无best，step0/每50/1000全模型优化器四RNG与所有逐步记录留存。正式目标18000更新/54000R/9000S；有效Rknown110754/非空36126/空17874，不冒充有效标签预算未变。
+
+真实CPU/CUDA十组共20诊断更新/60R/8S成功，均另列不算正式。全true原BCE与实际mask独立手写R/RS、空窗非零AdamW动量与weight decay组的loss/梯度/model/AdamW/四RNG逐值一致；step0/1完整记录读回。数值收据bccf1069d205288b45db4aeaa380fc202f75815601e791265e076581f76f514a，学习准入根7c8dd9a62aaf9877462469f5a48d614645d3326d1d6b210b9b155e3c39af3f87。aligned-BCE matched-control兼容已实证，原未校准strongmotion_RS保持主参照。
+
+控制器a01在写预飞收据时调用不存在的runtime.write_new，任何训练子进程前失败，正式更新0/空目录/日志与controller_attempt_a01/failed.json保留。独立单文件控制器f5614469f2c6a8821eb0e111110ea6473f5f5ba389737a51ffd7ac01eca35e6a只修journal写入API并显式绑定科学协议和0更新失败证据，8项针对检查通过；原八文件98293655与科学协议d5880b07不变，已成功20步不重放。a02唯一启动，实际首game4/20261024/R1000 CUDA完成且独立CPU21完整检查点/步链核查通过（首门禁SHA28096dc3f43cd4fc2749d1da439c13a98a5e318e9a85070bac6c0239f7148b64），之后才执行其余17臂。当前训练继续中，不称18全齐或新追踪改善。
+
+最终独立预算审计将复用首21证据、实读其余357覆盖378；之后新loader/worker真实门禁再执行180追踪，五族75指标/15gap全部区间和负项保留，测试116/187/test未读。阶段没有新AssA/HOTA/IDF1，不能把数值一致或训练loss当追踪收益。

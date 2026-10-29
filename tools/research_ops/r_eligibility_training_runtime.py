@@ -212,5 +212,17 @@ def validate_training_admission(config, cfg):
         and admission['approved_by'] == 'root' and admission['protocol']['sha256'] == sha(config)
         and checked(admission['protocol']) == physical(config) and admission['formal_optimizer_updates'] == 0
         and admission['actual_CPU_and_CUDA_numeric_verified'] is True and admission['full_record_contract_verified'] is True
-        and admission['test_read'] is False, '实际数值/全过程记录准入尚未完成，不能凭候选开训')
+        and admission['matched_control_reuse_verified'] is True and admission['test_read'] is False,
+        '实际数值/全过程记录准入尚未完成，不能凭候选开训')
+    numeric, inputs = read_ref(admission['numeric_validation']), read_ref(admission['input_validation'])
+    require(numeric['status'] == 'complete_R_candidate_eligibility_CPU_CUDA_full_record_numeric_admission'
+        and numeric['protocol_sha256'] == sha(config) and numeric['all_groups_equal'] is True
+        and numeric['matched_control_reuse_numerical_compatibility_verified'] is True and numeric['formal_optimizer_updates'] == 0
+        and numeric['actual_diagnostic_optimizer_updates'] == 20 and numeric['diagnostic_R_windows'] == 60 and numeric['diagnostic_S_windows'] == 8
+        and numeric['test_read'] is False, '未来learningroot没有绑定本轮20步/60R8S数值实证')
+    require(inputs['status'] == 'complete3000_R_candidate_eligibility_inputs_sources_masks_bindings_and_exposures_independently_verified'
+        and inputs['windows'] == 3000 and inputs['R_window_exposures_shared_once'] == 27000
+        and inputs['original_pool_order_labels_UIDs_and_known_projection_exact'] is True and inputs['pre_probability_mask_not_chosen_by_labels'] is True
+        and inputs['original_R_S_order_references_unchanged'] is True and inputs['GT_coordinates_read'] is False and inputs['test_read'] is False,
+        '原窗口/资格侧表/曝光表没有独立核验')
     return admission

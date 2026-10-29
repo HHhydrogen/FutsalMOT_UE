@@ -103,5 +103,27 @@ class PureContracts(unittest.TestCase):
         mid = rt.model_id('p'*64, 'game4', 20261024, 'R')
         self.assertEqual(len(mid), 24); self.assertNotEqual(mid, rt.model_id('q'*64, 'game4', 20261024, 'R'))
 
+    def test_formal_admission_requires_future_root_numeric20_and_independent_inputs(self):
+        config_path = Path('D:/projects/FutsalMOT_Research/fixture/protocol.json'); cfg = dict(learning_admission_root_path='future-root.json')
+        root = dict(status='complete_R_candidate_eligibility_training_numeric_full_record_admission', approved_by='root',
+            protocol=dict(path=str(config_path), sha256='p'*64), formal_optimizer_updates=0, actual_CPU_and_CUDA_numeric_verified=True,
+            full_record_contract_verified=True, matched_control_reuse_verified=True, test_read=False,
+            numeric_validation=dict(kind='numeric'), input_validation=dict(kind='inputs'))
+        numeric = dict(status='complete_R_candidate_eligibility_CPU_CUDA_full_record_numeric_admission', protocol_sha256='p'*64,
+            all_groups_equal=True, matched_control_reuse_numerical_compatibility_verified=True, formal_optimizer_updates=0,
+            actual_diagnostic_optimizer_updates=20, diagnostic_R_windows=60, diagnostic_S_windows=8, test_read=False)
+        inputs = dict(status='complete3000_R_candidate_eligibility_inputs_sources_masks_bindings_and_exposures_independently_verified',
+            windows=3000, R_window_exposures_shared_once=27000, original_pool_order_labels_UIDs_and_known_projection_exact=True,
+            pre_probability_mask_not_chosen_by_labels=True, original_R_S_order_references_unchanged=True, GT_coordinates_read=False, test_read=False)
+        with patch.object(rt, 'read', lambda p: root), patch.object(rt, 'read_ref', lambda v: numeric if v['kind'] == 'numeric' else inputs), \
+             patch.object(rt, 'sha', lambda p: 'p'*64), patch.object(rt, 'checked', lambda v: Path(v['path'])), patch.object(rt, 'physical', lambda p: Path(p)):
+            self.assertEqual(rt.validate_training_admission(config_path, cfg), root)
+            numeric['actual_diagnostic_optimizer_updates'] = 8
+            with self.assertRaises(ValueError): rt.validate_training_admission(config_path, cfg)
+            numeric['actual_diagnostic_optimizer_updates'] = 20; root['matched_control_reuse_verified'] = False
+            with self.assertRaises(ValueError): rt.validate_training_admission(config_path, cfg)
+            root['matched_control_reuse_verified'] = True; inputs['windows'] = 1000
+            with self.assertRaises(ValueError): rt.validate_training_admission(config_path, cfg)
+
 
 if __name__ == '__main__': unittest.main()

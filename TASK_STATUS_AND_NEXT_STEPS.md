@@ -2,15 +2,15 @@
 
 更新：2026-10-29。历史过程见Git及对应运行收据；本页不保留过期PID流水。
 
-## 当前：资格/弱标签诊断已闭合，下一因素只验证R候选资格mask
+## 当前：R资格mask真实数值与首千步门禁通过，十八臂正式训练继续
 
-原未校准strongmotion_RS继续为主参照。完整结果见[资格与弱标签诊断](Docs/research/STATE_LABEL_ALIGNMENT_A01_RESULTS.md)。3000R窗/42465候选/35240known/7225unknown、180118既有机会行与同180118公开后验行、九R表27000曝光映射全部独立终验通过，真实producer/worker/verifier退出。新增优化/模型前向/追踪/GT坐标/TrackEval均0，无新AssA。完成根DResearch/pose/state_label_alignment_diagnosis_a01/complete_root_a01.json SHA c140edaf7004f139de55a0edf265069ef73f98c63c454b434405ece00dddf8f9。
+本轮只改R候选资格loss mask，原strongmotion_RS为主参照，aligned-BCE18为已证明全true数值兼容的matched-control。[绝对参数与实际执行](Docs/research/R_CANDIDATE_ELIGIBILITY_EXECUTION_A01.md)；旧资格/弱标签诊断已闭合，不重跑。原3000R/42465pair侧表和九R表已冻结并独立逐行核验，输入完成根48e50a9a；科学协议d5880b07、八文件98293655不变。真实CPU/CUDA20诊断更新/60R/8S、step0/1完整记录、loss/梯度/model/AdamW/四RNG逐值门禁成功，学习准入根7c8dd9a6。
 
-全部3000窗含评分资格外known监督，29087known pair在资格外（负29064、正23），占原逐窗BCE权重83.528252%。1547窗无known正例且含unknown；不据此改标签或判全部坏数据。第四主量为恒等一致性检查，实际0；四项描述t/bootstrap/LOO完整保留。资格mask后6153known=1092正+5061负，2007窗非空/993空；三fold非空窗709/557/741，仍有正监督。只按事前顺序登记R-BCE候选资格mask因素，不同时加无正例+unknown整窗过滤、CE/null、anchor过滤、history/KF或Pose算法监督。
+首game4/20261024/R1000 CUDA及独立21完整checkpoint/1000步记录门禁已通过（28096dc3），之后才继续其余17臂。唯一权威状态DResearch/pose/r_candidate_eligibility_a01/training_control_a02/driver_state.json。a01控制器写入API遗漏在任何训练子进程前失败/正式0更新；现场保留，另签ee280488执行声明使用单文件f5614469控制器，只修调度不改训练科学协议、不重放成功数值组。禁止第二控制器、手工散跑、热改活动八文件或重训已完成臂。
 
-下一门禁：另冻该唯一因素训练协议及matched-control身份，先静态/CPU/真实CUDA与完整记录准入。每R窗对mask内known重新求BCE均值、空集带图零梯度，不重采样/跳步；1000更新/每步3R共3000R、RS另1S共1000S和S系数1/3仍事前固定，实际有效标签数/空窗/梯度预算另记，不能称有效监督相同。此前aligned-BCE十八臂仅在所有源/数值/记录完全匹配时作为只读控制；原strongmotion_RS仍是正式追踪改善目标。目前仅候选mask/决策已登记，尚无新训练协议执行或新训练。测试116/187/test持续封存，每阶段即时历史/精确push。
+18臂R/RS×fold4/6/9×seed20261024/25/26，各1000步、每步3R、RS另1S，AdamW LR0.001/wd0.0001、FP3214593参数、last1000非EMA无best，完整记录0/每50/1000。目标18000更新/54000R/9000S；R有效known110754、空窗17874，不称有效标签预算相同。RAM8GiB/commit6GiB/VRAM2GiB预留，不启UE或抢用户应用。
 
-[唯一mask候选](Docs/research/R_CANDIDATE_ELIGIBILITY_MASK_A01.md)的方法/runtime/记录扩展已实现并完成25项针对检查；原known一次前向、S/3及原记录字段保留，新有效监督/空窗/双SHA进入原步链。合成CPU a01/a02与新增集成累计17玩具前向/86张量行，真实R/S读取0、optimizer更新0、CUDA0；不冒充真实CPU/CUDA或正式训练准入。下一实质工作仍是三fold完整侧表/输入冻结及独立核验，然后新协议真实一步、首1000/21checkpoint门禁。没有活动正式训练/追踪后台或新性能成绩。
+下一步：全18齐/真实退出后独立预算审计，继承首21并实读357覆盖378；再冻结并准入新180追踪loader/worker，执行匹配自由追踪、75指标/15gap描述CI及独立终验。训练成功不等追踪能力改善，当前无新AssA/HOTA/IDF1。全部负结果/失败/unknown保存，原3/旧2/七场分面板，测试116/187/test持续封存；每阶段即时更新历史、精确提交推送和汇报，无每日历史定时任务。
 
 ## 历史诊断已闭合：训练候选与自由状态差异
 
