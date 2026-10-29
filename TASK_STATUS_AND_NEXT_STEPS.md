@@ -1,12 +1,16 @@
 # 当前任务与下一步
 
-更新：2026-10-28。历史过程见Git及对应运行收据；本页不保留过期PID流水。
+更新：2026-10-29。历史过程见Git及对应运行收据；本页不保留过期PID流水。
 
-## 当前：制定训练/自由状态资格与弱标签的有界诊断方案
+## 当前：资格/弱标签诊断已闭合，下一因素只验证R候选资格mask
 
-原未校准strongmotion_RS继续为主参照。R集合监督完整结果已闭合且未建立整体提升；新方案见Docs/research/STATE_LABEL_ALIGNMENT_DIAGNOSIS_A01.md。仅规划复用3000R窗/42465pair、九曝光表及180118既有机会账本，新增优化/模型前向/追踪/GT坐标/TrackEval均0。重点补训练监督与推理资格的逐候选交叉、无known正例与unknown/可达性/身份代理的交叉，不重复旧诊断或当坏数据删窗。完整诊断及独立核查后按事前次序最多选一个因素，证据不足则不训练；尚未选定执行因素，未实际新扫描。测试116/187/test封存，每阶段即时历史/精确push。
+原未校准strongmotion_RS继续为主参照。完整结果见[资格与弱标签诊断](Docs/research/STATE_LABEL_ALIGNMENT_A01_RESULTS.md)。3000R窗/42465候选/35240known/7225unknown、180118既有机会行与同180118公开后验行、九R表27000曝光映射全部独立终验通过，真实producer/worker/verifier退出。新增优化/模型前向/追踪/GT坐标/TrackEval均0，无新AssA。完成根DResearch/pose/state_label_alignment_diagnosis_a01/complete_root_a01.json SHA c140edaf7004f139de55a0edf265069ef73f98c63c454b434405ece00dddf8f9。
 
-## 本轮诊断已闭合：训练候选与自由状态差异
+全部3000窗含评分资格外known监督，29087known pair在资格外（负29064、正23），占原逐窗BCE权重83.528252%。1547窗无known正例且含unknown；不据此改标签或判全部坏数据。第四主量为恒等一致性检查，实际0；四项描述t/bootstrap/LOO完整保留。资格mask后6153known=1092正+5061负，2007窗非空/993空；三fold非空窗709/557/741，仍有正监督。只按事前顺序登记R-BCE候选资格mask因素，不同时加无正例+unknown整窗过滤、CE/null、anchor过滤、history/KF或Pose算法监督。
+
+下一门禁：另冻该唯一因素训练协议及matched-control身份，先静态/CPU/真实CUDA与完整记录准入。每R窗对mask内known重新求BCE均值、空集带图零梯度，不重采样/跳步；1000更新/每步3R共3000R、RS另1S共1000S和S系数1/3仍事前固定，实际有效标签数/空窗/梯度预算另记，不能称有效监督相同。此前aligned-BCE十八臂仅在所有源/数值/记录完全匹配时作为只读控制；原strongmotion_RS仍是正式追踪改善目标。目前仅候选mask/决策已登记，尚无新训练协议执行或新训练。测试116/187/test持续封存，每阶段即时历史/精确push。
+
+## 历史诊断已闭合：训练候选与自由状态差异
 
 独立终验于2026-10-28 19:21完成且实际退出，12观察/12后验、9000逻辑帧/2250唯一源帧、27000stage/180118stage-row及3000自然池窗口全部核验。优化更新0、图像推理0，无新AssA/HOTA/IDF1。完整结果见[诊断结果](Docs/research/TRAIN_FREE_STATE_GAP_A02_RESULTS.md)（根目录入口使用Docs/research/路径）。完成根DResearch/pose/state_gap_diagnosis_a01/complete_root_a02.json SHA ad2eed7e78f5551e38c8db0c29a903348af2b5c6765e89b30c4f18f139a9804b。
 
