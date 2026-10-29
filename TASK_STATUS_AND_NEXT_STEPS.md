@@ -2,9 +2,9 @@
 
 更新：2026-10-28。历史过程见Git及对应运行收据；本页不保留过期PID流水。
 
-## 当前：R集合监督180项追踪与独立评价执行中
+## 当前：R集合监督完整验证闭合，保留原strongmotion主参照
 
-训练18000更新/54000R9000S/378完整检查点预算和真实退出已独立闭合。CPU实际cold/ABA/双spawn96唯一帧/336消费通过并全退，正式唯一2track+1metric已启动，首R/RS两源实际metric/GT计数/ID0/全预测门禁通过。协议SHA2b16f8c7，4文件bundle598df756；权威DResearch/pose/r_set_supervision_a01/tracking_control_a01/driver_state.json，禁止重复或热改。须180齐/自动540绝对来源450配对75指标15gap区间/所有父子真实退出，再执行独立只读终验。未闭合前不报提升；原strongmotion_RS主参照、测试116/187/test封存。每轮结束自动补历史、精确push与汇报，无每日history定时任务。
+训练18臂、180追踪/540来源/450配对/75指标15gap区间、独立终验与真实退出全闭合。本轮相对上一轮有小幅平均回升但主区间全跨0；相对原strongmotion RS三面板及12场均值下降，未建立真实整体提升。完整绝对成绩与CI见Docs/research/R_SET_SUPERVISION_A01_RESULTS.md。历史已即时补齐，测试116/187/test封存，不自动开始新因素。
 
 ## 本轮诊断已闭合：训练候选与自由状态差异
 
