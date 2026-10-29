@@ -14,6 +14,7 @@ dependencies = [
     "openexr",  # 读取 Object ID Pass 的 Cryptomatte multilayer EXR
     "pillow",  # 读取 mask PNG（annotate-masks）/ annotate-overlay 调试可视化
     "pydantic",
+    "jsonschema==4.23.0",  # 新单seed闭合schema验证；兼容固定Python3.9
     "six>=1.17.0",
     "typer",
 ]

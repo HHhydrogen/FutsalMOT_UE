@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://futsalmot.local/schemas/v1/trajectory_record.schema.json",
+  "title": "FutsalMOT synthetic trajectory JSONL record v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema", "schema_version", "seed_id", "step", "time_seconds", "players"],
+  "properties": {
+    "schema": {"const": "futsalmot_trajectory_record"}, "schema_version": {"const": "1.0.0"},
+    "seed_id": {"type": "string", "pattern": "^seed_[0-9a-f]{8}$"}, "step": {"type": "integer", "minimum": 0},
+    "time_seconds": {"type": "number", "minimum": 0}, "players": {"type": "array", "minItems": 10, "maxItems": 10, "items": {"$ref": "#/$defs/player_state"}}
+  },
+  "$defs": {
+    "vec3": {"type": "array", "prefixItems": [{"type": "number"}, {"type": "number"}, {"type": "number"}], "minItems": 3, "maxItems": 3},
+    "player_state": {
+      "type": "object", "additionalProperties": false,
+      "required": ["entity_id", "team", "role", "position_m", "velocity_mps", "active"],
+      "properties": {"entity_id": {"enum": ["L0", "L1", "L2", "L3", "L4", "R0", "R1", "R2", "R3", "R4"]}, "team": {"enum": ["L", "R"]}, "role": {"enum": ["player", "goalkeeper"]}, "position_m": {"$ref": "#/$defs/vec3"}, "velocity_mps": {"$ref": "#/$defs/vec3"}, "active": {"type": "boolean"}}
+    }
+  }
+}

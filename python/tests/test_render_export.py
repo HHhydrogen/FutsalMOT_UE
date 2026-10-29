@@ -1,7 +1,10 @@
 """渲染帧选择/对齐纯函数的测试（render_episode.py）。"""
 
 import json
+from pathlib import Path
 from types import SimpleNamespace
+
+import pytest
 
 from render_episode import (
     archive_object_id_frames,
@@ -453,8 +456,14 @@ def test_postprocess_preserves_v1_annotation_path(tmp_path, monkeypatch):
     assert annotations_path.read_text(encoding="utf-8") == original
 
 
+@pytest.fixture
+def metadata_workspace(monkeypatch):
+    """四个fake GRF用例只写小JSON；真实媒体边界由storage_policy独立检查。"""
+    monkeypatch.setattr('grf_ue_bridge.storage_policy.require_dataset_workspace',lambda p:Path(p))
+
+
 def test_task_export_writes_environment_manifest_independently_of_appearance(
-    tmp_path, monkeypatch
+    tmp_path, monkeypatch, metadata_workspace
 ):
     import grf_ue_bridge.workflows.task_export as task_export
     from grf_ue_bridge.environment import environment_catalog_fingerprint
@@ -500,7 +509,7 @@ def test_task_export_writes_environment_manifest_independently_of_appearance(
 
 
 def test_task_export_deletes_only_environment_manifest_created_by_active_run(
-    tmp_path, monkeypatch
+    tmp_path, monkeypatch, metadata_workspace
 ):
     import grf_ue_bridge.workflows.task_export as task_export
     from grf_ue_bridge.environment import environment_catalog_fingerprint
@@ -541,7 +550,7 @@ def test_task_export_deletes_only_environment_manifest_created_by_active_run(
 
 
 def test_task_export_keeps_residual_environment_manifest_when_profile_is_absent(
-    tmp_path, monkeypatch
+    tmp_path, monkeypatch, metadata_workspace
 ):
     import grf_ue_bridge.workflows.task_export as task_export
 
@@ -570,7 +579,7 @@ def test_task_export_keeps_residual_environment_manifest_when_profile_is_absent(
 
 
 def test_task_export_writes_valid_appearance_and_environment_manifests_together(
-    tmp_path, monkeypatch
+    tmp_path, monkeypatch, metadata_workspace
 ):
     import grf_ue_bridge.workflows.task_export as task_export
     from grf_ue_bridge.appearance import (

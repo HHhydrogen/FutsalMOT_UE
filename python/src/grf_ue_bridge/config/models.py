@@ -362,9 +362,9 @@ class AppearanceSkinCandidate(BaseModel):
 
 
 class AppearanceKitCandidate(BaseModel):
-    """一个 Set_01 至 Set_05 的球衣和短裤材质候选。"""
+    """已登记套装；旧目录五套，新目录十五套。"""
 
-    set_id: Literal["01", "02", "03", "04", "05"]
+    set_id: Literal["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13", "14", "15"]
     jersey_material: StrictStr
     shorts_material: StrictStr
 
@@ -428,7 +428,7 @@ class AppearanceCatalog(BaseModel):
 
     mode: Literal["seeded"]
     policy: Literal["futsalmot_appearance_v1", "futsalmot_appearance_v2"]
-    catalog_id: Literal["mpfb_players_003_009_v1", "mpfb_players_003_009_v2"]
+    catalog_id: Literal["mpfb_players_003_009_v1", "mpfb_players_003_009_v2", "mpfb_players_003_009_kits15_v1"]
     models: List[AppearanceModelCandidate]
     skins: List[AppearanceSkinCandidate]
     kits: List[AppearanceKitCandidate]
@@ -444,8 +444,8 @@ class AppearanceCatalog(BaseModel):
     @model_validator(mode="after")
     def validate_candidate_contract(self) -> "AppearanceCatalog":
         if self.policy == "futsalmot_appearance_v1":
-            if self.catalog_id != "mpfb_players_003_009_v1":
-                raise ValueError("appearance v1 catalog_id 必须为 mpfb_players_003_009_v1")
+            if self.catalog_id not in ("mpfb_players_003_009_v1","mpfb_players_003_009_kits15_v1"):
+                raise ValueError("appearance v1 catalog_id 必须为 mpfb_players_003_009_v1 或 mpfb_players_003_009_kits15_v1")
             if self.numbering is not None:
                 raise ValueError("appearance v1 不允许 numbering 配置")
         else:
@@ -468,13 +468,15 @@ class AppearanceCatalog(BaseModel):
         if len(set(skin_ids)) != len(skin_ids):
             raise ValueError("appearance skins.skin_id 存在重复值")
 
-        if len(self.kits) != 5:
-            raise ValueError("appearance kits 必须包含 5 个候选")
+        from ..kit_catalog import kit_ids_for_catalog
+        expected_kit_ids=kit_ids_for_catalog(self.catalog_id)
+        if len(self.kits) != len(expected_kit_ids):
+            raise ValueError("appearance kits 必须包含 {} 个候选".format(len(expected_kit_ids)))
         kit_ids = [kit.set_id for kit in self.kits]
         if len(set(kit_ids)) != len(kit_ids):
             raise ValueError("appearance kits.set_id 存在重复值")
-        if set(kit_ids) != {"01", "02", "03", "04", "05"}:
-            raise ValueError("appearance kits 必须完整覆盖 set_id 01-05")
+        if set(kit_ids) != set(expected_kit_ids):
+            raise ValueError("appearance kits 必须完整覆盖 set_id 01-{}".format(expected_kit_ids[-1]))
         return self
 
 
@@ -483,7 +485,7 @@ class EnvironmentConfig(BaseModel):
 
     mode: Literal["seeded"]
     policy: Literal["futsalmot_environment_v1_5"]
-    catalog_id: Literal["futsalmot_indoor_environment_v1_5"]
+    catalog_id: Literal["futsalmot_indoor_environment_v1_5", "futsalmot_indoor_weather_visual_v2"]
     environment_seed: Optional[StrictInt] = Field(None, ge=0)
     preset: Literal[
         "daylight_clear_v1",
@@ -523,6 +525,10 @@ class UeProfile(BaseModel):
 
     @model_validator(mode="after")
     def reject_mixed_appearance_configuration(self) -> "UeProfile":
+        config = (self.model_extra or {}).get("seeded_episode")
+        if config is not None:
+            from grf_ue_bridge.seeded_episode import enabled
+            enabled({"seeded_episode":config})
         legacy_visuals = (self.model_extra or {}).get("player_visuals")
         if self.appearance is not None and legacy_visuals:
             raise ValueError(
@@ -617,6 +623,7 @@ class ExportConfig(BaseModel):
     scenario: str = Field(..., description="GRF 场景名，例如 '5_vs_5'")
     seed: int = Field(42, description="随机种子，用于可复现")
     num_steps: int = Field(300, description="要运行的步数（GRF 10 FPS 仿真）")
+    stop_on_done: bool = Field(False, description="完整单episode模式：首次done即结束，num_steps仅作采集上限")
     target_fps: int = Field(
         0,
         description=(

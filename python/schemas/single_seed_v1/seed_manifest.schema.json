@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://futsalmot.local/schemas/v1/seed_manifest.schema.json",
+  "title": "FutsalMOT complete synthetic match seed v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema", "schema_version", "dataset_id", "dataset_version", "seed_id", "split", "root_seed", "trajectory_uid", "frame_count", "fps", "camera_ids", "entities", "generation"],
+  "properties": {
+    "schema": {"const": "futsalmot_seed_manifest"}, "schema_version": {"const": "1.0.0"},
+    "dataset_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{2,63}$"}, "dataset_version": {"type": "string", "pattern": "^v[0-9]+_[a-z0-9_]+$"},
+    "seed_id": {"type": "string", "pattern": "^seed_[0-9a-f]{8}$"}, "split": {"enum": ["train", "dev"]},
+    "root_seed": {"type": "string", "pattern": "^[0-9a-f]{8}$"}, "trajectory_uid": {"type": "string", "minLength": 1},
+    "frame_count": {"type": "integer", "minimum": 1}, "fps": {"type": "number", "exclusiveMinimum": 0},
+    "camera_ids": {"type": "array", "items": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,31}$"}, "uniqueItems": true, "minItems": 1},
+    "entities": {"type": "array", "minItems": 10, "maxItems": 10, "items": {"$ref": "#/$defs/entity"}},
+    "generation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["protocol_sha256", "code_bundle_sha256", "attempt_id", "receipt_sha256"],
+      "properties": {"protocol_sha256": {"$ref": "#/$defs/sha256"}, "code_bundle_sha256": {"$ref": "#/$defs/sha256"}, "attempt_id": {"type": "string", "minLength": 1}, "receipt_sha256": {"$ref": "#/$defs/sha256"}}
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "entity": {
+      "type": "object", "additionalProperties": false,
+      "required": ["entity_id", "track_id", "team", "role", "jersey_number", "instance_mask_id", "number_mask_id"],
+      "properties": {
+        "entity_id": {"enum": ["L0", "L1", "L2", "L3", "L4", "R0", "R1", "R2", "R3", "R4"]},
+        "track_id": {"type": "integer", "minimum": 1, "maximum": 10}, "team": {"enum": ["L", "R"]},
+        "role": {"enum": ["player", "goalkeeper"]}, "jersey_number": {"type": "integer", "minimum": 1, "maximum": 99},
+        "instance_mask_id": {"type": "integer", "minimum": 1, "maximum": 10}, "number_mask_id": {"type": "integer", "minimum": 32, "maximum": 41}
+      }
+    }
+  }
+}

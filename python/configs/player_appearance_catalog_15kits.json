@@ -1,0 +1,165 @@
+{
+  "mode": "seeded",
+  "policy": "futsalmot_appearance_v1",
+  "catalog_id": "mpfb_players_003_009_kits15_v1",
+  "models": [
+    {
+      "player_id": 3,
+      "mesh": "/Game/FutsalMOT/Characters/MPFB/Players/Player_003/MPFB_Player_003",
+      "anim_class": "/Game/FutsalMOT/Characters/MPFB/Core/Retarget/ABP_MPFB_RuntimeRetarget",
+      "skeleton": "/Game/FutsalMOT/Characters/MPFB/Core/Skeleton/SKEL_MPFB_Base"
+    },
+    {
+      "player_id": 4,
+      "mesh": "/Game/FutsalMOT/Characters/MPFB/Players/Player_004/Mesh/MPFB_Player_004",
+      "anim_class": "/Game/FutsalMOT/Characters/MPFB/Core/Retarget/ABP_MPFB_RuntimeRetarget",
+      "skeleton": "/Game/FutsalMOT/Characters/MPFB/Core/Skeleton/SKEL_MPFB_Base"
+    },
+    {
+      "player_id": 5,
+      "mesh": "/Game/FutsalMOT/Characters/MPFB/Players/Player_005/Mesh/MPFB_Player_005",
+      "anim_class": "/Game/FutsalMOT/Characters/MPFB/Core/Retarget/ABP_MPFB_RuntimeRetarget",
+      "skeleton": "/Game/FutsalMOT/Characters/MPFB/Core/Skeleton/SKEL_MPFB_Base"
+    },
+    {
+      "player_id": 6,
+      "mesh": "/Game/FutsalMOT/Characters/MPFB/Players/Player_006/Mesh/MPFB_Player_006",
+      "anim_class": "/Game/FutsalMOT/Characters/MPFB/Core/Retarget/ABP_MPFB_RuntimeRetarget",
+      "skeleton": "/Game/FutsalMOT/Characters/MPFB/Core/Skeleton/SKEL_MPFB_Base"
+    },
+    {
+      "player_id": 7,
+      "mesh": "/Game/FutsalMOT/Characters/MPFB/Players/Player_007/Mesh/MPFB_Player_007",
+      "anim_class": "/Game/FutsalMOT/Characters/MPFB/Core/Retarget/ABP_MPFB_RuntimeRetarget",
+      "skeleton": "/Game/FutsalMOT/Characters/MPFB/Core/Skeleton/SKEL_MPFB_Base"
+    },
+    {
+      "player_id": 8,
+      "mesh": "/Game/FutsalMOT/Characters/MPFB/Players/Player_008/Mesh/MPFB_Player_008",
+      "anim_class": "/Game/FutsalMOT/Characters/MPFB/Core/Retarget/ABP_MPFB_RuntimeRetarget",
+      "skeleton": "/Game/FutsalMOT/Characters/MPFB/Core/Skeleton/SKEL_MPFB_Base"
+    },
+    {
+      "player_id": 9,
+      "mesh": "/Game/FutsalMOT/Characters/MPFB/Players/Player_009/Mesh/MPFB_Player_009",
+      "anim_class": "/Game/FutsalMOT/Characters/MPFB/Core/Retarget/ABP_MPFB_RuntimeRetarget",
+      "skeleton": "/Game/FutsalMOT/Characters/MPFB/Core/Skeleton/SKEL_MPFB_Base"
+    }
+  ],
+  "skins": [
+    {
+      "skin_id": "skin-01",
+      "texture": "/Game/FutsalMOT/Characters/MPFB/Textures/Skins/Male/T_MPFB_Skin_Old_Caucasian_Light"
+    },
+    {
+      "skin_id": "skin-02",
+      "texture": "/Game/FutsalMOT/Characters/MPFB/Textures/Skins/Male/T_MPFB_Skin_Old_African_Dark"
+    },
+    {
+      "skin_id": "skin-03",
+      "texture": "/Game/FutsalMOT/Characters/MPFB/Textures/Skins/Male/T_MPFB_Skin_Young_Asian_Light"
+    },
+    {
+      "skin_id": "skin-04",
+      "texture": "/Game/FutsalMOT/Characters/MPFB/Textures/Skins/Male/T_MPFB_Skin_MiddleAge_African_Dark"
+    },
+    {
+      "skin_id": "skin-05",
+      "texture": "/Game/FutsalMOT/Characters/MPFB/Textures/Skins/Male/T_MPFB_Skin_MiddleAge_Caucasian_Light"
+    },
+    {
+      "skin_id": "skin-06",
+      "texture": "/Game/FutsalMOT/Characters/MPFB/Textures/Skins/Male/T_MPFB_Skin_Old_Asian_Light"
+    },
+    {
+      "skin_id": "skin-07",
+      "texture": "/Game/FutsalMOT/Characters/MPFB/Textures/Skins/Male/T_MPFB_Skin_Young_Caucasian_Light"
+    },
+    {
+      "skin_id": "skin-08",
+      "texture": "/Game/FutsalMOT/Characters/MPFB/Textures/Skins/Male/T_MPFB_Skin_MiddleAge_Asian_Light"
+    },
+    {
+      "skin_id": "skin-09",
+      "texture": "/Game/FutsalMOT/Characters/MPFB/Textures/Skins/Male/T_MPFB_Skin_Young_African_Dark"
+    }
+  ],
+  "kits": [
+    {
+      "set_id": "01",
+      "jersey_material": "/Game/FutsalMOT/Characters/MPFB/Materials/M_MPFB_Jersey_Set_01",
+      "shorts_material": "/Game/FutsalMOT/Characters/MPFB/Materials/M_MPFB_Shorts_Set_01"
+    },
+    {
+      "set_id": "02",
+      "jersey_material": "/Game/FutsalMOT/Characters/MPFB/Materials/M_MPFB_Jersey_Set_02",
+      "shorts_material": "/Game/FutsalMOT/Characters/MPFB/Materials/M_MPFB_Shorts_Set_02"
+    },
+    {
+      "set_id": "03",
+      "jersey_material": "/Game/FutsalMOT/Characters/MPFB/Materials/M_MPFB_Jersey_Set_03",
+      "shorts_material": "/Game/FutsalMOT/Characters/MPFB/Materials/M_MPFB_Shorts_Set_03"
+    },
+    {
+      "set_id": "04",
+      "jersey_material": "/Game/FutsalMOT/Characters/MPFB/Materials/M_MPFB_Jersey_Set_04",
+      "shorts_material": "/Game/FutsalMOT/Characters/MPFB/Materials/M_MPFB_Shorts_Set_04"
+    },
+    {
+      "set_id": "05",
+      "jersey_material": "/Game/FutsalMOT/Characters/MPFB/Materials/M_MPFB_Jersey_Set_05",
+      "shorts_material": "/Game/FutsalMOT/Characters/MPFB/Materials/M_MPFB_Shorts_Set_05"
+    },
+    {
+      "set_id": "06",
+      "jersey_material": "/Game/FutsalMOT/Characters/MPFB/Materials/M_MPFB_Jersey_Set_06",
+      "shorts_material": "/Game/FutsalMOT/Characters/MPFB/Materials/M_MPFB_Shorts_Set_06"
+    },
+    {
+      "set_id": "07",
+      "jersey_material": "/Game/FutsalMOT/Characters/MPFB/Materials/M_MPFB_Jersey_Set_07",
+      "shorts_material": "/Game/FutsalMOT/Characters/MPFB/Materials/M_MPFB_Shorts_Set_07"
+    },
+    {
+      "set_id": "08",
+      "jersey_material": "/Game/FutsalMOT/Characters/MPFB/Materials/M_MPFB_Jersey_Set_08",
+      "shorts_material": "/Game/FutsalMOT/Characters/MPFB/Materials/M_MPFB_Shorts_Set_08"
+    },
+    {
+      "set_id": "09",
+      "jersey_material": "/Game/FutsalMOT/Characters/MPFB/Materials/M_MPFB_Jersey_Set_09",
+      "shorts_material": "/Game/FutsalMOT/Characters/MPFB/Materials/M_MPFB_Shorts_Set_09"
+    },
+    {
+      "set_id": "10",
+      "jersey_material": "/Game/FutsalMOT/Characters/MPFB/Materials/M_MPFB_Jersey_Set_10",
+      "shorts_material": "/Game/FutsalMOT/Characters/MPFB/Materials/M_MPFB_Shorts_Set_10"
+    },
+    {
+      "set_id": "11",
+      "jersey_material": "/Game/FutsalMOT/Characters/MPFB/Materials/M_MPFB_Jersey_Set_11",
+      "shorts_material": "/Game/FutsalMOT/Characters/MPFB/Materials/M_MPFB_Shorts_Set_11"
+    },
+    {
+      "set_id": "12",
+      "jersey_material": "/Game/FutsalMOT/Characters/MPFB/Materials/M_MPFB_Jersey_Set_12",
+      "shorts_material": "/Game/FutsalMOT/Characters/MPFB/Materials/M_MPFB_Shorts_Set_12"
+    },
+    {
+      "set_id": "13",
+      "jersey_material": "/Game/FutsalMOT/Characters/MPFB/Materials/M_MPFB_Jersey_Set_13",
+      "shorts_material": "/Game/FutsalMOT/Characters/MPFB/Materials/M_MPFB_Shorts_Set_13"
+    },
+    {
+      "set_id": "14",
+      "jersey_material": "/Game/FutsalMOT/Characters/MPFB/Materials/M_MPFB_Jersey_Set_14",
+      "shorts_material": "/Game/FutsalMOT/Characters/MPFB/Materials/M_MPFB_Shorts_Set_14"
+    },
+    {
+      "set_id": "15",
+      "jersey_material": "/Game/FutsalMOT/Characters/MPFB/Materials/M_MPFB_Jersey_Set_15",
+      "shorts_material": "/Game/FutsalMOT/Characters/MPFB/Materials/M_MPFB_Shorts_Set_15"
+    }
+  ],
+  "body_texture_parameter": "SkinTexture"
+}

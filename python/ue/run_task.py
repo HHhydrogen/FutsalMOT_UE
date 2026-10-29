@@ -133,6 +133,10 @@ def _apply_resolved_anchor_cameras(camera_entries, annotation_cfg):
             False,
         )
         lens = profile.get("lens") or {}
+        if profile.get('filmback_mm') is not None:
+            filmback = component.get_editor_property('filmback')
+            filmback.sensor_width,filmback.sensor_height = profile['filmback_mm']
+            component.set_editor_property('filmback',filmback)
         if lens.get("focal_length_mm") is not None:
             component.set_editor_property("current_focal_length", float(lens["focal_length_mm"]))
         actual_location = actor.get_actor_location()
@@ -237,6 +241,8 @@ def _render_appearance_options(prepared, _render_context):
 
 def _render_environment_options(prepared):
     """返回渲染规划所需的 environment 可移植 metadata。"""
+    if isinstance(prepared, _SeededEnvironmentPrepared):
+        prepared = prepared.weather
     if prepared is None:
         return {}
     manifest = prepared.get("manifest") or {}
@@ -945,6 +951,36 @@ def _apply_prepared_environment(prepared):
     )
 
 
+class _SeededEnvironmentPrepared:
+    """将新地板纳入现有结束事务；天气逻辑保持原入口。"""
+    def __init__(self, weather, floor):
+        self.weather, self.floor = weather, floor
+
+    def apply(self):
+        weather = _apply_prepared_environment(self.weather) if self.weather is not None else None
+        try:
+            floor = self.floor.apply()
+        except BaseException:
+            if weather is not None:
+                weather.restore('floor_apply_failed')
+            raise
+        return _combine_environment_appearance_transactions(weather,floor)
+
+
+def _prepare_seeded_environment(profile, mode, episode_dir, environment_prepared):
+    from grf_ue_bridge.seeded_episode import enabled, load_episode_recipe
+    if not enabled(profile) or mode not in ('full','render','sequence','annotations'):
+        return environment_prepared
+    recipe = load_episode_recipe(episode_dir,profile)
+    floor = recipe['components'].get('floor')
+    if floor is None:
+        return environment_prepared
+    from episode_floor import FloorSession
+    session = FloorSession(floor,Path(episode_dir)/'provenance/floor_application.json')
+    session.preflight()
+    return _SeededEnvironmentPrepared(environment_prepared,session)
+
+
 def _apply_prepared_environment_and_appearance(environment_prepared, appearance_prepared):
     """按顺序应用两笔独立事务，失败时回滚已成功应用的另一笔。"""
     environment_transaction = None
@@ -1509,6 +1545,8 @@ def main() -> int:
     camera_entries = camera_selection["entries"]
     appearance_requested = _appearance_enabled_for_mode(ue_profile, mode)
     environment_requested = _environment_enabled_for_mode(ue_profile, mode)
+    from grf_ue_bridge.seeded_episode import enabled as seeded_episode_enabled
+    environment_requested = environment_requested or seeded_episode_enabled(ue_profile)
     if camera_selection["canonical"] and not appearance_requested and not environment_requested:
         _apply_resolved_anchor_cameras(camera_entries, ann_cfg)
     seq_list = camera_selection["sequences"]
@@ -1577,6 +1615,9 @@ def main() -> int:
             rt.get("repo_root", episode_dir.parent),
             rt.get("task_id", "task"),
             normalized_player_visuals,
+        )
+        environment_prepared = _prepare_seeded_environment(
+            ue_profile,mode,episode_dir,environment_prepared
         )
     except (OSError, TypeError, ValueError, RuntimeError) as exc:
         return _fail(str(exc))

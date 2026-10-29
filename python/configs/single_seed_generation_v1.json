@@ -1,0 +1,55 @@
+{
+  "schema": "futsalmot_single_seed_request_v1",
+  "dataset_id": "futsalmot_single_seed_check",
+  "dataset_version": "v1_single_seed_4k_weather_v2_a09",
+  "diagnostic_only": true,
+  "schema_split_value": "dev",
+  "root_seed": 1048,
+  "scenario": "5_vs_5",
+  "game_duration": 3000,
+  "source_step_limit": 4000,
+  "fps": 10,
+  "resolution": [
+    3840,
+    2160
+  ],
+  "field_size_m": [
+    40.0,
+    20.0
+  ],
+  "team_difficulty": [
+    0.5,
+    0.5
+  ],
+  "short_sample_frames": 30,
+  "appearance_catalog": "python/configs/player_appearance_catalog_15kits.json",
+  "camera_rig": "python/configs/camera_rig_v2.json",
+  "number_profile": "python/configs/number_typography_v2.json",
+  "weather": "seeded_auto_visual_v2",
+  "weather_catalog_id": "futsalmot_indoor_weather_visual_v2",
+  "floor": "seeded_green_v2",
+  "pose_schema_id": "futsal_body12_v1",
+  "pose_visibility": "unknown_0",
+  "truncation_rule": "projected_animated_mesh_bounds_intersect_image_and_extend_outside",
+  "person_visibility_rule": "positive_mask_visible_fully_outside_bounds_out_of_frame_else_unknown",
+  "number_readable_rule": "true_only_if_manually_certified_else_false",
+  "number_view_rule": "actor_back_direction_dot_to_camera_threshold_0.5",
+  "number_instance_pixel_mismatch_max": 0,
+  "schema_version": "1.0.0",
+  "short_attempt_limit": 2,
+  "storage": {
+    "stage_limit_bytes": 1099511627776,
+    "min_free_bytes": 107374182400,
+    "success_retention_hours": 24,
+    "failure_retention_days": 7
+  },
+  "render_execution": {
+    "mode": "one_editor_per_camera",
+    "write_concurrency": 8,
+    "write_queue": 8,
+    "physical_admission_gib": 8,
+    "commit_admission_gib": 24,
+    "commit_cancel_gib": 8,
+    "physical_cancel_gib": 2
+  }
+}

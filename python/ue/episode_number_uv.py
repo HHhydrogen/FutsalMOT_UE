@@ -2,39 +2,14 @@
 
 import json
 import time
+import sys
 from pathlib import Path
 
-from jersey_number_uv_contract import ENTITY_IDS, DEFAULT_UV_RECT, assign_numbers, canonical_fingerprint, material_parameters
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src'))
+from grf_ue_bridge.number_uv_plan import PLAN_SCHEMA, RENDER_POLICY, build_plan
 
-PLAN_SCHEMA = "futsalmot_episode_uv_numbers_v1"
-RENDER_POLICY = "futsalmot_appearance_v1_uv_numbers"
 _ACTIVE = None
 
-
-def build_plan(manifest, config):
-    """从已绑定的完整随机外观清单派生号码，保留所有原分配。"""
-    if manifest.get("policy") != "futsalmot_appearance_v1":
-        raise ValueError("UV叠加入口要求原 appearance v1 完整随机清单")
-    entities = manifest.get("entities", [])
-    if [e.get("entity_id") for e in entities] != list(ENTITY_IDS):
-        raise ValueError("外观清单必须包含固定身份顺序的十人")
-    numbers = assign_numbers(manifest["ue_visual_seed"])
-    rect = config.get("uv_rect", list(DEFAULT_UV_RECT))
-    result = {"schema": PLAN_SCHEMA, "version": 1,
-              "appearance_fingerprint": manifest["fingerprint"],
-              "trajectory_sha256": manifest["trajectory_sha256"],
-              "episode_id": manifest["episode_id"], "ue_visual_seed": manifest["ue_visual_seed"],
-              "uv_rect": rect, "flip_u": config.get("flip_u", True),
-              "flip_v": config.get("flip_v", True), "entities": []}
-    for i, entity in enumerate(entities):
-        material_parameters(numbers[entity["entity_id"]], entity["entity_id"], rect,
-                            flip_u=result["flip_u"], flip_v=result["flip_v"])
-        # 原Set_02为白球衣，使用黑色数字；其余保持已验白色印花。
-        ink = [0.0, 0.0, 0.0] if entity["kit_set_id"] == "02" else [1.0, 1.0, 1.0]
-        result["entities"].append(dict(entity, jersey_number=numbers[entity["entity_id"]],
-                                       instance_mask_id=i + 1, number_mask_id=32 + i, ink_color=ink))
-    result["fingerprint"] = canonical_fingerprint(result)
-    return result
 
 
 def _object_result(value, label):
@@ -66,10 +41,17 @@ class NumberSession:
         from jersey_number_uv_build_preview import TEXTURE_PATH
         from jersey_number_uv_build_mask_preview import MASKED_PATH, EMPTY_PATH, POST_PROCESS_PATH
         library = unreal.JerseyNumberUVLibrary
-        assets = {p: unreal.load_asset(p) for p in (TEXTURE_PATH, MASKED_PATH, EMPTY_PATH, POST_PROCESS_PATH)}
+        texture_path = TEXTURE_PATH
+        if self.plan.get('atlas') is not None:
+            from grf_ue_bridge.number_typography import atlas_profile
+            expected=atlas_profile(self.plan['atlas']['id'])
+            if expected != self.plan['atlas']:
+                raise RuntimeError('号码字体清单与目录不符')
+            texture_path=expected['texture']
+        assets = {p: unreal.load_asset(p) for p in (texture_path, MASKED_PATH, EMPTY_PATH, POST_PROCESS_PATH)}
         if not all(assets.values()):
             raise RuntimeError("号码图集或mask材质不存在")
-        self.atlas = assets[TEXTURE_PATH]
+        self.atlas = assets[texture_path]
         # 限时驻留覆盖此任务；退出时显式释放，不改全局streaming或资产设置。
         self.atlas.set_force_mip_levels_to_be_resident(3600.0, 0)
         self.expires_at = time.time() + 3600
@@ -111,6 +93,8 @@ class NumberSession:
                     "number_material": beauty.get_path_name(), "base_material": entity["jersey_material"]})
             self.report.update(state="applied", post_process_material=POST_PROCESS_PATH,
                                residency_expires_at=self.expires_at)
+            if self.plan.get('atlas') is not None:
+                self.report['atlas']=self.plan['atlas']
             self._write()
             return self
         except Exception:

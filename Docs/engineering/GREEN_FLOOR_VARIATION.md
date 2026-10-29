@@ -1,5 +1,30 @@
 # 原版绿色草地的有限变化
 
+## 2026-10-29：细草纹与三档绿色，a02已获用户确认
+
+用户已确认a02：UV=60、Normal Flatness=0.90、条带±18%、深/标准/浅线性增益0.60/1.00/1.50，作为后续新生成的绿色目录。以下a01/a02实施过程保留历史；第2项统一入口现已接入该目录，见[统一每场配置](SEEDED_APPEARANCE_UV_NUMBERS.md#统一每场seed配置入口2026-10-29)。
+
+最新a02：用户认为a01条带及三档深浅差距过小，要求加强。保留UV=60与Flatness=0.90，将条带对比由±5%改为±18%（系数0.82/1.18），深/标准/浅增益由0.85/1.00/1.15改为0.60/1.00/1.50。三档真实UE参数读回通过，新增3张同位置/旋转/FOV的干净detail截图，与a01标准截图复用对照，未重新渲染旧版；针对新目录的1项检查通过。a02媒体在`G:/FutsalMOT_Dataset/test/grass_detail_v2_a02/review/grass_review_overview.png`，24小时清理；小收据`Saved/FloorDiversity/green_v2/revision_a02/complete.json`，日志`Saved/Pose17Development/editor_green_texture_v2_a02.log`。原槽恢复、dirty/PIE/MRQ为空、UE正常退出，继续等待第1项人工验收，未推进第2项。下文a01初版数值保留为修改历史，不作为当前参数。
+
+用户要求后续弃用蓝色、红棕色地板，改用不同深浅绿色，并减小过大、过强的草纹。本次为用户五项任务中的第1项；完成后停下等待人工验收，第2项随机系统整合、第3项全部相机调整及单seed生成尚未执行。下文GreenV1为历史方案，当前新候选以本节GreenV2为准。
+
+真实UE中读取原图确认：BaseColor/Normal/ORM共享UV×15，FlattenNormal的Flatness为0.70，世界坐标深浅条带为0.85/1.15。创建`/Game/FutsalMOT/Environment/Floors/GreenV2/M_GrassDetail_v2`，复用原草地母图与贴图，暴露以下实例参数：
+
+| 参数 | 原版 | 新版 | 作用 |
+| --- | --- | --- | --- |
+| GrassUVTiling | 15 | 60 | 草纹在同一表面方向缩到原来的1/4；BaseColor、Normal和ORM保持同尺度 |
+| GrassNormalFlatness | 0.70 | 0.90 | 减弱草纹凹凸，复用原FlattenNormal函数 |
+| GrassStripeContrast | ±0.15 | ±0.05 | 条带系数改为0.95/1.05，保留方向与4米周期 |
+| GreenAlbedoGain | 原实例1.00 | 深0.85 / 标准1.00 / 浅1.15 | 三通道等比例，仅改变深浅，不引入蓝/红棕候选 |
+
+新实例为`MI_grass_dark_v2`、`MI_grass_standard_v2`、`MI_grass_light_v2`。`python/src/grf_ue_bridge/grass_detail.py::grass_recipe`提供新绿色候选入口，复用既有`futsalmot:floor:v1`独立选择算法，每场固定。历史`floor_diversity.CATALOG`及GreenV1不改字节含义；旧默认选择器为历史兼容保留，新生成通过新入口选择三档绿色。统一运行入口的接线属于待验收后的第2项，当前不声称旧task已自动切换。
+
+真实材质创建/参数读回通过；5项针对检查通过（旧GreenV1兼容及新目录的独立seed、顺序稳定、拒绝蓝/红棕）。八张干净验收截图为原版及三档新版各两视角，来自实际Editor Game View，同相机位置/旋转/FOV；这是静态材质视觉检查，未执行MRQ或生成Pose/实例/号码GT，不替代单seed端到端验收。最初截图出现编辑辅助图标，显式Game View后重新获取；初次overview位置被场馆结构遮挡，排除在对比外，未改任何生产相机。
+
+媒体只在`G:/FutsalMOT_Dataset/test/grass_detail_v2_a01/`，`review/grass_review_overview.png`为三档总览，`review/grass_texture_before_after.png`为原像素裁剪，均仅排版/裁剪，不锐化或改色；按既有24小时test收据清理。小证据位于`Saved/FloorDiversity/green_v2/creation_complete.json`、`preview_state.json`和日志`Saved/Pose17Development/editor_green_texture_v2_a01.log`。原母材质SHA未变，原地板槽已恢复，dirty/PIE/MRQ为空，UE已正常退出。新资产已保存，未发布数据、未提交Git，当前等待用户视觉确认。
+
+## 以下为2026-10-26的GreenV1历史方案
+
 2026-10-26，按用户最新要求调整后续数据方向：主训练数据以原版绿色草地为基底，使用合理的色调和明暗变化；蓝/红版本保留作已有诊断，不再作为下一轮主训练数据。不覆盖旧数据、冻结协议或失败收据。
 
 ## 真实材质核验

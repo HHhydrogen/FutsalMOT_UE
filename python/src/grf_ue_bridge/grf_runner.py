@@ -150,6 +150,7 @@ def run_episode(
     left_team_difficulty: Optional[float] = None,
     right_team_difficulty: Optional[float] = None,
     builtin_ai_action_index: int = _BUILTIN_AI_ACTION_INDEX,
+    stop_on_done: bool = False,
     **kwargs,
 ) -> EpisodeResult:
     """在 GRF 环境中运行一个 episode 并记录所有步。
@@ -210,6 +211,8 @@ def run_episode(
         )
         snapshots.append(snapshot)
 
+        if done and stop_on_done:
+            break
         if done:
             obs = env.reset()
             _apply_scenario_overrides(
@@ -224,7 +227,7 @@ def run_episode(
     return EpisodeResult(
         scenario=scenario,
         seed=root_seed,
-        num_steps=num_steps,
+        num_steps=len(snapshots),
         steps_left_at_start=steps_left_at_start,
         score=tuple(final_score),
         snapshots=snapshots,

@@ -10,6 +10,8 @@
 
 ## 环境与入口
 
+当前新生成使用[单seed冻结配置](configs/single_seed_generation_v1.json)：4K、8/8写出、每机位独立UE、十五套球衣/号码v2、GreenV2和天气视觉v2。准备、冻结、分机位采集及导出步骤见[固化入口](../Docs/production/SINGLE_SEED_BASELINE_V1.md)。六机位180帧短样及标注导出已通过；完整3001帧和总数据集发布尚未执行。下方既有正式数据保持原版本。
+
 | 阶段 | 环境 | 入口 |
 | --- | --- | --- |
 | P1轨迹及后处理 | Python3.9固定，.venv | grf-ue task |
@@ -38,7 +40,7 @@ uv run pytest
 - [FLOOR_DIVERSITY.md](../Docs/engineering/FLOOR_DIVERSITY.md)：独立seed地板因子与UE资产只读验收入口。
 - [实验协议](../experiments/sim2real/README.md)：真实足球检测和追踪对照。
 
-基准full，其余quick/basic如实记录；全部生成mask/bbox不等于全部做像素审计。号码尚未验收，正式数据关闭号码和Pose。
+基准full，其余quick/basic如实记录；全部生成mask/bbox不等于全部做像素审计。旧v1正式数据关闭号码和Pose；当前已验号码v2仅进入新的单seed流程。
 
 ## Pose研究开发
 
@@ -52,4 +54,4 @@ uv run pytest
 
 unknown可见性与位置有效性分开，全缺点人物仍保留框。P1不安装Torch，研究依赖独立；GPU研究训练与UE渲染串行，最终test116/187封存。
 
-UE与Python在项目根精确暂存，一次提交并push到FutsalMOT_UE；不再更新gitlink或推送旧Python远端。用户已明确要求提交时无需重复确认；无授权不提交。未完成号码开发保留在工作树但排除提交。数据、权重、.venv、.external、.futsalmot和Saved等本机产物不入Git。
+UE与Python在项目根精确暂存，一次提交并push到FutsalMOT_UE；不再更新gitlink或推送旧Python远端。用户已明确要求提交时无需重复确认；无授权不提交。已验号码及单seed依赖可按用户授权提交；无关未验研究WIP保留在工作树。数据、权重、.venv、.external、.futsalmot和Saved等本机产物不入Git。

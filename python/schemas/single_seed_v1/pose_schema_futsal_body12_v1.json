@@ -1,0 +1,12 @@
+{
+  "schema": "futsalmot_pose_schema",
+  "schema_version": "1.0.0",
+  "pose_schema_id": "futsal_body12_v1",
+  "source_reference": "FutsalMOT_UEDataset Docs/engineering/DATA_CONTRACT.md production limb keypoint order",
+  "coordinate_spaces": ["image_pixel", "world_meter"],
+  "keypoint_count": 12,
+  "keypoint_order": ["left_shoulder", "right_shoulder", "left_elbow", "right_elbow", "left_wrist", "right_wrist", "left_hip", "right_hip", "left_knee", "right_knee", "left_ankle", "right_ankle"],
+  "visibility_values": {"0": "unknown_or_invalid", "1": "occluded", "2": "visible"},
+  "bbox_convention": "half_open_xyxy_pixel_bounds",
+  "note": "v1 frozen proposal for planning; any change before production requires a new schema version and a regenerated dataset version. Historical filenames do not change this contract."
+}

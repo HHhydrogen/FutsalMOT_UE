@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://futsalmot.local/schemas/v1/camera_state.schema.json",
+  "title": "FutsalMOT actual per-frame camera state v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema", "schema_version", "camera_id", "frame_index", "width", "height", "position_m", "rotation_deg", "focal_length_mm", "horizontal_fov_deg"],
+  "properties": {
+    "schema": {"const": "futsalmot_camera_state"}, "schema_version": {"const": "1.0.0"},
+    "camera_id": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,31}$"}, "frame_index": {"type": "integer", "minimum": 1}, "width": {"type": "integer", "minimum": 1}, "height": {"type": "integer", "minimum": 1},
+    "position_m": {"type": "array", "prefixItems": [{"type": "number"}, {"type": "number"}, {"type": "number"}], "minItems": 3, "maxItems": 3},
+    "rotation_deg": {"type": "array", "prefixItems": [{"type": "number"}, {"type": "number"}, {"type": "number"}], "minItems": 3, "maxItems": 3},
+    "focal_length_mm": {"type": "number", "exclusiveMinimum": 0}, "horizontal_fov_deg": {"type": "number", "exclusiveMinimum": 0, "maximum": 180}
+  }
+}

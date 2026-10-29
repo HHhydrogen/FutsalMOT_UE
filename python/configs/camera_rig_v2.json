@@ -1,0 +1,211 @@
+{
+  "catalog_id": "sideline_corners_partial_v2",
+  "resolution": [
+    3840,
+    2160
+  ],
+  "filmback_mm": [
+    23.76,
+    13.365
+  ],
+  "profiles": {
+    "C5": {
+      "label": "长边全场主视角",
+      "actor": "CineCam_Main",
+      "sequence": "LS_CameraV2_C5",
+      "position_m": [
+        0.0,
+        -19.7,
+        11.7
+      ],
+      "rotation_deg": [
+        -30.0,
+        90.0,
+        0.0
+      ],
+      "focal_length_mm": 8.0,
+      "coverage": "full_field",
+      "target_m": [
+        0.0,
+        -0.993851278,
+        0.9
+      ]
+    },
+    "C1": {
+      "label": "四角视角C1",
+      "actor": "CineCam_01",
+      "sequence": "LS_CameraV2_C1",
+      "position_m": [
+        24.0,
+        14.0,
+        9.0
+      ],
+      "rotation_deg": [
+        -33.288868796,
+        -135.0,
+        0.0
+      ],
+      "focal_length_mm": 13.5,
+      "coverage": "corner_overview",
+      "target_m": [
+        15.276923077,
+        5.276923077,
+        0.9
+      ]
+    },
+    "C2": {
+      "label": "四角视角C2",
+      "actor": "CineCam_02",
+      "sequence": "LS_CameraV2_C2",
+      "position_m": [
+        -24.0,
+        14.0,
+        9.0
+      ],
+      "rotation_deg": [
+        -33.288868796,
+        -45.0,
+        0.0
+      ],
+      "focal_length_mm": 13.5,
+      "coverage": "corner_overview",
+      "target_m": [
+        -15.276923077,
+        5.276923077,
+        0.9
+      ]
+    },
+    "C3": {
+      "label": "四角视角C3",
+      "actor": "CineCam_03",
+      "sequence": "LS_CameraV2_C3",
+      "position_m": [
+        -24.0,
+        -14.0,
+        9.0
+      ],
+      "rotation_deg": [
+        -33.288868796,
+        45.0,
+        0.0
+      ],
+      "focal_length_mm": 13.5,
+      "coverage": "corner_overview",
+      "target_m": [
+        -15.276923077,
+        -5.276923077,
+        0.9
+      ]
+    },
+    "C4": {
+      "label": "四角视角C4",
+      "actor": "CineCam_04",
+      "sequence": "LS_CameraV2_C4",
+      "position_m": [
+        24.0,
+        -14.0,
+        9.0
+      ],
+      "rotation_deg": [
+        -33.288868796,
+        135.0,
+        0.0
+      ],
+      "focal_length_mm": 13.5,
+      "coverage": "corner_overview",
+      "target_m": [
+        15.276923077,
+        -5.276923077,
+        0.9
+      ]
+    },
+    "P01": {
+      "label": "左半场侧视角",
+      "actor": "CineCam_P01",
+      "sequence": "LS_CameraV2_P01",
+      "position_m": [
+        -11.0,
+        -18.0,
+        8.0
+      ],
+      "rotation_deg": [
+        -21.526479721,
+        90.0,
+        0.0
+      ],
+      "focal_length_mm": 18.0,
+      "coverage": "partial_field",
+      "target_m": [
+        -11.0,
+        1.03e-07,
+        0.9
+      ]
+    },
+    "P02": {
+      "label": "右半场侧视角",
+      "actor": "CineCam_P02",
+      "sequence": "LS_CameraV2_P02",
+      "position_m": [
+        11.0,
+        -18.0,
+        8.0
+      ],
+      "rotation_deg": [
+        -21.526479721,
+        90.0,
+        0.0
+      ],
+      "focal_length_mm": 18.0,
+      "coverage": "partial_field",
+      "target_m": [
+        11.0,
+        1.03e-07,
+        0.9
+      ]
+    },
+    "P03": {
+      "label": "左球门后视角",
+      "actor": "CineCam_P03",
+      "sequence": "LS_CameraV2_P03",
+      "position_m": [
+        -26.0,
+        0.0,
+        7.0
+      ],
+      "rotation_deg": [
+        -18.0,
+        0.0,
+        0.0
+      ],
+      "focal_length_mm": 22.0,
+      "coverage": "partial_field",
+      "target_m": [
+        -7.226130423,
+        0.0,
+        0.9
+      ]
+    },
+    "P04": {
+      "label": "右球门后视角",
+      "actor": "CineCam_P04",
+      "sequence": "LS_CameraV2_P04",
+      "position_m": [
+        26.0,
+        -0.0,
+        7.0
+      ],
+      "rotation_deg": [
+        -18.0,
+        180.0,
+        0.0
+      ],
+      "focal_length_mm": 22.0,
+      "coverage": "partial_field",
+      "target_m": [
+        7.226130423,
+        0.0,
+        0.9
+      ]
+    }
+  }
+}

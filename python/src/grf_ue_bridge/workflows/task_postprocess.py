@@ -144,6 +144,13 @@ def run_postprocess(
     requirements = resolve_task_requirements(resolved)
     dataset = Path(resolved.dataset_episode_dir)
     traj = Path(resolved.trajectory_output)
+    from grf_ue_bridge.seeded_episode import enabled, load_episode_recipe
+    if enabled(resolved.ue_profile or {}):
+        recipe = load_episode_recipe(traj,resolved.ue_profile)
+        if 'floor' in recipe['components']:
+            floor_report = json.loads((traj/'provenance/floor_application.json').read_text(encoding='utf-8'))
+            if floor_report.get('state') != 'restored' or floor_report.get('recipe') != recipe['components']['floor']:
+                raise ValueError('统一随机地板未完成匹配的应用/恢复，拒绝后处理')
     mapping = Path(resolved.actor_mapping)
 
     yolo_pose = pp.get("yolo_pose") or {}

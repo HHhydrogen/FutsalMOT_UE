@@ -342,7 +342,7 @@ def validate_environment_inputs(
         errors.append("environment profile mode 必须为 seeded")
     if profile.get("policy") != ENVIRONMENT_POLICY:
         errors.append("environment profile policy 不匹配")
-    if profile.get("catalog_id") != ENVIRONMENT_CATALOG_ID:
+    if profile.get("catalog_id") not in (ENVIRONMENT_CATALOG_ID, "futsalmot_indoor_weather_visual_v2"):
         errors.append("environment profile catalog_id 不匹配")
     errors.extend(_validate_environment_manifest_inputs(manifest, profile, meta, Path(frames_path)))
     return list(dict.fromkeys(errors))

@@ -9,6 +9,7 @@ import tempfile
 from copy import deepcopy
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Mapping, Tuple
+from .kit_catalog import kit_ids_for_catalog
 
 
 APPEARANCE_POLICY = "futsalmot_appearance_v1"
@@ -138,8 +139,9 @@ def _normalize_catalog(catalog: Mapping[str, Any]) -> Dict[str, Any]:
         _require_game_path(skin.get("texture"), f"skins[{index}].texture")
 
     kits = normalized.get("kits")
-    if not isinstance(kits, list) or len(kits) != len(KIT_IDS):
-        raise ValueError("appearance kits 必须包含 5 个候选")
+    expected_kit_ids=kit_ids_for_catalog(normalized['catalog_id'])
+    if not isinstance(kits, list) or len(kits) != len(expected_kit_ids):
+        raise ValueError("appearance kits 必须包含 {} 个候选".format(len(expected_kit_ids)))
     kit_ids = []
     for index, kit in enumerate(kits):
         if not isinstance(kit, Mapping):
@@ -152,8 +154,8 @@ def _normalize_catalog(catalog: Mapping[str, Any]) -> Dict[str, Any]:
         kit_ids.append(set_id)
         _require_game_path(kit.get("jersey_material"), f"kits[{index}].jersey_material")
         _require_game_path(kit.get("shorts_material"), f"kits[{index}].shorts_material")
-    if tuple(sorted(kit_ids)) != KIT_IDS:
-        raise ValueError("kits 必须完整覆盖 set_id 01-05")
+    if tuple(sorted(kit_ids)) != expected_kit_ids:
+        raise ValueError("kits 必须完整覆盖 set_id 01-{}".format(expected_kit_ids[-1]))
 
     return normalized
 

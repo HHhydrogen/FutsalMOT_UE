@@ -22,9 +22,13 @@
 - [数据契约](engineering/DATA_CONTRACT.md)与[验证和限制](engineering/VALIDATION_AND_LIMITATIONS.md)。
 - [统一仓库目录](engineering/REPOSITORY_LAYOUT.md)：Python、实验、Saved与研究环境的当前边界。
 - [GPU渲染/CPU-LBS](engineering/POSE17_GPU_RENDER_CPU_LBS.md)、[离线蒙皮诊断](engineering/POSE17_OFFLINE_LBS_DIAGNOSTIC.md)及[头部标定来源](engineering/POSE17_HEAD_SURFACE_CALIBRATION.md)。
-- [天气光照系统](engineering/WEATHER_LIGHTING_SYSTEM.md)与[地板随机流](engineering/FLOOR_DIVERSITY.md)。
+- [天气光照系统](engineering/WEATHER_LIGHTING_SYSTEM.md)、[天气视觉v2/4K标准](engineering/WEATHER_LIGHTING_VISUAL_V2.md)与[地板随机流](engineering/FLOOR_DIVERSITY.md)。
 - [Pose接回原seed球衣系统](engineering/POSE_SEEDED_KIT_INTEGRATION.md)：复用appearance v1清单；定位独立Pose入口未应用及native清空材质的断点，v9后按同运动/相机验证。
 - [完整随机外观下的UV号码与数字标注](engineering/SEEDED_APPEARANCE_UV_NUMBERS.md)：五套球衣保留原输入，同MRQ job号码通道、线性EXR转整数mask及可见bbox；10帧真实联调与失败/恢复记录，临时媒体进入G盘test并定时清理。
+- [统一每场seed配置入口](engineering/SEEDED_APPEARANCE_UV_NUMBERS.md#统一每场seed配置入口2026-10-29)：集中记录并接线既有外观、UV号码、天气及已确认GreenV2；独立随机算法和旧task保持兼容，随机相机现已在第3项接入。
+- [长边主视角、四角与随机局部机位](engineering/SEEDED_CAMERA_RIG_V2.md)：五个必选加四候选中随机1–2个；已同步手调机位并扩大P03/P04范围，九视角方案已确认，旧候选六机位MRQ证据单列。
+- [十五套球衣随机库](engineering/SEEDED_KIT_CATALOG_15.md)：库存01–15全部纳入新目录，补齐06–15号码材质及墨色，旧五套目录保持可复现。
+- [单seed渲染前功能核对](engineering/SINGLE_SEED_READINESS_AUDIT.md)：对照原方案列出完整episode、同帧body12/相机、新标注、精简导出和校验的实际缺项，补齐后才进入试样。
 - [MCP Python执行范围](engineering/PYTHON_EXECUTION_SCOPE.md)：保持项目内执行边界，不为路径迁移放宽权限。
 
 ## production：批次、资产与输出
@@ -80,3 +84,6 @@
 - [零更新分数与输出政策账本](research/TRACKING_POLICY_LEDGER_A01.md)及[完整结果](research/TRACKING_POLICY_LEDGER_A01_RESULTS.md)：12唯一源/114旧输出/936212发出行全量终验、进程退出；七场GT几何候选覆盖从`>0.6`的52.1307%到`>0.25`的88.4358%，仅候选机会而非收益。内部状态unknown，下一候选只改单一OC门槛，尚未执行，不扩数据或加训。
 - [OC门槛0.6→0.25单因素协议](research/OCSORT_THRESHOLD025_A01.md)及[完整结果](research/OCSORT_THRESHOLD025_A01_RESULTS.md)：真实准入/12新追踪/48配对/60指标和12gap描述及独立终验已闭合，旧0.6只读复用。七场AssA均差−2.4149[−9.4286,+4.5988]，HOTA+7.4114[+1.5670,+13.2558]，覆盖改善未形成稳定AssA增量；不继续搜索门槛，全部负结果保留，测试封存。
 - [常驻关联worker实测](operations/ASSOCIATION_WORKER_ADMISSION_A01_RESULTS.md)：六完整任务、原ID/指标一致，2track+1metric相对新进程串行实测2.19365倍；仅该工作量/后端，不冒充模型成绩或整轮训练倍数。
+
+- [32GB主机4K分机位采集与写出策略](operations/RENDER_POLICY_4K_32GB.md)。
+- [单seed配置固化与完整命令入口](production/SINGLE_SEED_BASELINE_V1.md)：已验参数、正式启动/退出脚本和短样验证边界。

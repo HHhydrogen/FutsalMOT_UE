@@ -10,7 +10,7 @@ from jersey_number_uv_contract import material_parameters
 DESTINATION = "/Game/FutsalMOT/Characters/MPFB/Materials/JerseyNumbersUV_v1"
 
 
-def build_catalog(unreal):
+def build_catalog(unreal,kit_ids=None,report_name='catalog_v1.json'):
     """每套从其自身原材质复制；不同套装绝不共用 Set_01 的外观输入。"""
     from diagnose_episode_environment import _runtime_state
     from episode_appearance import _dirty_package_paths
@@ -25,8 +25,7 @@ def build_catalog(unreal):
     library = unreal.MaterialEditingLibrary
     defaults = material_parameters(37, "L0", [0.16, 0.24, 0.37, 0.44], flip_u=True, flip_v=True)
     record = {"schema": "futsalmot_uv_number_material_catalog_v1", "atlas": TEXTURE_PATH, "kits": {}}
-    for number in range(1, 6):
-        kit = "{:02d}".format(number)
+    for kit in (['%02d'%i for i in range(1,6)] if kit_ids is None else kit_ids):
         source = "/Game/FutsalMOT/Characters/MPFB/Materials/M_MPFB_Jersey_Set_" + kit
         target = DESTINATION + "/M_Jersey_Set_" + kit + "_NumberUV_v1"
         if unreal.EditorAssetLibrary.does_asset_exist(target):
@@ -78,7 +77,7 @@ def build_catalog(unreal):
         if not unreal.EditorAssetLibrary.save_loaded_asset(material):
             raise RuntimeError("保存派生球衣失败: " + target)
         record["kits"][kit] = {"source_material": source, "number_material": target}
-    path = Path(unreal.Paths.project_dir()) / "Saved/JerseyNumberUV/catalog_v1.json"
+    path = Path(unreal.Paths.project_dir()) / 'Saved/JerseyNumberUV'/report_name
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8")
     return record

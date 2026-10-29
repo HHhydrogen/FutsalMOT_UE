@@ -398,6 +398,31 @@ def resolve_runtime_camera_selection(
     """解析 UE 运行时相机选择，canonical contract 优先，旧字段作 fallback。"""
     simulation = resolved_task.get("simulation") or {}
     ue_profile = resolved_task.get("ue_profile") or {}
+    rig = (ue_profile.get('seeded_episode') or {}).get('camera_rig')
+    if rig is not None:
+        from grf_ue_bridge.seeded_episode import load_episode_recipe
+        recipe = load_episode_recipe(resolved_task['trajectory_output'],ue_profile)
+        plan = recipe['components']['cameras']
+        partition = resolved_task.get('single_seed_camera_partition')
+        if partition is not None:
+            from grf_ue_bridge.single_seed import canonical_sha
+            if partition['plan_sha256'] != canonical_sha(plan) or partition['camera_id'] not in plan['selected_ids']:
+                raise ValueError('单机位分任务与冻结seed机位计划不符')
+            chosen = partition['camera_id']
+            if camera_ids is not None and list(camera_ids) != [chosen]:
+                raise ValueError('分任务只能执行登记的单机位')
+            entries = [e for e in plan['entries'] if e['camera_id'] == chosen]
+            return {'entries': entries, 'sequences': [{'name': e['name'], 'camera_actor': e['camera_actor'], 'camera_id': chosen} for e in entries],
+                    'cameras': [entries[0]['camera_actor']], 'resolution': list(rig['resolution']),
+                    'canonical': True, 'camera_plan': plan}
+        if camera_ids is not None and list(camera_ids) != plan['selected_ids']:
+            raise ValueError('新机位任务必须使用清单选定的全部6–7个相机')
+        entries = plan['entries']
+        return {'entries':entries,
+                'sequences':[{'name':e['name'],'camera_actor':e['camera_actor'],'camera_id':e['camera_id']} for e in entries],
+                'cameras':[e['camera_actor'] for e in entries],
+                'resolution':list(rig['resolution']),'canonical':True,
+                'camera_plan':plan}
     mapping = ue_profile.get("camera_mapping")
     if simulation and mapping is not None:
         if camera_ids is not None:

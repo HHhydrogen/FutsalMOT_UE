@@ -916,6 +916,17 @@ def _add_job_console_variables(config, cvar_map: dict) -> None:
     """
     import unreal
 
+    # 4K Cryptomatte单个float4层约126.6MiB；限制异步压缩/写出积压，避免提交内存耗尽。
+    output = config.find_or_add_setting_by_class(unreal.MoviePipelineOutputSetting)
+    resolution = output.get_editor_property("output_resolution")
+    if resolution.x * resolution.y >= 3840 * 2160:
+        import os
+        writers = int(os.environ.get('FUTSAL_4K_WRITE_CONCURRENCY', '1'))
+        pending = int(os.environ.get('FUTSAL_4K_WRITE_QUEUE', '1'))
+        if writers not in (1, 2, 8) or pending not in (1, 2, 8):
+            raise ValueError('本机4K写出只接受协议登记的1、2或8，不允许无界队列')
+        cvar_map = dict(cvar_map, **{"ImageWriteQueue.MaxConcurrency": writers,
+                                   "ImageWriteQueue.MaxQueueSize": pending})
     if not cvar_map:
         return
     cls = getattr(unreal, "MoviePipelineConsoleVariableSetting", None)
@@ -1777,7 +1788,9 @@ class _AsyncRenderPipeline:
         environment_preset=None,
         environment_preflight_verified=False,
         environment_transaction_state=None,
+        body12_capture=None,
     ):
+        self.body12_capture = body12_capture
         self.environment_active = environment_active is True
         self.environment_metadata = (
             {
@@ -1863,6 +1876,9 @@ class _AsyncRenderPipeline:
                         preset=info.get("preset"), cv_gt=info.get("cv_gt"),
                         number_post_process_material=info.get("number_post_process_material"),
                     )
+                    if self.body12_capture:
+                        from body12_capture import configure
+                        configure(job, info['cam_id'], self.body12_capture)
                 elif info.get("kind") == "jersey_number_mask":
                     job = _build_mask_job(
                         queue, info["seq_asset_path"], map_path, info["render_dir"],
@@ -3298,6 +3314,7 @@ def _render_sequences_impl(
         environment_preset=environment_preset,
         environment_preflight_verified=environment_preflight_verified,
         environment_transaction_state=environment_transaction_state,
+        body12_capture=annotation_cfg.get('body12_capture'),
     )
     _ACTIVE_RENDER = pipeline  # 模块级引用：脚本返回后防止 pipeline 被 GC
     submitted = pipeline.start(

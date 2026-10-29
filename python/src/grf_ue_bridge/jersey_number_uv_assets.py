@@ -18,7 +18,8 @@ if str(_UE_DIR) not in sys.path:
 from jersey_number_uv_contract import ATLAS_GRID, UV_NUMBER_POLICY, atlas_cell, canonical_fingerprint
 
 
-def build_atlas(output: Path, font_path: Path, *, cell_px: int = 128, padding_px: int = 12) -> dict:
+def build_atlas(output: Path, font_path: Path, *, cell_px: int = 128, padding_px: int = 12,
+                font_axes: Optional[Sequence[float]] = None) -> dict:
     """创建新输出目录并写 PNG/JSON；字体文件只读取，不复制或重分发。"""
     if type(cell_px) is not int or not 32 <= cell_px <= 1024:
         raise ValueError("cell_px 必须为 32..1024 整数")
@@ -27,12 +28,22 @@ def build_atlas(output: Path, font_path: Path, *, cell_px: int = 128, padding_px
     output = Path(output)
     font_path = Path(font_path)
     font_bytes = font_path.read_bytes()
+    variations = None
+    if font_axes is not None:
+        probe = ImageFont.truetype(str(font_path), cell_px)
+        axes = probe.get_variation_axes()
+        if len(font_axes) != len(axes) or any(type(v) not in (int,float) or not a['minimum']<=v<=a['maximum']
+                                             for v,a in zip(font_axes,axes)):
+            raise ValueError('字体可变轴数量或范围不符')
+        variations = [{'name':a['name'].decode('utf-8'),'value':v} for a,v in zip(axes,font_axes)]
     if output.exists():
         raise FileExistsError("拒绝覆盖已有号码图集目录: {}".format(output))
     font_size = cell_px
     available = cell_px - 2 * padding_px
     while font_size > 1:
         font = ImageFont.truetype(str(font_path), font_size)
+        if font_axes is not None:
+            font.set_variation_by_axes(list(font_axes))
         boxes = [font.getbbox(str(number)) for number in range(1, 100)]
         if max(box[2] - box[0] for box in boxes) <= available and max(box[3] - box[1] for box in boxes) <= available:
             break
@@ -65,6 +76,8 @@ def build_atlas(output: Path, font_path: Path, *, cell_px: int = 128, padding_px
         "ue_import": {"srgb": False, "compression": "Masks", "address_x": "Clamp", "address_y": "Clamp"},
         "acceptance": "CPU_ATLAS_ONLY_NOT_UE_VERIFIED",
     }
+    if variations is not None:
+        record['font_variation_axes'] = variations
     record["fingerprint"] = canonical_fingerprint(record)
     (output / "atlas.json").write_text(json.dumps(record, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return record
@@ -76,8 +89,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     parser.add_argument("--font", type=Path, required=True)
     parser.add_argument("--cell-px", type=int, default=128)
     parser.add_argument("--padding-px", type=int, default=12)
+    parser.add_argument("--font-axes", type=float, nargs='+', default=None)
     args = parser.parse_args(argv)
-    result = build_atlas(args.output, args.font, cell_px=args.cell_px, padding_px=args.padding_px)
+    result = build_atlas(args.output, args.font, cell_px=args.cell_px, padding_px=args.padding_px,font_axes=args.font_axes)
     print("JERSEY_UV_ATLAS_WRITTEN " + json.dumps({key: result[key] for key in ("resolution", "png_sha256", "acceptance")}))
     return 0
 

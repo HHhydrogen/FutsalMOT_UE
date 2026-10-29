@@ -11,6 +11,7 @@ from copy import deepcopy
 from pathlib import Path
 from types import MappingProxyType
 from typing import Any, Dict, List, Mapping, Optional, Tuple
+from .weather_lighting_v2 import CATALOG_ID as VISUAL_WEATHER_CATALOG_ID, build_presets as build_visual_weather_presets
 
 
 ENVIRONMENT_POLICY = "futsalmot_environment_v1_5"
@@ -132,7 +133,7 @@ def _require_seed(value: Any, field: str) -> int:
 
 
 def _validate_catalog_and_preset(catalog_id: str, preset: str) -> None:
-    if catalog_id != ENVIRONMENT_CATALOG_ID:
+    if catalog_id not in (ENVIRONMENT_CATALOG_ID, VISUAL_WEATHER_CATALOG_ID):
         raise ValueError(f"environment catalog_id 非法: {catalog_id!r}")
     if preset not in ENVIRONMENT_PRESET_IDS:
         raise ValueError(f"environment preset 非法: {preset!r}")
@@ -425,6 +426,19 @@ ENVIRONMENT_CATALOG = _freeze(
     }
 )
 
+VISUAL_WEATHER_CATALOG = _freeze({
+    'policy': ENVIRONMENT_POLICY, 'catalog_id': VISUAL_WEATHER_CATALOG_ID,
+    'version': 1, 'presets': build_visual_weather_presets(_ENVIRONMENT_PRESETS),
+})
+
+
+def _catalog(catalog_id):
+    if catalog_id == ENVIRONMENT_CATALOG_ID:
+        return ENVIRONMENT_CATALOG
+    if catalog_id == VISUAL_WEATHER_CATALOG_ID:
+        return VISUAL_WEATHER_CATALOG
+    raise ValueError('未知天气目录: '+str(catalog_id))
+
 
 def derive_environment_seed(explicit_seed: Optional[int], export_seed: int) -> int:
     """返回非负环境 root seed，显式 seed 优先于 export seed。"""
@@ -470,7 +484,8 @@ def build_environment_parameters(
     """生成六类控制面使用的最终便携参数，不依赖 Unreal 或全局随机状态。"""
     seed = _require_seed(environment_seed, "environment_seed")
     namespace_seed = derive_environment_namespace_seed(seed, catalog_id, preset)
-    base = _canonical_value(ENVIRONMENT_PRESETS[preset])
+    presets = ENVIRONMENT_PRESETS if catalog_id == ENVIRONMENT_CATALOG_ID else _catalog(catalog_id)['presets']
+    base = _canonical_value(presets[preset])
 
     directional = base["directional_light"]
     directional["rotation_deg"] = [
@@ -586,10 +601,10 @@ def build_environment_parameters(
     return base
 
 
-def environment_catalog_fingerprint() -> str:
+def environment_catalog_fingerprint(catalog_id=ENVIRONMENT_CATALOG_ID) -> str:
     """返回包含参数生成协议的环境 catalog canonical SHA-256 fingerprint。"""
     payload = {
-        **_canonical_value(ENVIRONMENT_CATALOG),
+        **_canonical_value(_catalog(catalog_id)),
         "parameter_generation": {
             "algorithm_id": ENVIRONMENT_PARAMETER_ALGORITHM_ID,
             "algorithm_version": ENVIRONMENT_PARAMETER_ALGORITHM_VERSION,
@@ -631,7 +646,7 @@ def _environment_profile_values(profile: Mapping[str, Any]) -> Tuple[int, str, s
         profile.get("environment_seed"), "environment_seed"
     )
     _validate_catalog_and_preset(catalog_id, preset)
-    expected_catalog_fingerprint = environment_catalog_fingerprint()
+    expected_catalog_fingerprint = environment_catalog_fingerprint(catalog_id)
     if profile.get("catalog_fingerprint") != expected_catalog_fingerprint:
         raise ValueError("environment profile catalog_fingerprint 非法")
     return environment_seed, policy, catalog_id, preset
@@ -661,7 +676,7 @@ def build_environment_manifest(
         ),
         "parameters": parameters,
         "trajectory_sha256": hashlib.sha256(frames_path.read_bytes()).hexdigest(),
-        "catalog_fingerprint": environment_catalog_fingerprint(),
+        "catalog_fingerprint": environment_catalog_fingerprint(catalog_id),
     }
     manifest["fingerprint"] = _manifest_fingerprint(manifest)
     return manifest

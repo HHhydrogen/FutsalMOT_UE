@@ -49,11 +49,18 @@ def run_export(
     from grf_ue_bridge.grf_runner import run_episode
 
     export_cfg = ExportConfig(**resolved.export_profile)
+    if export_cfg.stop_on_done and (export_cfg.target_fps not in (0,10) or export_cfg.trajectory_time_scale != 1):
+        raise ValueError('完整episode入口要求原生10FPS且time_scale=1，不重采样源比赛')
     from grf_ue_bridge.storage_policy import require_dataset_workspace
     require_dataset_workspace(resolved.dataset_root).mkdir(parents=True, exist_ok=True)
     traj = Path(resolved.trajectory_output)
     appearance_catalog = (resolved.ue_profile or {}).get("appearance")
     environment_profile = (resolved.ue_profile or {}).get("environment_profile")
+    from grf_ue_bridge.seeded_episode import enabled, prepare_episode_recipe
+    unified = enabled(resolved.ue_profile or {})
+    unified_path = traj / "provenance" / "seeded_episode.json"
+    if unified and unified_path.exists():
+        raise ValueError("统一随机任务已存在；使用新attempt，不覆盖当前轨迹")
     appearance_manifest_path = traj / "provenance" / "appearance.json"
     environment_manifest_path = traj / "provenance" / "environment.json"
     if appearance_catalog is not None:
@@ -81,8 +88,29 @@ def run_export(
             right_team_difficulty=export_cfg.right_team_difficulty,
             number_of_left_players_agent_controls=export_cfg.number_of_left_players_agent_controls,
             number_of_right_players_agent_controls=export_cfg.number_of_right_players_agent_controls,
+            **({'stop_on_done':True} if export_cfg.stop_on_done else {}),
         )
+        if export_cfg.stop_on_done:
+            termination = {'schema':'futsalmot_episode_termination_v1',
+                'status':'complete' if result.snapshots and result.snapshots[-1].done else 'step_limit_reached',
+                'root_seed':export_cfg.seed,'requested_step_limit':grf_steps,
+                'actual_frames':len(result.snapshots),'reset_after_terminal':False,
+                'terminal_steps':[s.step for s in result.snapshots if s.done],
+                'steps_left_first':result.snapshots[0].observation['steps_left'] if result.snapshots else None,
+                'steps_left_last':result.snapshots[-1].observation['steps_left'] if result.snapshots else None,
+                'score':list(result.score)}
+            traj.mkdir(parents=True,exist_ok=True)
+            (traj/'termination.json').write_text(json.dumps(termination,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+            if termination['status']!='complete':
+                raise ValueError('源episode未真实结束；保护上限不能作为完整比赛')
+            export_cfg = export_cfg.model_copy(update={'num_steps':len(result.snapshots)})
         export_episode(export_cfg, result, traj)
+        if export_cfg.stop_on_done:
+            # 完整源可以放Saved的source目录，episode身份仍使用实际task名。
+            meta_path=traj/'meta.json'
+            meta_record=json.loads(meta_path.read_text(encoding='utf-8'))
+            meta_record['episode_id']=resolved.episode_name
+            meta_path.write_text(json.dumps(meta_record,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
         _write_provenance(resolved, traj)
     except Exception:
         if appearance_catalog is not None:
@@ -91,7 +119,7 @@ def run_export(
             environment_manifest_path.unlink(missing_ok=True)
         raise
 
-    if appearance_catalog is not None or environment_profile is not None:
+    if appearance_catalog is not None or environment_profile is not None or unified:
         from grf_ue_bridge.validator import validate_episode
 
         if validate_episode(traj) != 0:
@@ -103,6 +131,12 @@ def run_export(
         meta_path = traj / "meta.json"
         frames_path = traj / "frames.jsonl"
         meta = json.loads(meta_path.read_text(encoding="utf-8"))
+
+    if unified:
+        recipe = prepare_episode_recipe(traj, resolved.ue_profile)
+        print_fn(f"Seeded episode prepared: {recipe['fingerprint']}")
+        print_fn(f"Provenance written: {traj / 'provenance'}")
+        return 0
 
     if appearance_catalog is not None:
         try:

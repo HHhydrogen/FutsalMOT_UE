@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://futsalmot.local/schemas/v1/camera_metadata.schema.json",
+  "title": "FutsalMOT camera metadata v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema", "schema_version", "camera_id", "ue_actor", "sequence", "width", "height", "intrinsics", "profile_sha256"],
+  "properties": {
+    "schema": {"const": "futsalmot_camera_metadata"}, "schema_version": {"const": "1.0.0"},
+    "camera_id": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]{0,31}$"}, "ue_actor": {"type": "string", "minLength": 1}, "sequence": {"type": "string", "minLength": 1},
+    "width": {"type": "integer", "minimum": 1}, "height": {"type": "integer", "minimum": 1},
+    "intrinsics": {
+      "type": "object", "additionalProperties": false,
+      "required": ["fx_px", "fy_px", "cx_px", "cy_px", "focal_length_mm", "horizontal_fov_deg"],
+      "properties": {"fx_px": {"type": "number", "exclusiveMinimum": 0}, "fy_px": {"type": "number", "exclusiveMinimum": 0}, "cx_px": {"type": "number"}, "cy_px": {"type": "number"}, "focal_length_mm": {"type": "number", "exclusiveMinimum": 0}, "horizontal_fov_deg": {"type": "number", "exclusiveMinimum": 0, "maximum": 180}}
+    },
+    "profile_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

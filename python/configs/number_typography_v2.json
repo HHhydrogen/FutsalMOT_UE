@@ -1,0 +1,9 @@
+{
+  "enabled": true,
+  "atlas_id": "bahnschrift_bold_condensed_v2",
+  "print_profile": "back_din_tall_down002_v2",
+  "ink_profile": "kit_contrast_v2",
+  "uv_rect": [0.125, 0.15, 0.405, 0.45],
+  "flip_u": true,
+  "flip_v": true
+}

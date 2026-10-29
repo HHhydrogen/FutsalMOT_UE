@@ -348,15 +348,17 @@ def _manifest_errors(manifest: Any, catalog: Any) -> list:
 
     kits = catalog.get("kits")
     kit_by_id = {}
-    if not isinstance(kits, list) or len(kits) != 5:
-        errors.append("catalog kits 必须包含 5 个候选")
+    from grf_ue_bridge.kit_catalog import kit_ids_for_catalog
+    expected_kit_ids=set(kit_ids_for_catalog(catalog.get('catalog_id')))
+    if not isinstance(kits, list) or len(kits) != len(expected_kit_ids):
+        errors.append("catalog kits 必须包含 {} 个候选".format(len(expected_kit_ids)))
     else:
         for index, kit in enumerate(kits):
             if not isinstance(kit, Mapping):
                 errors.append("catalog kits[{}] 必须是对象".format(index))
                 continue
             set_id = kit.get("set_id")
-            if not isinstance(set_id, str) or set_id not in _KIT_IDS:
+            if not isinstance(set_id, str) or set_id not in expected_kit_ids:
                 errors.append("catalog kits[{}].set_id 无效".format(index))
             elif set_id in kit_by_id:
                 errors.append("catalog kits 存在重复 set_id: {}".format(set_id))
@@ -365,8 +367,8 @@ def _manifest_errors(manifest: Any, catalog: Any) -> list:
             for field in ("jersey_material", "shorts_material"):
                 if not _is_asset_path(kit.get(field)):
                     errors.append("catalog kits[{}].{} 必须是 /Game/ 资产路径".format(index, field))
-        if set(kit_by_id) != _KIT_IDS:
-            errors.append("catalog kits 必须完整覆盖 set_id 01-05")
+        if set(kit_by_id) != expected_kit_ids:
+            errors.append("catalog kits 必须完整覆盖 set_id 01-{}".format(sorted(expected_kit_ids)[-1]))
 
     if isinstance(catalog.get("catalog_id"), str):
         try:

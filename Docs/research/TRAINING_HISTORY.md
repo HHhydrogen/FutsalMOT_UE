@@ -2,7 +2,117 @@
 
 更新：2026-10-29。本文是面向项目使用者的持续研究日记，不替代各轮冻结协议和原始结果。它回答：每轮训练了什么、为什么、用了哪些数据、实际成绩是多少，以及为什么转向下一步。完成、失败、中断、仅诊断和未来计划分别登记；从未运行的计划不写成训练成果。
 
-## 当前最新：资格/弱标签诊断闭合，下一单因素候选已登记
+## 单seed已验配置固化提交（2026-10-29，零训练、无新增渲染）
+
+用户明确要求将8/8及单seed配置固化并提交GitHub。本次整理4K/10FPS、8/8写出、分机位独立UE、既定内存阈值、相机/十五套球衣/号码/GreenV2/天气视觉v2及body12/精简导出；已验180帧及全部负结果仍引用原a09收据，不重渲染、不重哈媒体。原生body12的CPP/H与通过a09的源码bundle相同，未新编译或声称新动态证据。
+
+将已验启动/退出脚本放入正式tools/dataset与python/ue，去除本机Saved脚本依赖；执行器按协议读取内存绝对阈值，默认数值仍为入场物理8GiB/提交24GiB、取消物理2GiB/提交8GiB。PowerShell启动脚本纳入后续冻结代码快照。50项单seed/相机/seed/天气/球衣/草地/号码/导出针对检查通过，PowerShell语法及提交资产依赖检查通过。前两次从项目根执行测试各49通过/1导入失败，原因为既有测试要求从python组件目录导入ue；撤回临时测试导入改动，按组件目录执行后50通过，未改运行时代码来绕过失败。
+
+新增渲染、GRF采集、R/S训练曝光、推理、追踪与评价均0；训练对象、优化器、LR、batch、损失、更新与检查点不适用。完整3001帧分机位采集、正式split及批量发布仍未执行。提交只含已验生成依赖及文档，不含Saved、媒体、临时Sequence或无关研究WIP。后续源码绑定因入口整理改变，须另立新运行协议，不改写历史a09。
+
+用户随后授权子代理并行只读对照原设计。发现分机位入口漏接协议容量门禁，以及每机位MRQ过早启动整个test attempt的24h保留计时；两项均明确记入[完整长样前待办](../engineering/SINGLE_SEED_READINESS_AUDIT.md)，本轮未修复或启动完整运行。旧834.55GiB估算小于按a09 EXR+导出线性外推的约901.16GiB，后者仍非峰值保证。另将正式seed/split、根manifest/schema补字段、全局校验与发布后置，并明确旧“各seed相机集合一致”应改按用户已确认的各seed冻结6–7机位清单校验。此轮仅源码/文档核对，无新增测试、媒体扫描或训练。
+
+## 按机位拆分与4K写出1/1、2/2、8/8比较（2026-10-29，零训练）
+
+用户再次明确授权渲染策略、8/8测试及瓶颈/加速排查。新增总机位计划SHA约束的单机位分任务、同轨迹/随机组件一致性检查、每机位独立UE与正常退出、按完成收据续接、全部机位收齐后汇总及精简导出接线。4项机位选择检查通过。启动门槛8GiB物理/24GiB提交空闲，运行取消阈值2GiB物理/8GiB提交余量，每2秒记录；不改页面文件。最终默认3840×2160、写出8/8、同一时刻一个UE和一个机位，GPU渲染/CPU-LBS、空间/时间采样1/1、AA关闭、warmup8，全部原球衣/号码/绿色/天气参数保持。
+
+同root1048/C5/step0–29/30帧，一次新进程比较：a07写出1/1总101.187秒、采集cut67.438秒、最低commit12.704GiB/RAM11.160GiB；a08的2/2总74.609秒、cut39.301秒、commit13.195GiB/RAM10.690GiB；a09的8/8总43.219秒、cut11.597秒、commit11.156GiB/RAM9.307GiB。三者均正常退出，无内存门禁触发。8/8采样UE private20.467GiB/RSS11.182GiB峰值，整卡显存11297MiB、GPU利用率峰99%、UE CPU按20线程归一化区间峰53.32%；前两档未采GPU/CPU/VRAM，不补造。固定顺序各一轮，有缓存和调度混杂，不冒充严格重复基准或完整比赛加速比。UE写出队列满时阻塞提交，增大并发显著减少采集段等待，证明写出链路限流是本轮可消除阻塞；未逐线程分解具体编码器比例，也不把进程I/O当物理磁盘吞吐。
+
+随后8/8剩余5机位各30帧：C1/C2/C3/C4/P02分别48.765/47.594/50.297/44.844/44.906秒，均独立UE正常退出；六机位最低commit11.156GiB/RAM9.013GiB。a09分机位短样已完成统一导出与核对：180 RGB、180实例mask、180号码mask，1800人物记录、905可见号码、21600个body12点，554文件/3001729547字节。Pose可见性unknown0，号码可读性未认证；不是物理遮挡监督。EXR 180份/6671222958字节已在消费完成后按清单删除。六次正常退出，未触发内存门禁。完整3001帧分机位生成尚未执行。比较用a07/a08不导出标注，已按精确清单删除60份EXR/2254489088字节，保留RGB/号码PNG/native/日志及24小时媒体生命周期。失败a05为旧PowerShell缺Get-FileHash，尚未MRQ，已正常退出并使用新a07；没有覆盖冻结失败记录。
+
+训练对象、可训练层、优化器、LR、batch、更新、损失、检查点均不适用；R/S训练曝光、推理和评价为0，无AssA/HOTA/IDF1，不读真实或封存测试。源沿用首次3001帧，未再次GRF采集。完整3001帧生成及总数据集发布仍未执行。证据Saved/SingleSeed/write_queue_comparison_a01.json、a07/a08/a09/short/partitions，以及[本机执行策略](../operations/RENDER_POLICY_4K_32GB.md)。
+
+## 4K短样内存崩溃与修复验证（2026-10-29，零训练，短样通过）
+
+用户要求所有新渲染统一3840×2160，并上移C5消除底部白边。C5最终(0,-19.7,11.7)m、Pitch -30°/Yaw90°/8mm；11.0m真实短样仍有细边，11.7m静态构图已去除。天气新目录和八档绝对参数见[视觉版本v2](../engineering/WEATHER_LIGHTING_VISUAL_V2.md)，旧1080诊断不作为新生成标准。
+
+北京时间22:00，single_seed_s1048_4k_a03_short在C4 Object ID阶段崩溃：UE UsedVirtual 46090465280字节、系统AvailableVirtual 52637696字节，申请132710400字节失败；物理空闲6251171840字节。系统页面文件20 GiB。栈指向MoviePipelineMaskRenderPass；126.6MiB恰为3840×2160×float4。引擎ObjectId有6个accumulator，原写出并发12/队列8，4K将每层内存增至1080的四倍。系统提交耗尽已确认，长时间Editor残留与队列各自贡献尚未隔离，不能称已找到内存泄漏。
+
+修复候选为新4K job强制ImageWriteQueue.MaxConcurrency=1、MaxQueueSize=1；重启已崩溃Editor并按同限制启动，a04另立协议，不覆盖a03。复用同3001帧运动，六机位各10帧、空间/时间采样1/1、AA关闭、warmup8，真实/合成训练曝光、模型推理及评价均0，训练层/优化器/LR/损失/检查点不适用。验证中，小证据Saved/SingleSeed/single_seed_s1048_4k_a03/crash_receipt.json和a04/short；源崩溃包在Saved/Crashes/UECC-Windows-A5789F554E5C60653D6DB986EBBA0128_0000。未改页面文件、分辨率或旧冻结实验。
+
+修复验证a04实际完成六机位各10帧：60 RGB/60人物mask/60号码mask、600人物、281可见号码、7200点、194文件/1005946098字节；EXR 60份/2231523337字节消费后清理。40次运行中采样的UE提交峰值28211388416字节，系统最小提交余量4237287424字节；监控不是进程全生命周期采样，不能称完整峰值。北京时间22:09:12 MRQ success，22:10:42正常退出且日志关闭；随后用户看到相同OOM截图，但只读核对最新崩溃包仍为22:00:11，无新崩溃包。采集、恢复、导出/schema/号码像素归属检查均通过；完整3001帧尚未生成。
+
+用户随后授权按本机配置调整渲染策略并可拆分单seed。新增按机位独立UE任务、冻结机位完整集合、同源运动/随机分配、正常退出/断点续接及系统提交内存门禁。新入场8GiB物理/24GiB提交余量；运行低于2GiB物理或8GiB提交余量请求取消，停止后续派发。相同C5前30帧拟比较写出1/1与2/2；a05未进入MRQ，旧Windows PowerShell缺Get-FileHash导致启动收据失败，已正常退出其Editor，改用PowerShell7后另立a07/a08。不将未运行的对比写成速度收益。
+
+## 单seed七项实现、短样与光照诊断（2026-10-29，零训练；完整渲染未执行）
+
+用户要求七项连续完成、轻量审核。新增首次done停止（默认旧行为不改）、独立protocol/源码和DLL绑定、可见MPFBVisual的原生同帧body12/相机、扁平号码/截断/可见性适配、精简seed导出器、六个闭合schema与文件树校验、结束收据及精确EXR清理。首次C++失败后改用已验TInlineComponentArray，编译成功；Python接线camera改cam_id。8项相关检查通过，新增3项投影/终止/字段检查通过；schema验证曾因RefResolver作用域失败，换为离线Registry后3项通过。首次pytest路径不存在而未执行，随后改用实际文件，不计为通过。P1保持Python3.9.25，新增jsonschema4.23.0。
+
+新源数据为GRF5_vs_5/root1048/难度0.5和0.5/game_duration3000/10 FPS/time_scale1，步骤上限4000；实际首个done在step3000，共3001帧/300秒，score0:0，未reset。源frames SHA=3034ae919363dba24618dae4f36e8a3a297d1573cc08074288c3e2d4df3d2808。冻结前纠正源meta的episode_id目录名；未重采运动。新协议cd1a838c17f30a916492ad07c648ed47ccaa7dcb1914cafdcbfd153ac08f995e，代码bundle4cca3dcc30a9b5be2c4429aeb9c68b3eaf025db58df3480007c3e061db9009fb，DLL4b208b332b1f21f955b6388a458d156ad9c4391cf8c65f39b1dc2f561fab9a75。6机位C5/C1/C2/C3/C4/P02，1920×1080、单空间/时间采样、AA关闭、warmup8、motion blur0，复用已确认十五套/号码v2/GreenV2。Editor重启读到四角旧角度，前置记录差异，原任务运行时应用确认JSON；短样native逐帧匹配确认机位。旧角度来源未定，不称已修复其根因。
+
+一次真实短样6×10帧成功：60 RGB/60人物mask/60号码mask、600人物记录、261条可见号码、3条截断、17条出画、7200个body12点。Pose可见性全部unknown0；号码readable=false未认证OCR；不声称物理遮挡监督。精简导出194文件、207036095字节；源轨迹/身份/号码归属/校准/schema/文件树通过，外观/环境/地板恢复，EXR已清理。`Saved/SingleSeed/single_seed_s1048_a01`与G盘同名_short/export/seed_00000418为证据。完整MRQ提交工具被用户中断，实际未启动，未重启；总数据集导出/发布未执行。
+
+用户随后报告配套光照未启用。实际Editor和PIE114次读取均为十灯8 EV、可见/affects_world开启，阴天太阳1.456179、天空2.017627、曝光补偿0.160108。一次原条件6×10帧与一次C5关灯10帧对照，C5第10帧场地矩形RGB均值开灯20.2541/关灯8.0316；为0–255编码均值，非物理照度。证实灯组参与实际渲染。此前机位/号码静态预览没有天气覆盖，亮度不可直接对比。未修改生成参数；当前固定曝光最小/最大0的设置沿用旧场景。70份诊断EXR/685239454字节消费结束按清单清理，RGB/native保留24小时生命周期。a01的Sequence重复、结束floor收据拒绝及a02准备GBK编码失败均发生于MRQ前；新a02真实渲染和恢复通过。`Saved/SingleSeed/lighting_diagnostic_a02`、`lighting_pair_off_a01`及[天气诊断说明](../engineering/WEATHER_LIGHTING_SYSTEM.md)保存证据。UE最终dirty=[]/PIE0/MRQfalse、回调卸载、十灯恢复5 EV。
+
+训练对象/可训练层/优化器/LR/batch/更新/损失/检查点不适用；新增R/S训练曝光、模型推理、追踪及评价均0，无AssA/HOTA/IDF1成绩，未读真实或封存测试。用户进一步授权利用视觉区分各档天气，下一步单独修订天气光照目录并给出同机位对照，再继续完整单seed；旧冻结协议不改写。
+
+## 单seed试样前功能核对：新契约完整生成仍未接通（2026-10-29，零训练，历史审计）
+
+用户确认十五套球衣后授权继续单seed生成，并补充要求先核对原方案，再提交试样。按原生成设计/精简schema与当前源码完成[七项缺口核对](../engineering/SINGLE_SEED_READINESS_AUDIT.md)：首次终止入口接线、独立运行清单、可见MPFBVisual的body12/逐帧相机native采样、新帧字段语义、精简seed导出器、新validator、完整流程和结束收据均未闭合；总dataset manifest/全局checksums/正式split和批量发布仍后置。
+
+本轮仅开始编写stop_on_done与新FutsalBody12MRQPass/Python接线草稿，未作为通过功能。clean/idle核验后正常退出UE并尝试编译一次，结果Failed(OtherCompilationError)：AActor不存在GetComponentsByClass，关联错误5条；旧DLL仍在，新增类未进入Editor验证。静态核对另发现render误用camera键、实际job字段cam_id。旧mask后处理truncated=false/visibility=None不符合新契约，号码扁平适配只覆盖既有新schema输入，不能冒称新seed导出器。构建进程已结束，UE未重开，无MRQ活动或新G盘attempt。
+
+训练对象/优化器/LR/batch/更新/检查点均不适用；本轮源采集、RGB/EXR/实例mask/号码mask/Pose媒体、R/S训练曝光、模型前向/推理、追踪、评价均0，无AssA/HOTA/IDF1结果，未读真实/封存测试、不改旧数据。小证据Saved/SingleSeed/readiness_a01；源码草稿保留未验WIP，先补功能再安排短样，未执行完整seed或总发布。
+
+## 前一生成侧工作：库存十五套球衣全部加入随机库（2026-10-29，零训练，已确认）
+
+用户已确认相机和号码v2，随后要求将Textures下未纳入的球衣全部加入。实际UE库存为01–15，各有Jersey/Shorts Texture2D与基础Material；新catalog_id=mpfb_players_003_009_kits15_v1，P1/Pydantic/UE统一识别十五套，旧五套目录/历史task及Pose研究冻结协议保持。原hash排名取四个互异套装分配四类角色，模型/肤色/号码/其他随机流不改；新目录扩大候选会改变新kit选择，未另造抽样器。
+
+原30个材质各自引用本Set贴图核对通过，新增06–15十个号码派生Material从本Set原球衣复制、保留外观图并支持skeletal/morph。采用已确认UV=[0.125,0.15,0.405,0.45]、4096×2048 Bahnschrift Bold Condensed（Weight700/Width75，字体241px）；新增10/11/13/14为黑字，06/07/08/09/12/15白字，原01–05墨色不变。按实际背部区域线性亮度及纹理查看选择，绝对亮度表见[十五套记录](../engineering/SEEDED_KIT_CATALOG_15.md)。359项针对检查通过3.24s；64个visual seed覆盖十五套，P1/P2/配置与旧五套兼容。
+
+复用1048已有轨迹step300、visual1708221217，实际四组为左外场13、右外场03、左门将04、右门将11，原十人model/skin/号码值不变。真实UE联合apply与恢复通过；新增10套各一次768×768/HFOV35°/距目标180cm的同帧RGB与mask近景（共20 PNG），十份mask均严格0/33且有bbox，另1张C5阵容图。近景为同一角色仅更换球衣的诊断克隆，短裤沿用source13，不伪装整套短裤或新比赛；真实阵容按同Set配球衣/短裤。初次盘点UE Array直接序列化TypeError，无资产写入；转普通list修复，后续创建/应用/渲染/恢复未报错。恢复后dirty=[]、临时对象清理、UE保持打开，九机位不变。
+
+小证据Saved/AppearanceCatalogExpansion/a01、Saved/JerseyNumberUV/catalog_expanded_06_15.json、Saved/CameraRigV2/kit_catalog_15_a01；源贴图导出和预览仅G:/FutsalMOT_Dataset/test/kit_catalog_15_a01，成功24小时清理。训练对象/优化器/LR/batch/更新/检查点不适用；训练、R/S训练曝光、模型推理、追踪及评价均0，无AssA/HOTA/IDF1成绩，未读真实或封存测试、不改旧数据，无新MRQ/EXR/正式Pose/完整seed或总发布。当前扩库完成，停下供用户检查，再继续单seed收口。
+
+## 前一生成侧修订：窄高大号码、再次下移及五套对比墨色（2026-10-29，零训练，已确认）
+
+用户已确认相机，重开号码外观修订。新显式profile=back_din_tall_down002_v2；本机Bahnschrift Bold Condensed的Weight700/Width75，字号241px，16×8格/每格256px/padding24px，总4096×2048。UV=[0.125,0.15,0.405,0.45]，宽0.28/高0.30/中心[0.265,0.30]；相对v1矩形宽+15.94%、高+30.43%，相对首个v2中心V=0.32再下移0.02UV，源网格约2.25cm。Set02白/Set05黄黑字，Set01绿/Set03黑/Set04红白字，RGB与号码mask共用Atlas/参数；旧配置/旧数据不回填，新入口显式启用。新独立纹理在JerseyNumbersUV_v2；源PNG只G盘，字体不分发。原号码值/身份/model/skin/kit/天气/草地随机规则不变。
+
+来源为1048已有轨迹step300、visual1708221217；先比较92/89/7的旧Arial与新字体，后按用户追加要求下移并用同一随机L1角色克隆覆盖五套实际球衣材质，不声称真实roster同seed抽中了全部五套。原生静态近景768×768、HFOV35°、distance180cm，逐RGB/mask对同游戏帧/骨骼版本。共14次配对（28 PNG）及2张已确认机位静态图，无MRQ/EXR/新运动。首批33项针对检查通过0.67s；墨色/下移新增后仅检查对应计划1 passed/0.17s。最终五套严格整数ID mask均通过且有5条预览bbox，92宽高150×103→157×164px；相对下移前新字体bbox [304,291,463,456]变为[305,307,462,471]。
+
+负结果均保留：首次L1两个mask输出仍为彩色，被拒绝，只重拍L1成功；恢复一次漏import导致PRIVATE调用NameError，补导入完成恢复，无重拍。白套装首个RGB灰格，虽然mask合法仍不作最终配色证据；读取其skeletal/morph=true、统计231条指令后只补拍白套装，实际白衣黑字成功。辅助入口增加已验get_statistics编译等待；首次就绪的底层具体原因不称根治。上述3组配对不作最终有效配对，原图未删改。全部事务结束恢复原外观/号码/球/地板、清理临时对象、dirty=[]，UE保持打开，相机参数不变。
+
+证据为Saved/JerseyNumberUV/number_typography_v2_a01及Saved/CameraRigV2/{number_typography_v2_a01,number_typography_v2_l1_a02,number_typography_color_down_a03,number_typography_white_a04}；最终媒体G:/FutsalMOT_Dataset/test/number_typography_color_down_a03/review_final，成功媒体24小时到期清理，关键小收据保留Saved。训练对象/优化器/LR/batch/更新/检查点不适用；新增训练、R/S训练曝光、模型推理、追踪及评价均0，无AssA/HOTA/IDF1结果，未读真实或封存测试。新字体正式MRQ检查、完整单seed/总发布均未执行；当前等待号码外观确认。
+
+## 前一生成侧修订：同步用户手调机位并扩大P03/P04（2026-10-29，零训练，已确认）
+
+读取用户在Editor中的九机位，保留其中七个实际参数；仅按用户要求让P03/P04水平后退2m，位置X=±26/Y=0/Z=7m，Pitch=-18°，Yaw=0/180°，焦距22mm。手调后的主相机C5=(0,-19.7,10.5)m、Pitch=-30°/Yaw90°/8mm；C1=(24,14,9)、C2=(-24,14,9)、C3=(-24,-14,9)、C4=(24,-14,9)m，Pitch均-33.288868796°，Yaw依次-135/-45/45/135°、13.5mm；P01/P02=(±11,-18,8)m、Pitch=-21.526479721°/Yaw90°/18mm。九机位1920×1080、23.76×13.365mm传感器、roll=0；已将真实回读同步到生成目录并保存实际相机，未改旧attempt的冻结recipe。4项针对检查通过（0.21s），未重跑旧123项。
+
+复用1048原轨迹step300与visual1708221217，启用原已验证随机外观、固化UV号码和标准GreenV2（gain1.0、UV60、flatness0.9、条带±18%）；无新天气覆盖。首批camera_rig_manual_a01在floor应用收据第二次os.replace时出现WinError5，回滚/恢复写盘成功且零图片；具体占用者未定位，地板代码未改，不称根治。失败收据保留、诊断期限最长7天；新批次camera_rig_manual_a02实际捕获九张静态1920×1080 PNG并排版成功，结束恢复外观/号码/球/草地、dirty=[]，Editor按用户手调需求保持打开。无MRQ、EXR、mask/Pose新采集或完整seed生成。
+
+证据为Saved/CameraRigV2/manual_sync_a01/{before.json,complete.json}、camera_rig_manual_a01/failure.json、camera_rig_manual_a02/preview_complete.json及当前Editor日志Saved/Pose17Development/editor_camera_manual_20261029_184032.log；媒体仅G:/FutsalMOT_Dataset/test/camera_rig_manual_a02/{raw,review}，成功24小时到期清理。训练对象/优化器/LR/batch/更新/检查点不适用；新增训练、R/S曝光、模型推理、追踪、评价均0，无AssA/HOTA/IDF1结果，未读取真实或封存测试、不改旧数据。仍等待第3项人工确认，未进入完整单seed或总数据集导出。
+
+## 前一生成侧工作：五个固定加随机局部机位（2026-10-29，第3项初次候选，零训练，后由用户手调）
+
+用户要求开始第3项，前两项已获确认。已将全部相机重新配置并保存：1920×1080、filmback23.76×13.365mm；C5=(0,-21,14)m/pitch-43°/yaw90°/10mm，四角C1..C4=(±24,±14,9)m/pitch-28°/13.5mm；P01/P02=(±11,-18,8)m/18mm，P03/P04=(±24,0,7)m/24mm。全部九机位绝对旋转/Actor名见[参数表](../engineering/SEEDED_CAMERA_RIG_V2.md)。共享camera-rig:v2独立namespace每seed必选C5/C1..C4，再从P01..P04选1–2个，总6–7个，写入统一recipe且P2按绑定清单生成实际Sequence/MRQ；旧simulation路径保留，其他随机组件结果不变。123项针对检查通过（0.73s）。
+
+原1048源step300用于9张静态同站位预览，启用已验证随机model/skin/kit/UV号码和标准GreenV2，未采集新运动；首次C5材质未就绪灰图保留排除，待tick后只重拍该张。捕获对象释放API误传world-context参数，按实际单参数接口修正后在同一事务清理，未重拍其他机位。静态SceneCapture不是MRQ GT。a01单帧MRQ准备在Sequence轨道两个key要求处失败，未提交MRQ，失败小记录及自有未完成Sequence保留。
+
+a02改用原1048源[0,2)两帧、10FPS；visual1708221217、原十人名单与已固化号码、标准GreenV2，未增加天气覆盖配置或改原光照。实际选中C5/C1/C2/C3/C4/P02，6个MRQ job/12输出记录success。P1完成12 RGB、12实例mask、12号码mask及120人物记录；EXR消费后精确删除12文件共118246669字节，原深度/Cryptomatte不再保留。外观/号码/草地恢复；MRQ后仅自有新P02 dirty，核对参数一致后保存，clean/idle正常退出。退出首次被该dirty拦截期间CPU后处理已启动，GPU采集已结束；未实现渲染与导出重叠或训练。
+
+媒体在G:/FutsalMOT_Dataset/test/camera_rig_v2_a01和camera_rig_s1048_a02，24小时到期清理。关键小收据Saved/CameraRigV2/configuration_complete.json、preview_s1048_a01/preview_complete.json、camera_rig_s1048_a02/postprocess_complete.json及exr_cleanup_complete.json；日志Saved/Pose17Development/editor_camera_rig_v2_a01.log已正常Exiting。训练对象、优化器/LR/batch/更新/检查点不适用；新增训练、R/S曝光、模型推理、追踪及评价均0，无AssA/HOTA/IDF1结果；未读真实或封存测试、不改旧数据。本轮只验证相机与既有渲染/号码连通，完整episode/body12/截断可见性及总manifest尚未通过，不发布正式数据。当前等待第3项人工验收，不继续第4项。
+
+## 前一生成侧工作：统一每场seed配置入口（2026-10-29，第2项，零训练，已确认）
+
+用户已确认第1项GreenV2 a02。随后仅实施第2项：新增共享seeded_episode协调层，直接调用既有appearance、环境及UV号码算法，复用floor独立namespace选择已确认的绿色目录；旧task无开关时沿用旧路径。号码纯契约/plan移入共享src并保留UE兼容导入。P1记录统一清单与旧sidecar，P2验证绑定后复用共同回调，恢复顺序为号码/外观→地板→天气；P1后处理核对地板收据。相机随机选择及新布局另待第3项，不在本项扩展。
+
+实际复用旧1048的10步小轨迹（原root1048、visual1708221217；未重新采集运动），统一清单选择overcast_soft_v1/grass_dark_v2，十人model/skin/kit/号码与固化原版实体记录完全相同：18/92/86/96/99/55/21/89/63/7。真实UE仅联合apply一次，读回地板材质和十人号码session对应计划成功。检查脚本误传自定义恢复结束状态，首次恢复检查失败，天气同时受未恢复人物的外部包baseline影响；修正为合法no_render后仅按原快照依次恢复外观/天气，地板/号码此前已恢复，不重复apply或MRQ。原失败报告独立保留，最终恢复、dirty/PIE/MRQ和正常quit闭合，不能称首次检查全程成功。
+
+最终直接相关CPU检查126 passed（1.64s）。此前4个旧fake GRF夹具被既有G盘边界拦截，在仅写小元数据的四项夹具内替换存储检查后通过；真实存储策略未放宽。补fixture时漏导入pytest导致一次collection error，补齐导入后通过。小证据Saved/SeededEpisode/seeded_episode_s1048_apply_a01/{preparation_receipt.json,application_check.json,invalid_restore_status_failure/}，日志Saved/Pose17Development/editor_seeded_episode_apply_a01.log。无新渲染媒体，新增训练、R/S曝光、模型推理、追踪及评价均0；优化器/LR/batch/检查点不适用，无AssA/HOTA/IDF1结果；未读真实或封存测试，不改旧数据。第2项等待用户确认，未进入相机、单seed全流程或总数据集导出。
+
+## 前一生成侧修订：加大草地条带和三档深浅差距（2026-10-29，a02，已获用户确认，零训练）
+
+用户认为a01的条带及三档整体绿色差异不够明显。按反馈仅将条带系数0.95/1.05改为0.82/1.18，深/标准/浅线性BaseColor增益0.85/1.00/1.15改为0.60/1.00/1.50；UV=60、Normal Flatness=0.90保持。真实UE修改、保存及三档参数读回通过，1项针对目录检查通过；新增3张固定detail视口截图，复用a01标准截图对照，没有重复采集旧版。媒体仅G:/FutsalMOT_Dataset/test/grass_detail_v2_a02（3原图+2排版/裁剪图，24小时清理）。收据Saved/FloorDiversity/green_v2/revision_a02/complete.json，日志Saved/Pose17Development/editor_green_texture_v2_a02.log。原槽恢复，dirty/PIE/MRQ为空后正常退出；不是MRQ数据生成，无Pose/mask GT。训练对象、优化器、LR、batch和检查点不适用；新增R/S曝光、训练、模型推理、追踪、评价均0，无新成绩，未读取真实或封存测试、不改旧数据。第1项仍待人工验收，第2项以后未执行。
+
+## 前一生成侧版本：细草纹绿色材质（2026-10-29，a01，零训练，深浅差距未获认可）
+
+按用户逐项验收要求，仅完成第1项绿色草地调整：复用原草地贴图/母图，新增GreenV2材质与深/标准/浅三档（线性BaseColor增益0.85/1.00/1.15），UV平铺15→60，FlattenNormal Flatness 0.70→0.90，条带系数0.85/1.15→0.95/1.05。新绿色候选入口复用既有floor namespace/算法，蓝/红棕仅留历史兼容，新运行入口整合等待第2项。
+
+实际UE材质创建与参数读回通过，5项针对CPU检查通过。原版与三档新材质各两张干净Editor Game View截图，共8张用于验收；不是MRQ数据帧，无新Pose或mask GT。另保留5张早期截图，其中overview被场馆结构遮挡且部分截图含编辑辅助图标，不纳入验收；显式Game View修正，无修改生产相机。一次查询误用了不存在的KismetRenderingLibrary Python名称，日志确认是接口名称差异，未修改资产；首次CaptureViewport调用缺少annotations默认参数，在读取错误后显式传null成功。均无MRQ或完整episode启动。
+
+来源为规范地图静态编辑器场景；预览显式借用seed1048的目录参数校验，不是新比赛或训练样本。训练对象/优化器/LR/batch/检查点不适用，R/S曝光、训练更新、模型推理、追踪及TrackEval均0，无AssA/HOTA/IDF1结果；未读真实或封存测试、未改旧数据。原槽恢复、dirty/PIE/MRQ为空，UE正常退出。媒体仅G:/FutsalMOT_Dataset/test/grass_detail_v2_a01（13张原截图+2张排版/裁剪图，24小时清理）；小证据Saved/FloorDiversity/green_v2/creation_complete.json、preview_state.json，日志Saved/Pose17Development/editor_green_texture_v2_a01.log。详见[材质记录](../engineering/GREEN_FLOOR_VARIATION.md)。等待用户确认第1项，不继续随机系统、相机或单seed实现。
+
+## 当前研究状态：资格/弱标签诊断闭合，下一单因素候选已登记
 
 2026-10-29，[完整诊断](STATE_LABEL_ALIGNMENT_A01_RESULTS.md)及独立终验已完成，实际进程全部退出；新增训练/前向/追踪/GT坐标/评价均0。本轮只复用3000R窗/42465候选和180118既有逻辑状态。29087个known候选在原模型评分资格外（负29064、正23），其原逐窗BCE质量占83.528252%；1547窗无known正例且有unknown，不证明标签错误。按事前顺序只登记R候选资格mask为下一待验证因素，尚未执行新训练。原strongmotion_RS仍为主参照；本轮无新AssA成绩，测试封存。绝对分母、四项区间、有效监督减少及限制见文末本轮记录。
 

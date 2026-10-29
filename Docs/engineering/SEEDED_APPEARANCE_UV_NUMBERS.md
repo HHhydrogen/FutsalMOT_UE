@@ -1,8 +1,77 @@
 # 完整随机外观下的 UV 球衣号码与数字标注
 
-2026-10-29。用户已人工验收并确认固化当前号码系统：放大15%、背部中心下移0.02 UV，profile为`back_size115_down002_v1`。已完成真实10帧短样的显示和标注导出；完整新数据集另行生成。
+2026-10-29。旧版`back_size115_down002_v1`已验收并提交，保留历史。用户现已确认下列v2字体/尺寸/下移及配色；新生成入口显式加载`number_typography_v2.json`，旧配置省略字段时的历史默认不改。随后已按用户要求扩充[十五套球衣目录](SEEDED_KIT_CATALOG_15.md)，新增06–15也使用已确认号码及对应墨色；未发布正式新数据。
+
+## 最新号码候选：窄高粗体、下移和对比墨色
+
+入口`python/configs/number_typography_v2.json`，作为新task的`ue.uv_numbering`使用。完整随机外观仍由原appearance v1决定；号码随机分配、十人身份及32–41 mask ID不变。新图集只由显式`atlas_id`启用，未配置的新旧task继续原Atlas及原计划字节；旧输出不回填新参数。
+
+| 参数 | 当前候选绝对值 |
+| --- | --- |
+| print_profile | back_din_tall_down002_v2 |
+| 字体 | Bahnschrift Bold Condensed；本机bahnschrift.ttf，Weight=700、Width=75 |
+| UV矩形 | [0.125,0.15,0.405,0.45]；宽0.28、高0.30、中心[0.265,0.30] |
+| 尺寸/位置 | 相比v1矩形宽增加15.94%、高增加30.43%；相对此前v2候选中心V=0.32再减0.02，源网格约下移2.25cm |
+| Atlas | 16×8格，4096×2048；格256px、padding24px、最终字体241px；1–99 |
+| 资源 | /Game/FutsalMOT/Characters/MPFB/Materials/JerseyNumbersUV_v2/T_NumberAtlas_BahnschriftBoldCondensed_v2 |
+| 墨色规则 | kit_contrast_v2：Set_02白/Set_05黄使用[0,0,0]；Set_01绿/Set_03黑/Set_04红使用[1,1,1] |
+
+字体为[微软Bahnschrift](https://learn.microsoft.com/en-us/typography/font-list/bahnschrift)的粗体窄体轴实例；TTF文件仅本机读取，不分发。字体SHA及可变轴写入图集记录，新图集PNG SHA为`47b0de2ac7d4bb6c607225c508ab792ba090d6bfee2615854fac144d26046f19`。颜色只修改NumberInkColor，不重新选择球衣。RGB与蒙皮号码代理使用同一Atlas/UV/号码参数，墨色不改变号码mask ID。
+
+原图近景中92由旧Arial版150×103px变为新版157×164px。相比下移前新版[304,291,463,456]，当前位置bbox=[305,307,462,471]；栅格化和背部曲面可使宽高变化1–2px，不将UV比例冒充每张图固定像素比例。
+
+实际预览复用1048源step300、visual1708221217及原完整随机model/skin/kit。先对92/89/7分别捕获旧Arial与新字体同姿态近景，再依最新要求下移并用同一个随机L1角色的临时克隆展示五套实际球衣材质。五套配色是显式诊断覆盖，不是伪造同一seed抽中了全部球衣；实际roster未改。每次原生RGB/mask配对内部游戏帧及骨骼版本不变；768×768、HFOV35°、距目标180cm。有效mask严格只有0及33/39/41对应ID，最终五套mask与5条预览bbox均已生成。
+
+本轮首次直接检查33 passed/0.67s；新增下移/墨色后仅检查改动计划1 passed/0.17s。发生并保留的负结果：首次L1的两个mask仍是彩色输出，被拒绝且仅补拍L1成功；一次恢复调用漏了独立MCP上下文的import，NameError后只补import恢复成功，未重拍。白套装首张Beauty为灰格，原mask虽合法也不用于最终配色图；读取白父材质skeletal/morph=true和统计231条像素指令后仅补拍白套装成功。辅助预览入口现复用已验get_statistics等待材质编译；首次就绪的具体底层原因未宣称根治。
+
+原生近景调用共14次RGB/mask配对（其中上述3组不作最终有效配对）及2张已确认机位静态图；无新MRQ、EXR、正式Pose或完整episode。各事务最后已恢复外观/号码/球/地板，克隆和临时捕获对象销毁，dirty=[]，UE保持打开，已确认相机不变。正式新字体的MRQ连通检查在外观确认后进行，旧字体10帧成功不替代此项。
+
+当前验收图与小证据：
+
+- `G:/FutsalMOT_Dataset/test/number_typography_color_down_a03/review_final/number_colors_and_lower_position.png`：使用已成功白套装补拍的最终五色/下移图；早期review含灰格，仅诊断。
+- 同目录`white_jersey_black_number_bbox.png`与`number_color_position_annotations.json`：白衣黑字框及5条实际预览标注。
+- `Saved/JerseyNumberUV/number_typography_v2_a01/{atlas.json,import_complete.json,first_l1_mask_rejected.json,preview_number_annotations.json}`。
+- `Saved/CameraRigV2/number_typography_v2_a01`、`number_typography_v2_l1_a02`、`number_typography_color_down_a03`、`number_typography_white_a04`：各次真实清单、近景和恢复收据。
+
+媒体仅G盘test，成功按24小时规则清理；原始小收据保留Saved。旧默认矩形、旧Atlas、已冻结数据及旧墨色逻辑均保留。
 
 ## 使用入口
+
+### 统一每场seed配置入口（2026-10-29）
+
+第1项GreenV2 a02已获用户确认。第2项在既有task的`ue`块增加显式开关：
+
+```json
+"seeded_episode": {"enabled": true}
+```
+
+完整appearance目录、`uv_numbering`及`environment`继续使用原配置；无需重新填写另一套目录或子seed。P1 resolver按原规则解析天气seed/preset，`task export`随后调用共享`grf_ue_bridge.seeded_episode.prepare_episode_recipe`统一生成并绑定：
+
+| 清单部分 | 现有算法及行为 |
+| --- | --- |
+| randomness | 原meta中的root/GRF/Python/NumPy/ue_visual子seed；不重新派生或重设全局随机状态 |
+| appearance | 原`build_appearance_manifest`；模型、肤色、球衣/短裤排名不变 |
+| numbers | 原UV `build_plan`及号码namespace；已固化印花大小/位置不变 |
+| weather | 原`build_environment_manifest`；自动preset及显式environment_seed覆盖规则不变 |
+| floor | 第1项已确认的GreenV2三档，复用floor独立namespace，每场固定，不选择蓝/红棕 |
+
+统一清单位于运行中间目录`provenance/seeded_episode.json`，记录选中结果和输入指纹。旧消费者所需`appearance.json`、`environment.json`、`number_uv.json`仍保留，增加`floor.json`；加载时逐项核对它们与统一清单及当前输入一致。它们属于当前运行中间协议，后续单seed正式导出再按新schema合并，当前未启动总数据集导出。
+
+已有轨迹可用以下入口准备清单，不重跑GRF：
+
+```powershell
+python/.venv/Scripts/python.exe python/tools/prepare_seeded_episode.py --resolved-task <resolved.json绝对路径>
+```
+
+未配置或未启用`seeded_episode`的旧task继续原路径，不增加统一清单、不改旧选择结果。可显式设`floor_enabled=false`做单因素诊断；配对检查可用`floor_id`指定三档之一，其余配置与结果保持独立。号码纯契约和plan提取到共享src模块，原UE导入路径保留兼容入口，没有另造号码算法。
+
+P2 `run_task`在修改场景前验证统一清单；地板、天气、原appearance及UV号码复用现有事务组合。成功或失败均按号码/外观→地板→天气恢复；P1后处理要求地板清单匹配且恢复收据结束。新地板仅调整材质槽，不保存地图或修改历史材质。用户已确认本项并要求开始第3项，[随机局部相机与五个固定机位](SEEDED_CAMERA_RIG_V2.md)现已接入此统一清单，等待机位验收。
+
+验证：统一入口、号码旧协议、旧导出和共同回调的针对检查通过；实际1048复用既有10步小轨迹，仅做一次UE联合apply，选中`overcast_soft_v1`及`grass_dark_v2`，十人模型/肤色/kit/号码与固化版实体分配完全相同（18/92/86/96/99/55/21/89/63/7）。首次检查脚本错误传入自定义restore状态，实际API拒绝；随后仅按原快照用`no_render`恢复，未再次apply或启动MRQ。外观/天气/地板恢复读回通过，dirty/PIE/MRQ为空后正常退出。失败及恢复分别留档，不把首次检查写成一次干净成功。
+
+小收据：`Saved/SeededEpisode/seeded_episode_s1048_apply_a01/preparation_receipt.json`、`application_check.json`及`invalid_restore_status_failure/`；实际日志`Saved/Pose17Development/editor_seeded_episode_apply_a01.log`。本项新渲染、训练、模型推理和评价均0。完整单seed生成与总数据集发布仍未执行。
+
+### 原UV号码直接入口
 
 保留现有 `ue.appearance` v1 完整目录与seed算法，在同一个task的 `ue` 块增加：
 

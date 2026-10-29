@@ -212,7 +212,7 @@ def resolve_task(
         environment_profile["preset"] = resolve_environment_preset(
             environment_profile["environment_seed"], environment.preset
         )
-        environment_profile["catalog_fingerprint"] = environment_catalog_fingerprint()
+        environment_profile["catalog_fingerprint"] = environment_catalog_fingerprint(environment.catalog_id)
         ue_profile["environment_profile"] = environment_profile
     ann_export = ue_profile.get("annotation_export") or {}
     if "playback_fps" not in ann_export:
