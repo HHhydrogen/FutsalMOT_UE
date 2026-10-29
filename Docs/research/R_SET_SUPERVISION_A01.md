@@ -1,4 +1,4 @@
-# R候选集合监督a01（正式训练执行中，首千步门禁已过）
+# R候选集合监督a01（十八臂训练独立审计已闭合，待追踪准入）
 
 方案制定于2026-10-28，2026-10-29完成真实CPU/CUDA数值准入。依据完整决策机会与3000实际R窗口交叉证据，本轮仅验证R损失。原未校准strongmotion_RS保持主参照；目前尚无新追踪成绩。
 
@@ -36,3 +36,12 @@
 真实CPU/CUDA数值准入已闭合并随d041fef推送，唯一正式控制器已启动。首game4/seed20261024/R完成1000实际更新、3000R/S0，21完整检查点含原初始化、AdamW实际步数、全部RNG、方法状态及UID/epoch/all-known-pair链核查通过，随后才继续其余17臂。正式预算为18臂×1000=18000更新、54000R/9000S；当前只是首臂准入闭合，不称全18训练完成或追踪提高。
 
 权威状态为DResearch/pose/r_set_supervision_a01/training_control_a01/driver_state.json；日志在control的logs与_launch_training_a01。固定7文件bundle a536124f、协议SHA301eb84a保持不可变。GPU训练使用prefetch2、256MiB特征缓存，数值线程1，保留RAM8GiB/commit6GiB/VRAM2GiB。18臂和真实退出后才运行独立预算审计，不重放旧实验或准入成功步骤；SNMOT116/187/test封存。
+
+
+## R集合监督十八臂训练与独立实际预算闭合（2026-10-29）
+
+十八臂各1000正式更新，实际累计18000更新、54000R/9000S；R all/known pair764370/634320，S46287/25191。独立只读审计逐条核全部18000步loss/LR/梯度/UID/epoch/all-known-pair链、378份完整模型/AdamW/PythonNumPyTorchCPU-CUDA RNG检查点、原step0初始化及normalizer、九组R/RS共R顺序及原S顺序，全部通过。8诊断更新/24R/4S另计，优化重放0。训练/controller/launcher/auditor均实际退出，原stdout/stderr与所有记录保持。
+
+完成根training_complete_root_a01.json SHA56983403f0871cdf0a4ef07c14bbaf1a7258f2de4fee632caef0b35561946e86；独立postrun_audit_a01/actual_budget.json SHAb3e64595f799efd71f0c99522a0bacfd22e5beca539cafc6fa0f238f799fc0a0，成功status complete18_R_set_supervision_actual_budget_full_records_and_exit_verified。独立审计单文件bundle78544d14已实际执行成功，未调用训练runtime的audit_run代替自身重计。资源记录保留启动余量/缓存峰值和每run耗时，未部署完整CPU/GPU进程峰值采样器，不宣称本轮端到端提速。
+
+新追踪/TrackEval0，没有新AssA/HOTA/IDF1。下阶段4文件独立追踪适配与双参照分析已有候选，实现检查共47项（审计9、loader15、worker7、control8、analysis8）通过；尚未冻结或实际cold/ABA/双spawn准入，不能称180追踪已执行。分析结果前五族/三面板/五指标75描述区间及另15gap区间保持；先列六方法绝对成绩，全部负结果/null/seed/fold保留。原strongmotion_RS仍为主参照，116/187/test封存。
