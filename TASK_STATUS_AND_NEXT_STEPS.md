@@ -2,9 +2,9 @@
 
 更新：2026-10-28。历史过程见Git及对应运行收据；本页不保留过期PID流水。
 
-## 当前：R集合监督18臂训练与378检查点独立预算已闭合
+## 当前：R集合监督180项追踪与独立评价执行中
 
-2026-10-29实际18000更新/54000R9000S，378完整检查点、全部逐步链及真实退出已独立核验；训练完成根SHA56983403，budget SHAb3e64595。R/S数据、模型/初始化/normalizer/AdamW/预算/推理保持原绝对条件，只改R损失为候选集合CE固定null logit0。新追踪/TrackEval0，暂无新成绩。下一步冻结新模型独立180追踪矩阵、双参照来源并做cold/ABA/双spawn准入，再完整追踪及75指标/15gap区间。详细根收据及边界见Docs/research/R_SET_SUPERVISION_A01.md。116/187/test封存。
+训练18000更新/54000R9000S/378完整检查点预算和真实退出已独立闭合。CPU实际cold/ABA/双spawn96唯一帧/336消费通过并全退，正式唯一2track+1metric已启动，首R/RS两源实际metric/GT计数/ID0/全预测门禁通过。协议SHA2b16f8c7，4文件bundle598df756；权威DResearch/pose/r_set_supervision_a01/tracking_control_a01/driver_state.json，禁止重复或热改。须180齐/自动540绝对来源450配对75指标15gap区间/所有父子真实退出，再执行独立只读终验。未闭合前不报提升；原strongmotion_RS主参照、测试116/187/test封存。每轮结束自动补历史、精确push与汇报，无每日history定时任务。
 
 ## 本轮诊断已闭合：训练候选与自由状态差异
 
