@@ -5,11 +5,102 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
+from collections.abc import Mapping
 from typing import Callable
 
 from grf_ue_bridge.config import models as m
 from grf_ue_bridge.task_requirements import resolve_task_requirements
+
+
+def _annotate_jersey_numbers_if_v2(
+    dataset: Path,
+    trajectory: Path,
+    resolved: m.ResolvedTask,
+    print_fn: Callable[[str], None],
+    *,
+    binding_validated: bool = False,
+) -> bool:
+    if not binding_validated and not _validate_v2_appearance_binding(
+        trajectory, resolved, print_fn
+    ):
+        return False
+    appearance = (getattr(resolved, "ue_profile", {}) or {}).get("appearance") or {}
+    uv = ((getattr(resolved, "ue_profile", {}) or {}).get("uv_numbering") or {}).get("enabled")
+    if appearance.get("policy") != "futsalmot_appearance_v2" and not uv:
+        return True
+    manifest_path = trajectory / "provenance" / "appearance.json"
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        from grf_ue_bridge.jersey_number_annotator import annotate_jersey_number_masks
+        if uv:
+            plan = json.loads((trajectory / "provenance" / "number_uv.json").read_text(encoding="utf-8"))
+            if plan.get("appearance_fingerprint") != manifest.get("fingerprint"):
+                raise ValueError("UV号码清单与原appearance不匹配")
+            public = dataset / "provenance"
+            public.mkdir(parents=True, exist_ok=True)
+            from dataset_export import write_json_atomic
+            write_json_atomic(public / "appearance.json", manifest)
+            write_json_atomic(public / "number_uv.json", plan)
+            manifest = plan
+        cameras = sorted(d.parent for d in dataset.rglob("camera.json")) if dataset.is_dir() else []
+        if uv:
+            from grf_ue_bridge.number_mask_exr import export_number_masks
+            timing = json.loads((trajectory / "meta.json").read_text(encoding="utf-8"))["timing"]
+            export_number_masks(cameras, source_step_seconds=timing.get("source_step_seconds", 0.1),
+                                playback_fps=timing.get("playback_fps", 10))
+        errors = annotate_jersey_number_masks(dataset, manifest=manifest, cameras=cameras)
+    except (OSError, TypeError, ValueError, json.JSONDecodeError) as exc:
+        errors = [f"无法读取球衣号码 manifest: {exc}"]
+    if errors:
+        for error in errors:
+            print_fn(f"ERROR jersey-number: {error}")
+        return False
+    print_fn(f"jersey-number annotate 完成（{len(cameras)} camera）")
+    return True
+
+
+def _validate_v2_appearance_binding(
+    trajectory: Path,
+    resolved: m.ResolvedTask,
+    print_fn: Callable[[str], None],
+) -> bool:
+    """在所有 v2 postprocess 成功路径前校验 manifest 输入绑定。"""
+    appearance = (getattr(resolved, "ue_profile", {}) or {}).get("appearance") or {}
+    uv = ((getattr(resolved, "ue_profile", {}) or {}).get("uv_numbering") or {}).get("enabled")
+    if appearance.get("policy") != "futsalmot_appearance_v2" and not uv:
+        return True
+    manifest_path = trajectory / "provenance" / "appearance.json"
+    errors = []
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        meta = json.loads((trajectory / "meta.json").read_text(encoding="utf-8"))
+        frames_path = trajectory / "frames.jsonl"
+        if not frames_path.is_file():
+            raise ValueError(f"缺少当前 frames.jsonl: {frames_path}")
+        catalog = appearance
+        if hasattr(catalog, "model_dump"):
+            catalog = catalog.model_dump(exclude_none=True)
+        if not isinstance(catalog, Mapping):
+            raise ValueError("resolved appearance catalog 必须是对象")
+        from grf_ue_bridge.appearance import validate_appearance_manifest
+
+        manifest_errors = validate_appearance_manifest(
+            manifest,
+            meta=meta,
+            frames_path=frames_path,
+            catalog=catalog,
+        )
+        if manifest_errors:
+            raise ValueError("; ".join(manifest_errors))
+    except (OSError, TypeError, ValueError, json.JSONDecodeError) as exc:
+        errors = [f"无法读取球衣号码 manifest: {exc}"]
+    if errors:
+        for error in errors:
+            print_fn(f"ERROR jersey-number: {error}")
+        return False
+    return True
 
 
 def _cryptomatte_camera(
@@ -70,6 +161,11 @@ def run_postprocess(
             "an existing MOT file will still be validated"
         )
 
+    # v2 的 manifest/catalog/fingerprint/trajectory 绑定是整个 workflow 的
+    # 成功前置条件；skip_annotate 只跳过号码 annotation 写入，不能跳过该 gate。
+    if not _validate_v2_appearance_binding(traj, resolved, print_fn):
+        return 1
+
     # 1) Cryptomatte EXR → mask
     if not skip_cryptomatte:
         # 先 import cryptomatte（会补 ue/ 到 sys.path），再导入 dataset_export
@@ -114,19 +210,34 @@ def run_postprocess(
         if rc != 0:
             return rc
 
+        if not _annotate_jersey_numbers_if_v2(
+            dataset,
+            traj,
+            resolved,
+            print_fn,
+            binding_validated=True,
+        ):
+            return 1
+
     # 3) 可选 validate-annotations
     if not skip_validate:
         from grf_ue_bridge.annotation_validator import validate_annotation_dir
 
         level = pp.get("validation_level", "full")
+        validation_kwargs = {
+            "workers": pp.get("workers", 4),
+            "validation_level": level,
+            "require_mot": requirements.requires_mot,
+            "require_mask": requirements.requires_instance_mask,
+            "require_yolo_det": requirements.requires_yolo_det,
+            "require_yolo_seg": requirements.requires_yolo_seg,
+        }
+        appearance = (getattr(resolved, "ue_profile", {}) or {}).get("appearance") or {}
+        if appearance.get("policy") == "futsalmot_appearance_v2" or ((getattr(resolved, "ue_profile", {}) or {}).get("uv_numbering") or {}).get("enabled"):
+            validation_kwargs["require_jersey_number_mask"] = True
         rc = validate_annotation_dir(
             dataset,
-            workers=pp.get("workers", 4),
-            validation_level=level,
-            require_mot=requirements.requires_mot,
-            require_mask=requirements.requires_instance_mask,
-            require_yolo_det=requirements.requires_yolo_det,
-            require_yolo_seg=requirements.requires_yolo_seg,
+            **validation_kwargs,
         )
         print_fn(f"validate-annotations({level}) 完成（exit={rc}）")
         if rc != 0:

@@ -101,6 +101,38 @@ def valid_manifest(meta: dict, catalog: dict, frames_path: Path) -> dict:
     return build_appearance_manifest(meta, frames_path, catalog)
 
 
+def appearance_catalog_v2() -> dict:
+    catalog = appearance_catalog()
+    catalog.update(
+        {
+            "policy": "futsalmot_appearance_v2",
+            "catalog_id": "mpfb_players_003_009_v2",
+            "numbering": {
+                "min": 1,
+                "max": 99,
+                "unique": True,
+                "placement": "back",
+                "bone": "spine_03",
+                "atlas": "/Game/FutsalMOT/Characters/MPFB/Textures/JerseyNumbers/T_MPFB_JerseyNumbers_01_99",
+                "decal_material": "/Game/FutsalMOT/Characters/MPFB/Materials/M_MPFB_JerseyNumber_Decal",
+                "parameter": "NumberIndex",
+                "mask_proxy_mesh": "/Game/FutsalMOT/Characters/MPFB/Meshes/SM_MPFB_JerseyNumberMaskQuad",
+                "mask_proxy_material": "/Game/FutsalMOT/Characters/MPFB/Materials/M_MPFB_JerseyNumberMask",
+                "mask_post_process_material": "/Game/FutsalMOT/Materials/M_StencilToID",
+                "mask_stencil_start": 32,
+            },
+        }
+    )
+    return catalog
+
+
+def valid_v2_inputs(tmp_path: Path) -> tuple:
+    catalog = appearance_catalog_v2()
+    meta = appearance_meta()
+    frames_path = write_frames(tmp_path)
+    return build_appearance_manifest(meta, frames_path, catalog), catalog, meta, frames_path
+
+
 @pytest.fixture
 def appearance_inputs(tmp_path):
     catalog = appearance_catalog()
@@ -123,6 +155,1033 @@ def test_p2_validator_accepts_current_manifest_and_inputs(appearance_inputs):
     manifest, catalog, meta, frames_path, _ = appearance_inputs
 
     assert validate_appearance_inputs(manifest, catalog, meta, frames_path) == []
+
+
+def test_p2_v1_report_and_rollback_fixture_remain_compatible(appearance_inputs):
+    manifest, _, _, _, mapping = appearance_inputs
+    report = create_application_report(manifest, mapping)
+    snapshots = [_actor_snapshot(entity_id, [None] * 7) for entity_id in ENTITY_IDS]
+    rollback = appearance_module._build_rollback_payload(
+        manifest["fingerprint"], snapshots, [
+            {"package_path": "/Game/Materials/Legacy", "package_dirty": False}
+        ]
+    )
+
+    assert report["version"] == APPLICATION_REPORT_VERSION
+    assert all("jersey_number" not in actor for actor in report["actors"])
+    assert rollback["version"] == 3
+    assert appearance_module._validate_rollback_payload(rollback) == []
+
+
+def test_p2_v2_manifest_inputs_validate_against_numbering_contract(tmp_path):
+    manifest, catalog, meta, frames_path = valid_v2_inputs(tmp_path)
+
+    assert appearance_module._manifest_errors(manifest, catalog) == []
+    assert validate_appearance_inputs(manifest, catalog, meta, frames_path) == []
+
+
+@pytest.mark.parametrize(
+    ("change", "error_fragment"),
+    [
+        (lambda manifest, _catalog: manifest["entities"][0].pop("jersey_number"), "jersey_number"),
+        (lambda manifest, _catalog: manifest["entities"][0].update(jersey_number=0), "jersey_number"),
+        (lambda manifest, _catalog: manifest["entities"][0].update(jersey_number=True), "jersey_number"),
+        (lambda manifest, _catalog: manifest["entities"][0].update(jersey_number=100), "jersey_number"),
+        (lambda manifest, _catalog: manifest["entities"][1].update(jersey_number=manifest["entities"][0]["jersey_number"]), "互不重复"),
+        (lambda _manifest, catalog: catalog["numbering"].pop("atlas"), "numbering"),
+        (lambda _manifest, catalog: catalog["numbering"].update(mask_proxy_material="C:/missing.uasset"), "/Game/"),
+        (lambda _manifest, catalog: catalog["numbering"].update(min="one"), "numbering.min"),
+        (lambda _manifest, catalog: catalog["numbering"].update(mask_proxy_material=catalog["numbering"]["decal_material"]), "catalog path"),
+    ],
+)
+def test_p2_v2_manifest_rejects_missing_or_invalid_numbering_contract(
+    tmp_path, change, error_fragment
+):
+    manifest, catalog, _, _ = valid_v2_inputs(tmp_path)
+    changed_manifest = copy.deepcopy(manifest)
+    changed_catalog = copy.deepcopy(catalog)
+    change(changed_manifest, changed_catalog)
+
+    errors = appearance_module._manifest_errors(changed_manifest, changed_catalog)
+
+    assert any(error_fragment in error for error in errors)
+
+
+def test_v2_preloader_checks_number_asset_classes_before_reporting_loaded(
+    tmp_path, monkeypatch
+):
+    manifest, catalog, _, _ = valid_v2_inputs(tmp_path)
+    expected_classes = {
+        catalog["numbering"]["atlas"]: "Texture2D",
+        catalog["numbering"]["decal_material"]: "Material",
+        catalog["numbering"]["mask_proxy_mesh"]: "StaticMesh",
+        catalog["numbering"]["mask_proxy_material"]: "Material",
+        catalog["numbering"]["mask_post_process_material"]: "Material",
+    }
+    loaded_paths = {}
+
+    class Asset:
+        def __init__(self, path, class_name):
+            self.path = path
+            self.class_name = class_name
+
+        def get_class(self):
+            return SimpleNamespace(get_name=lambda: self.class_name)
+
+    def load_asset(_unreal, path, expected_class):
+        loaded_paths[path] = expected_class
+        if path in expected_classes and expected_classes[path] != expected_class:
+            raise AssertionError("wrong expected class for {}".format(path))
+        return Asset(path, expected_class)
+
+    monkeypatch.setattr(appearance_module, "_load_asset", load_asset)
+    monkeypatch.setattr(appearance_module, "_validate_candidate_compatibility", lambda *_args: [])
+    unreal = SimpleNamespace(
+        BlueprintEditorLibrary=SimpleNamespace(generated_class=lambda _asset: object())
+    )
+
+    loaded = appearance_module._preload_assignments(unreal, manifest, catalog)
+
+    assert {path: loaded_paths[path] for path in expected_classes} == expected_classes
+    assert all(path in loaded for path in expected_classes)
+
+
+def test_v2_preloader_fails_closed_when_number_asset_is_missing(tmp_path, monkeypatch):
+    manifest, catalog, _, _ = valid_v2_inputs(tmp_path)
+    missing_path = catalog["numbering"]["mask_proxy_mesh"]
+
+    def load_asset(_unreal, path, expected_class):
+        if path == missing_path:
+            raise RuntimeError("资产 class 不匹配: {} expected={} actual=None".format(path, expected_class))
+        return SimpleNamespace(get_class=lambda: SimpleNamespace(get_name=lambda: expected_class))
+
+    monkeypatch.setattr(appearance_module, "_load_asset", load_asset)
+    monkeypatch.setattr(appearance_module, "_validate_candidate_compatibility", lambda *_args: [])
+    unreal = SimpleNamespace(
+        BlueprintEditorLibrary=SimpleNamespace(generated_class=lambda _asset: object())
+    )
+
+    with pytest.raises(RuntimeError, match="mask_proxy_mesh|class 不匹配"):
+        appearance_module._preload_assignments(unreal, manifest, catalog)
+
+
+def test_v2_preloader_rejects_number_asset_path_loaded_with_wrong_class(
+    tmp_path, monkeypatch
+):
+    manifest, catalog, _, _ = valid_v2_inputs(tmp_path)
+    aliased_mesh_path = catalog["numbering"]["mask_proxy_mesh"]
+    catalog["models"][0]["mesh"] = aliased_mesh_path
+    manifest["entities"][0]["mesh"] = aliased_mesh_path
+    manifest["catalog_fingerprint"] = _canonical_sha256(catalog)
+    manifest["fingerprint"] = _canonical_sha256(
+        {key: value for key, value in manifest.items() if key != "fingerprint"}
+    )
+
+    def load_asset(_unreal, path, expected_class):
+        actual_class = "SkeletalMesh" if path == aliased_mesh_path else expected_class
+        return SimpleNamespace(
+            get_class=lambda: SimpleNamespace(get_name=lambda: actual_class)
+        )
+
+    monkeypatch.setattr(appearance_module, "_load_asset", load_asset)
+    monkeypatch.setattr(appearance_module, "_validate_candidate_compatibility", lambda *_args: [])
+    unreal = SimpleNamespace(
+        BlueprintEditorLibrary=SimpleNamespace(generated_class=lambda _asset: object())
+    )
+
+    with pytest.raises(RuntimeError, match="StaticMesh"):
+        appearance_module._preload_assignments(unreal, manifest, catalog)
+
+
+def test_v2_rollback_v4_requires_number_component_baseline_fields(tmp_path):
+    manifest, _, _, _ = valid_v2_inputs(tmp_path)
+    snapshots = [_actor_snapshot(entity_id, [None] * 7) for entity_id in ENTITY_IDS]
+    for snapshot in snapshots:
+        snapshot["number_components"] = {
+            "decal": {"exists": False},
+            "mask_proxy": {"exists": False},
+        }
+    rollback = appearance_module._build_rollback_payload(
+        manifest["fingerprint"],
+        snapshots,
+        [{"package_path": "/Game/Materials/Numbering", "package_dirty": False}],
+        version=4,
+    )
+
+    assert rollback["version"] == 4
+    assert appearance_module._validate_rollback_payload(rollback) == []
+
+    del rollback["actors"][0]["number_components"]
+    assert any(
+        "number_components" in error
+        for error in appearance_module._validate_rollback_payload(rollback)
+    )
+
+
+def test_v2_existing_number_component_baseline_requires_decal_size(tmp_path):
+    manifest, _, _, _ = valid_v2_inputs(tmp_path)
+    snapshots = [_actor_snapshot(entity_id, [None] * 7) for entity_id in ENTITY_IDS]
+    present = {
+        "exists": True,
+        "component_path": "/Game/Map.Actor.JerseyNumberBack",
+        "component_name": "JerseyNumberBack",
+        "attach_parent": "MPFBVisual",
+        "attach_bone": "spine_03",
+        "relative_transform": {
+            "location": [0.0, 0.0, 0.0],
+            "rotation": [0.0, 0.0, 0.0],
+            "scale": [1.0, 1.0, 1.0],
+        },
+        "decal_size": [16.0, 16.0, 4.0],
+        "material": "/Game/Numbers/Decal",
+        "visible": True,
+        "render_in_main_pass": True,
+        "render_in_depth_pass": True,
+    }
+    for snapshot in snapshots:
+        snapshot["number_components"] = {
+            "decal": copy.deepcopy(present),
+            "mask_proxy": {"exists": False},
+        }
+    rollback = appearance_module._build_rollback_payload(
+        manifest["fingerprint"], snapshots,
+        [{"package_path": "/Game/Materials/Numbering", "package_dirty": False}],
+        version=4,
+    )
+
+    assert appearance_module._validate_rollback_payload(rollback) == []
+    rollback["actors"][0]["number_components"]["decal"].pop("decal_size")
+    assert any(
+        "decal_size" in error
+        for error in appearance_module._validate_rollback_payload(rollback)
+    )
+
+
+def test_v2_existing_mask_proxy_baseline_requires_stencil_state(tmp_path):
+    manifest, _, _, _ = valid_v2_inputs(tmp_path)
+    snapshots = [_actor_snapshot(entity_id, [None] * 7) for entity_id in ENTITY_IDS]
+    proxy = {
+        "exists": True,
+        "component_name": "JerseyNumberMaskProxy",
+        "component_path": "/Game/Map.Actor.JerseyNumberMaskProxy",
+        "attach_parent": "MPFBVisual",
+        "attach_bone": "spine_03",
+        "relative_transform": {
+            "location": [0.0, 0.0, 0.0],
+            "rotation": [0.0, 0.0, 0.0],
+            "scale": [1.0, 1.0, 1.0],
+        },
+        "mesh": "/Game/Numbers/ProxyMesh",
+        "material": "/Game/Numbers/Mask",
+        "custom_depth_enabled": True,
+        "custom_depth_stencil_value": 37,
+        "visible": True,
+        "render_in_main_pass": False,
+        "render_in_depth_pass": False,
+    }
+    for snapshot in snapshots:
+        snapshot["number_components"] = {
+            "decal": {"exists": False},
+            "mask_proxy": copy.deepcopy(proxy),
+        }
+    rollback = appearance_module._build_rollback_payload(
+        manifest["fingerprint"], snapshots,
+        [{"package_path": "/Game/Materials/Numbering", "package_dirty": False}],
+        version=4,
+    )
+
+    assert appearance_module._validate_rollback_payload(rollback) == []
+    rollback["actors"][0]["number_components"]["mask_proxy"].pop(
+        "custom_depth_stencil_value"
+    )
+    assert any(
+        "custom_depth_stencil_value" in error
+        for error in appearance_module._validate_rollback_payload(rollback)
+    )
+
+    rollback["actors"][0]["number_components"]["mask_proxy"][
+        "custom_depth_stencil_value"
+    ] = 32
+    rollback["actors"][0]["number_components"]["mask_proxy"].pop("mesh")
+    assert any(
+        "mesh" in error
+        for error in appearance_module._validate_rollback_payload(rollback)
+    )
+
+
+def test_v2_rollback_builder_selects_v4_from_number_component_baselines(tmp_path):
+    manifest, _, _, _ = valid_v2_inputs(tmp_path)
+    snapshots = [_actor_snapshot(entity_id, [None] * 7) for entity_id in ENTITY_IDS]
+    for snapshot in snapshots:
+        snapshot["number_components"] = {
+            "decal": {"exists": False},
+            "mask_proxy": {"exists": False},
+        }
+
+    rollback = appearance_module._build_rollback_payload(
+        manifest["fingerprint"],
+        snapshots,
+        [{"package_path": "/Game/Materials/Numbering", "package_dirty": False}],
+    )
+
+    assert rollback["version"] == 4
+    assert appearance_module._validate_rollback_payload(rollback) == []
+
+
+def test_rollback_builder_rejects_non_object_snapshot_as_value_error():
+    with pytest.raises(ValueError, match="actor snapshots"):
+        appearance_module._build_rollback_payload(
+            "a" * 64,
+            [None],
+            [{"package_path": "/Game/Materials/Appearance", "package_dirty": False}],
+        )
+
+
+def test_v2_application_report_binds_each_number_and_attachment_readback(tmp_path):
+    manifest, _, _, _ = valid_v2_inputs(tmp_path)
+    mapping = {entity_id: "Player_{}".format(entity_id) for entity_id in ENTITY_IDS}
+
+    report = create_application_report(manifest, mapping)
+
+    assert [actor["jersey_number"] for actor in report["actors"]] == [
+        entity["jersey_number"] for entity in manifest["entities"]
+    ]
+    component = report["actors"][0]["number_component"]
+    assert component["name"] == "JerseyNumberBack"
+    assert component["bone"] == "spine_03"
+    assert component["placement"] == "back"
+    assert component["attachment_status"] == "not_started"
+    assert component["readback"] is None
+
+    report["actors"][0]["number_component"]["readback"] = {"attach_bone": "chest"}
+    with pytest.raises(ValueError, match="readback"):
+        appearance_module.serialize_application_report(report)
+
+
+def test_v2_report_cannot_transition_to_applied_without_verified_component_readback(
+    tmp_path,
+):
+    manifest, _, _, _ = valid_v2_inputs(tmp_path)
+    mapping = {entity_id: "Player_{}".format(entity_id) for entity_id in ENTITY_IDS}
+    report = create_application_report(manifest, mapping)
+    updates = {
+        entity_id: {
+            "apply_status": "applied",
+            "number_component": {
+                "name": "JerseyNumberBack",
+                "bone": "spine_03",
+                "placement": "back",
+                "apply_status": "applied",
+                "restore_status": "not_started",
+                "attachment_status": "verified",
+                "readback": {
+                    "attach_parent": "MPFBVisual",
+                    "attach_bone": "spine_03",
+                    "number_index": next(
+                        entity["jersey_number"] - 1
+                        for entity in manifest["entities"]
+                        if entity["entity_id"] == entity_id
+                    ),
+                    "placement": "back",
+                    "decal_exists": True,
+                    "mask_proxy_exists": True,
+                },
+            },
+        }
+        for entity_id in ENTITY_IDS
+    }
+
+    with pytest.raises(ValueError, match="readback"):
+        transition_application_report(report, "applied", actor_updates=updates)
+
+
+def test_v2_report_serializes_successful_number_component_readback(tmp_path):
+    manifest, _, _, _ = valid_v2_inputs(tmp_path)
+    mapping = {entity_id: "Player_{}".format(entity_id) for entity_id in ENTITY_IDS}
+    report = create_application_report(manifest, mapping)
+    updates = {}
+    for entity in manifest["entities"]:
+        updates[entity["entity_id"]] = {
+            "apply_status": "applied",
+            "number_component": {
+                "name": "JerseyNumberBack",
+                "bone": "spine_03",
+                "placement": "back",
+                "apply_status": "applied",
+                "restore_status": "not_started",
+                "attachment_status": "verified",
+                "readback": {
+                    "attach_parent": "MPFBVisual",
+                    "attach_bone": "spine_03",
+                    "number_index": entity["jersey_number"] - 1,
+                    "stencil_value": 32 + ENTITY_IDS.index(entity["entity_id"]),
+                    "placement": "back",
+                    "decal_exists": True,
+                    "mask_proxy_exists": True,
+                    "decal_component_name": "JerseyNumberBack",
+                    "mask_proxy_component_name": "JerseyNumberMaskProxy",
+                    "decal_component_path": "/Game/Map.Actor.JerseyNumberBack",
+                    "mask_proxy_component_path": "/Game/Map.Actor.JerseyNumberMaskProxy",
+                },
+            },
+        }
+    applied = transition_application_report(report, "applied", actor_updates=updates)
+    payload = appearance_module.serialize_application_report(applied)
+    decoded = json.loads(payload)
+
+    assert decoded["appearance_policy"] == "futsalmot_appearance_v2"
+    assert decoded["actors"][0]["number_component"]["readback"]["number_index"] == (
+        decoded["actors"][0]["jersey_number"] - 1
+    )
+    applied["actors"][0]["number_component"]["readback"]["stencil_value"] = 41
+    with pytest.raises(ValueError, match="readback"):
+        appearance_module.serialize_application_report(applied)
+    applied["actors"][0]["number_component"]["readback"]["stencil_value"] = 32
+    restored_report = transition_application_report(
+        applied,
+        "restored",
+        actor_updates={
+            entity_id: {
+                "restore_status": "restored",
+                "number_component": {
+                    "name": "JerseyNumberBack",
+                    "bone": "spine_03",
+                    "placement": "back",
+                    "apply_status": "applied",
+                    "restore_status": "restored",
+                    "attachment_status": "verified",
+                    "readback": {
+                        "attach_parent": "MPFBVisual",
+                        "attach_bone": "spine_03",
+                        "number_index": next(
+                            actor["jersey_number"] - 1
+                            for actor in applied["actors"]
+                            if actor["entity_id"] == entity_id
+                        ),
+                        "stencil_value": 32 + ENTITY_IDS.index(entity_id),
+                        "placement": "back",
+                        "decal_exists": True,
+                        "mask_proxy_exists": True,
+                        "decal_component_name": "JerseyNumberBack",
+                        "mask_proxy_component_name": "JerseyNumberMaskProxy",
+                        "decal_component_path": "/Game/Map.Actor.JerseyNumberBack",
+                        "mask_proxy_component_path": "/Game/Map.Actor.JerseyNumberMaskProxy",
+                    },
+                },
+            }
+            for entity_id in ENTITY_IDS
+        },
+        mrq_pending=False,
+        mrq_jobs=[{"camera_id": "C1", "status": "success"}],
+    )
+    restored = json.loads(appearance_module.serialize_application_report(restored_report))
+    assert restored["state"] == "restored"
+    assert all(
+        actor["number_component"]["restore_status"] == "restored"
+        for actor in restored["actors"]
+    )
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("decal_exists", False),
+        ("mask_proxy_exists", False),
+        ("decal_component_name", "WrongDecal"),
+        ("mask_proxy_component_name", "WrongProxy"),
+    ],
+)
+def test_v2_applied_report_rejects_missing_or_wrong_number_component_identity(
+    tmp_path, field, value
+):
+    manifest, _, _, _ = valid_v2_inputs(tmp_path)
+    mapping = {entity_id: "Player_{}".format(entity_id) for entity_id in ENTITY_IDS}
+    report = create_application_report(manifest, mapping)
+    updates = {}
+    for entity in manifest["entities"]:
+        entity_id = entity["entity_id"]
+        readback = {
+            "attach_parent": "MPFBVisual",
+            "attach_bone": "spine_03",
+            "number_index": entity["jersey_number"] - 1,
+            "stencil_value": 32 + ENTITY_IDS.index(entity_id),
+            "placement": "back",
+            "decal_exists": True,
+            "mask_proxy_exists": True,
+            "decal_component_name": "JerseyNumberBack",
+            "mask_proxy_component_name": "JerseyNumberMaskProxy",
+            "decal_component_path": "/Game/Map.Actor.JerseyNumberBack",
+            "mask_proxy_component_path": "/Game/Map.Actor.JerseyNumberMaskProxy",
+        }
+        if entity_id == "L0":
+            readback[field] = value
+        updates[entity_id] = {
+            "apply_status": "applied",
+            "number_component": {
+                "name": "JerseyNumberBack",
+                "bone": "spine_03",
+                "placement": "back",
+                "apply_status": "applied",
+                "restore_status": "not_started",
+                "attachment_status": "verified",
+                "readback": readback,
+            },
+        }
+
+    with pytest.raises(ValueError, match="readback"):
+        transition_application_report(report, "applied", actor_updates=updates)
+
+
+def _number_component_baseline_fixture():
+    relative_transform = {
+        "location": [0.0, 0.0, 0.0],
+        "rotation": [0.0, 0.0, 0.0],
+        "scale": [1.0, 1.0, 1.0],
+    }
+    return {
+        "decal": {
+            "exists": True,
+            "component_name": "JerseyNumberBack",
+            "component_path": "/Game/Map.Actor.JerseyNumberBack",
+            "attach_parent": "MPFBVisual",
+            "attach_bone": "spine_03",
+            "relative_transform": copy.deepcopy(relative_transform),
+            "decal_size": [16.0, 16.0, 4.0],
+            "material": "/Game/Numbers/Decal",
+            "visible": True,
+            "render_in_main_pass": True,
+            "render_in_depth_pass": True,
+        },
+        "mask_proxy": {
+            "exists": True,
+            "component_name": "JerseyNumberMaskProxy",
+            "component_path": "/Game/Map.Actor.JerseyNumberMaskProxy",
+            "attach_parent": "MPFBVisual",
+            "attach_bone": "spine_03",
+            "relative_transform": relative_transform,
+            "mesh": "/Game/Numbers/ProxyMesh",
+            "material": "/Game/Numbers/Mask",
+            "custom_depth_enabled": True,
+            "custom_depth_stencil_value": 37,
+            "visible": True,
+            "render_in_main_pass": False,
+            "render_in_depth_pass": False,
+        },
+    }
+
+
+def test_v2_actor_snapshot_builder_normalizes_number_component_baseline():
+    state = _actor_snapshot("L0", [None] * 7)
+    state["number_components"] = _number_component_baseline_fixture()
+
+    snapshot = appearance_module._build_actor_snapshot(state, version=4)
+
+    assert snapshot["number_components"] == state["number_components"]
+    assert snapshot["number_components"] is not state["number_components"]
+    assert appearance_module._validate_number_component_baseline(
+        snapshot["number_components"], "L0"
+    ) == []
+
+    normalized = appearance_module._normalize_number_component_baseline(
+        state["number_components"], "L0"
+    )
+    assert normalized["decal"]["component_name"] == "JerseyNumberBack"
+    assert normalized["mask_proxy"]["component_name"] == "JerseyNumberMaskProxy"
+
+    bad_name = copy.deepcopy(state)
+    bad_name["number_components"]["decal"]["component_name"] = "WrongDecal"
+    with pytest.raises(ValueError, match="component_name"):
+        appearance_module._build_actor_snapshot(bad_name, version=4)
+
+    bad_path = copy.deepcopy(state)
+    bad_path["number_components"]["decal"]["component_path"] = (
+        "/Game/Map.Actor.WrongComponent"
+    )
+    with pytest.raises(ValueError, match="component_path"):
+        appearance_module._build_actor_snapshot(bad_path, version=4)
+
+    bad_role = copy.deepcopy(state)
+    bad_role["number_components"]["decal"]["attach_bone"] = "spine_02"
+    with pytest.raises(ValueError, match="attach_bone"):
+        appearance_module._build_actor_snapshot(bad_role, version=4)
+
+
+def test_v4_snapshot_builder_rejects_unavailable_live_capture_shape():
+    state = _actor_snapshot("L0", [None] * 7)
+
+    with pytest.raises(ValueError, match="number_components"):
+        appearance_module._build_actor_snapshot(state, version=4)
+
+
+def test_v4_live_snapshot_capture_is_manual_required_before_actor_queries(monkeypatch):
+    actor = SimpleNamespace(
+        get_components_by_class=lambda *_args: pytest.fail(
+            "unverified v4 live capture must stop before Actor APIs"
+        )
+    )
+
+    with pytest.raises(RuntimeError, match="MANUAL_REQUIRED"):
+        appearance_module._capture_snapshot(
+            object(), "L0", actor, set(), version=4
+        )
+
+
+def test_number_component_restore_plan_restores_baseline_and_deletes_transaction_created():
+    snapshot = _actor_snapshot("L0", [None] * 7)
+    baseline = _number_component_baseline_fixture()
+    baseline["mask_proxy"] = {"exists": False}
+    snapshot["number_components"] = baseline
+
+    plan = appearance_module._build_number_component_restore_plan(snapshot)
+
+    assert plan == {
+        "decal": {
+            "action": "restore_baseline",
+            "component_name": "JerseyNumberBack",
+            "baseline": baseline["decal"],
+        },
+        "mask_proxy": {
+            "action": "delete_if_created",
+            "component_name": "JerseyNumberMaskProxy",
+        },
+    }
+
+
+def test_number_component_restore_plan_rejects_missing_baseline_and_v2_live_restore():
+    result = appearance_module._execute_number_component_restore_plan(
+        None, None, "L0"
+    )
+    assert result["status"] == "MANUAL_REQUIRED"
+    assert any("snapshot 缺失" in error for error in result["errors"])
+
+    result = appearance_module._execute_number_component_restore_plan(
+        {"entity_id": "L0", "number_components": _number_component_baseline_fixture()},
+        None,
+        "L0",
+    )
+    assert result["status"] == "MANUAL_REQUIRED"
+    assert any("UE number component capture 未验证" in error for error in result["errors"])
+
+
+def test_pure_v4_live_record_normalizer_rejects_incomplete_component_records():
+    snapshot = {
+        "entity_id": "L0",
+        "number_components": _number_component_baseline_fixture(),
+    }
+    incomplete = _number_component_baseline_fixture()
+    incomplete["decal"].pop("decal_size")
+
+    result = appearance_module._execute_number_component_restore_plan(
+        snapshot,
+        incomplete,
+        "L0",
+    )
+
+    assert result["status"] == "restore_failed"
+    assert any("decal_size" in error for error in result["errors"])
+
+
+def test_snapshot_component_restore_plan_dispatches_by_rollback_version():
+    legacy = {"entity_id": "L0"}
+    legacy_plan = appearance_module._build_snapshot_component_restore_plan(
+        legacy, version=3
+    )
+    assert legacy_plan == {
+        "version": 3,
+        "number_components": {"action": "not_applicable", "status": "legacy"},
+    }
+
+    v4 = {
+        "entity_id": "L0",
+        "number_components": {
+            "decal": {"exists": False},
+            "mask_proxy": {"exists": False},
+        },
+    }
+    plan = appearance_module._build_snapshot_component_restore_plan(v4, version=4)
+    assert plan["version"] == 4
+    assert plan["number_components"]["decal"]["action"] == "delete_if_created"
+
+    with pytest.raises(ValueError, match="version"):
+        appearance_module._build_snapshot_component_restore_plan(v4, version=99)
+
+
+def test_number_component_restore_dispatch_restores_baseline_and_deletes_created():
+    snapshot = _actor_snapshot("L0", [None] * 7)
+    baseline = _number_component_baseline_fixture()
+    baseline["mask_proxy"] = {"exists": False}
+    snapshot["number_components"] = baseline
+    plan = appearance_module._build_number_component_restore_plan(snapshot)
+    live = {
+        "JerseyNumberBack": {"exists": True, "current_material": "/Game/Randomized/MID"},
+        "JerseyNumberMaskProxy": {"exists": True, "current_stencil": 99},
+    }
+    callbacks = []
+
+    def restore_existing(entity_id, component_name, expected):
+        callbacks.append(("restore", entity_id, component_name))
+        live[component_name] = copy.deepcopy(expected)
+        return {"status": "restored", "readback": copy.deepcopy(expected)}
+
+    def delete_created(entity_id, component_name):
+        callbacks.append(("delete", entity_id, component_name))
+        live[component_name] = {"exists": False}
+        return {"status": "deleted", "exists": False}
+
+    result = appearance_module._dispatch_number_component_restore(
+        plan,
+        {"status": "verified", "evidence_source": "manual_ue_acceptance"},
+        entity_id="L0",
+        restore_existing=restore_existing,
+        delete_created=delete_created,
+    )
+
+    assert result["status"] == "restored"
+    assert result["restored"] == ["decal"]
+    assert result["deleted"] == ["mask_proxy"]
+    assert live == {
+        "JerseyNumberBack": baseline["decal"],
+        "JerseyNumberMaskProxy": {"exists": False},
+    }
+    assert callbacks == [
+        ("restore", "L0", "JerseyNumberBack"),
+        ("delete", "L0", "JerseyNumberMaskProxy"),
+    ]
+
+
+def test_number_component_restore_dispatch_fails_closed_without_manual_evidence():
+    snapshot = _actor_snapshot("L0", [None] * 7)
+    snapshot["number_components"] = {
+        "decal": {"exists": False},
+        "mask_proxy": {"exists": False},
+    }
+    plan = appearance_module._build_number_component_restore_plan(snapshot)
+    calls = []
+
+    result = appearance_module._dispatch_number_component_restore(
+        plan,
+        {"status": "unverified"},
+        entity_id="L0",
+        restore_existing=lambda *_args: calls.append("restore"),
+        delete_created=lambda *_args: calls.append("delete"),
+    )
+
+    assert result["status"] == "MANUAL_REQUIRED"
+    assert calls == []
+
+
+def test_number_component_restore_dispatch_rejects_incorrect_readback():
+    snapshot = _actor_snapshot("L0", [None] * 7)
+    baseline = _number_component_baseline_fixture()
+    baseline["mask_proxy"] = {"exists": False}
+    snapshot["number_components"] = baseline
+    plan = appearance_module._build_number_component_restore_plan(snapshot)
+
+    result = appearance_module._dispatch_number_component_restore(
+        plan,
+        {"status": "verified", "evidence_source": "manual_ue_acceptance"},
+        entity_id="L0",
+        restore_existing=lambda *_args: {
+            "status": "restored",
+            "readback": {"exists": True, "material": "/Game/Wrong"},
+        },
+        delete_created=lambda *_args: {"status": "deleted", "exists": False},
+    )
+
+    assert result["status"] == "restore_failed"
+    assert any("readback" in error for error in result["errors"])
+
+
+def test_number_component_restore_dispatch_rejects_cross_role_plan_before_callbacks():
+    snapshot = _actor_snapshot("L0", [None] * 7)
+    baseline = _number_component_baseline_fixture()
+    baseline["mask_proxy"] = {"exists": False}
+    snapshot["number_components"] = baseline
+    plan = appearance_module._build_number_component_restore_plan(snapshot)
+    plan["decal"]["component_name"] = "JerseyNumberMaskProxy"
+    callbacks = []
+
+    result = appearance_module._dispatch_number_component_restore(
+        plan,
+        {"status": "verified", "evidence_source": "manual_ue_acceptance"},
+        entity_id="L0",
+        restore_existing=lambda *_args: callbacks.append("restore"),
+        delete_created=lambda *_args: callbacks.append("delete"),
+    )
+
+    assert result["status"] == "restore_failed"
+    assert callbacks == []
+    assert any("decal" in error and "identity" in error for error in result["errors"])
+
+
+def test_v2_applied_report_cannot_be_serialized_without_all_number_readbacks(tmp_path):
+    manifest, _, _, _ = valid_v2_inputs(tmp_path)
+    mapping = {entity_id: "Player_{}".format(entity_id) for entity_id in ENTITY_IDS}
+    report = create_application_report(manifest, mapping)
+    report["state"] = "applied"
+
+    with pytest.raises(ValueError, match="apply_status"):
+        appearance_module.serialize_application_report(report)
+
+
+def test_v2_applied_report_requires_all_actor_apply_statuses(tmp_path):
+    manifest, _, _, _ = valid_v2_inputs(tmp_path)
+    mapping = {entity_id: "Player_{}".format(entity_id) for entity_id in ENTITY_IDS}
+    report = create_application_report(manifest, mapping)
+    report["state"] = "applied"
+    for actor in report["actors"]:
+        actor["apply_status"] = "applied"
+        component = actor["number_component"]
+        component.update(
+            apply_status="applied",
+            attachment_status="verified",
+            readback={
+                "attach_parent": "MPFBVisual",
+                "attach_bone": "spine_03",
+                "number_index": actor["jersey_number"] - 1,
+                "stencil_value": 32 + ENTITY_IDS.index(actor["entity_id"]),
+                "placement": "back",
+                "decal_exists": True,
+                "mask_proxy_exists": True,
+                "decal_component_name": "JerseyNumberBack",
+                "mask_proxy_component_name": "JerseyNumberMaskProxy",
+                "decal_component_path": "/Game/Map.Actor.JerseyNumberBack",
+                "mask_proxy_component_path": "/Game/Map.Actor.JerseyNumberMaskProxy",
+            },
+        )
+    report["actors"][0]["apply_status"] = "not_started"
+
+    with pytest.raises(ValueError, match="apply_status"):
+        appearance_module.serialize_application_report(report)
+
+
+def test_v2_restore_stops_before_unreal_or_rollback_access(tmp_path, monkeypatch):
+    manifest, _, _, _ = valid_v2_inputs(tmp_path)
+    mapping = {entity_id: "Player_{}".format(entity_id) for entity_id in ENTITY_IDS}
+    report = create_application_report(manifest, mapping)
+    report_path = tmp_path / "appearance_application.json"
+    write_application_report(report_path, report)
+    monkeypatch.setattr(
+        appearance_module,
+        "_load_unreal",
+        lambda: pytest.fail("v2 restore must stop before Unreal pending verified APIs"),
+    )
+
+    result = restore_episode_appearance(
+        str(tmp_path / "missing-rollback.json"), str(report_path), "success"
+    )
+
+    assert result["ok"] is False
+    assert any("MANUAL_REQUIRED" in error for error in result["errors"])
+    assert not (tmp_path / "missing-rollback.json").exists()
+
+
+def test_v1_restore_rejects_v2_rollback_version_before_unreal(
+    tmp_path, monkeypatch, appearance_inputs
+):
+    manifest, _, _, _, mapping = appearance_inputs
+    report = create_application_report(manifest, mapping)
+    report["state"] = "applied"
+    report["transaction_id"] = "a" * 64
+    report_path = tmp_path / "application.json"
+    write_application_report(report_path, report)
+    rollback_path = tmp_path / "rollback.json"
+    snapshots = [_actor_snapshot(entity_id, [None] * 7) for entity_id in ENTITY_IDS]
+    for snapshot in snapshots:
+        snapshot["number_components"] = {
+            "decal": {"exists": False},
+            "mask_proxy": {"exists": False},
+        }
+    rollback = appearance_module._build_rollback_payload(
+        manifest["fingerprint"], snapshots,
+        [{"package_path": "/Game/Materials/Numbering", "package_dirty": False}],
+        version=4,
+    )
+    report["transaction_id"] = rollback["transaction_id"]
+    write_application_report(report_path, report)
+    rollback_path.write_text(json.dumps(rollback), encoding="utf-8")
+    monkeypatch.setattr(
+        appearance_module,
+        "_load_unreal",
+        lambda: pytest.fail("policy/version mismatch must stop before Unreal"),
+    )
+
+    result = restore_episode_appearance(
+        str(rollback_path), str(report_path), "success"
+    )
+
+    assert result["ok"] is False
+    assert any("version" in error for error in result["errors"])
+
+
+def test_v2_apply_reports_manual_required_without_loading_unreal(tmp_path, monkeypatch):
+    manifest, catalog, _, _ = valid_v2_inputs(tmp_path)
+    mapping = {entity_id: "Player_{}".format(entity_id) for entity_id in ENTITY_IDS}
+    monkeypatch.setattr(
+        appearance_module,
+        "_load_unreal",
+        lambda: pytest.fail("v2 apply must stop before Unreal without verified evidence"),
+    )
+
+    result = apply_episode_appearance(
+        manifest,
+        catalog,
+        mapping,
+        str(tmp_path / "rollback.json"),
+        str(tmp_path / "application.json"),
+    )
+
+    assert result["ok"] is False
+    assert result["state"] == "preflight_failed"
+    assert result["rollback_snapshot_written"] is False
+    assert any("MANUAL_REQUIRED" in error for error in result["errors"])
+    assert appearance_module.read_application_report(
+        tmp_path / "application.json"
+    )["state"] == "preflight_failed"
+
+
+def test_v2_manual_apply_does_not_complete_an_existing_rollback_pair(tmp_path):
+    manifest, catalog, _, _ = valid_v2_inputs(tmp_path)
+    mapping = {entity_id: "Player_{}".format(entity_id) for entity_id in ENTITY_IDS}
+    rollback_path = tmp_path / "appearance-rollback.json"
+    report_path = tmp_path / "appearance-application.json"
+    rollback_path.write_text("existing rollback evidence", encoding="utf-8")
+
+    result = apply_episode_appearance(
+        manifest, catalog, mapping, str(rollback_path), str(report_path)
+    )
+
+    assert result["ok"] is False
+    assert result["state"] == "preflight_failed"
+    assert rollback_path.read_text(encoding="utf-8") == "existing rollback evidence"
+    assert not report_path.exists()
+
+
+def test_v2_local_recovery_evidence_requires_report_numbers_to_match_manifest(tmp_path):
+    manifest, catalog, _, _ = valid_v2_inputs(tmp_path)
+    mapping = {entity_id: "Player_{}".format(entity_id) for entity_id in ENTITY_IDS}
+    snapshots = [_actor_snapshot(entity_id, [None] * 7) for entity_id in ENTITY_IDS]
+    for snapshot in snapshots:
+        snapshot["number_components"] = {
+            "decal": {"exists": False},
+            "mask_proxy": {"exists": False},
+        }
+    rollback = appearance_module._build_rollback_payload(
+        manifest["fingerprint"],
+        snapshots,
+        [{"package_path": "/Game/Materials/Numbering", "package_dirty": False}],
+        version=4,
+    )
+    report = create_application_report(manifest, mapping)
+    report["transaction_id"] = rollback["transaction_id"]
+    report["actors"][0]["jersey_number"] = (
+        report["actors"][0]["jersey_number"] % 99
+    ) + 1
+
+    errors = appearance_module.validate_local_recovery_evidence(
+        rollback, report, manifest, catalog
+    )
+
+    assert any("jersey_number" in error for error in errors)
+
+
+def test_v2_local_recovery_evidence_requires_report_numbering_to_match_manifest(
+    tmp_path,
+):
+    manifest, catalog, _, _ = valid_v2_inputs(tmp_path)
+    mapping = {entity_id: "Player_{}".format(entity_id) for entity_id in ENTITY_IDS}
+    snapshots = [_actor_snapshot(entity_id, [None] * 7) for entity_id in ENTITY_IDS]
+    for snapshot in snapshots:
+        snapshot["number_components"] = {
+            "decal": {"exists": False},
+            "mask_proxy": {"exists": False},
+        }
+    rollback = appearance_module._build_rollback_payload(
+        manifest["fingerprint"],
+        snapshots,
+        [{"package_path": "/Game/Materials/Numbering", "package_dirty": False}],
+        version=4,
+    )
+    report = create_application_report(manifest, mapping)
+    report["transaction_id"] = rollback["transaction_id"]
+    report["numbering"]["mask_stencil_start"] = 33
+
+    errors = appearance_module.validate_local_recovery_evidence(
+        rollback, report, manifest, catalog
+    )
+
+    assert any("numbering" in error for error in errors)
+
+
+def test_v2_diagnostic_reports_number_asset_classes_and_manual_visual_gate():
+    number_specs = (
+        ("numbering", "atlas", "/Game/Numbers/Atlas", "Texture2D"),
+        ("numbering", "decal", "/Game/Numbers/Decal", "Material"),
+        ("numbering", "proxy_mesh", "/Game/Numbers/Proxy", "StaticMesh"),
+        ("numbering", "proxy_material", "/Game/Numbers/ProxyMaterial", "Material"),
+        ("numbering", "post_process", "/Game/Numbers/PostProcess", "Material"),
+    )
+    checks = [
+        {"path": path, "expected_class": class_name, "exists": True, "actual_class": class_name}
+        for _, _, path, class_name in number_specs
+    ]
+    numbering = {
+        "atlas": "/Game/Numbers/Atlas",
+        "decal_material": "/Game/Numbers/Decal",
+        "mask_proxy_mesh": "/Game/Numbers/Proxy",
+        "mask_proxy_material": "/Game/Numbers/ProxyMaterial",
+        "mask_post_process_material": "/Game/Numbers/PostProcess",
+    }
+    mapping = {entity_id: "Player_{}".format(entity_id) for entity_id in ENTITY_IDS}
+    actors = {
+        entity_id: {
+            "actor_label": mapping[entity_id],
+            "actor_path": "/Game/Map.Player_{}".format(entity_id),
+            "package_path": "/Game/__ExternalActors__/{}".format(entity_id),
+        }
+        for entity_id in ENTITY_IDS
+    }
+
+    report = appearance_diagnostic.build_diagnostic_report(
+        "/Game/FutsalMOT/Maps/L_FutsalCourt",
+        mapping,
+        actors,
+        [],
+        checks,
+        appearance_policy="futsalmot_appearance_v2",
+        numbering=numbering,
+    )
+
+    assert report["numbering_asset_checks_ok"] is True
+    assert report["numbering_visual_gate"] == "MANUAL_REQUIRED"
+    assert report["task7_preflight_can_start"] is False
+
+    missing_asset_checks = copy.deepcopy(checks)
+    missing_asset_checks.pop()
+    missing = appearance_diagnostic.build_diagnostic_report(
+        "/Game/FutsalMOT/Maps/L_FutsalCourt",
+        mapping,
+        actors,
+        [],
+        missing_asset_checks,
+        appearance_policy="futsalmot_appearance_v2",
+        numbering=numbering,
+    )
+    assert missing["numbering_asset_checks_ok"] is False
+    assert missing["task7_preflight_can_start"] is False
+
+    duplicate_checks = copy.deepcopy(checks)
+    duplicate_checks[-1]["path"] = duplicate_checks[0]["path"]
+    duplicate = appearance_diagnostic.build_diagnostic_report(
+        "/Game/FutsalMOT/Maps/L_FutsalCourt",
+        mapping,
+        actors,
+        [],
+        duplicate_checks,
+        appearance_policy="futsalmot_appearance_v2",
+        numbering=numbering,
+    )
+    assert duplicate["numbering_asset_checks_ok"] is False
 
 
 @pytest.mark.parametrize(

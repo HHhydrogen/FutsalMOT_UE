@@ -5,6 +5,7 @@
 | 内容 | 物理目录 | 规则 |
 | --- | --- | --- |
 | 原始MRQ RGB/EXR | `G:/FutsalMOT_Dataset/_work/<attempt>/raw` | 新attempt，不覆盖失败或成品 |
+| 临时测试RGB/EXR/mask/预览 | `G:/FutsalMOT_Dataset/test/<attempt>/raw` | 用户2026-10-29指定；成功24小时，失败明确诊断用途最长7天 |
 | mask/Pose及待发布RGB | `G:/FutsalMOT_Dataset/_staging/<attempt>` | 成功后同卷移到版本目录，避免大文件复制 |
 | 正式数据 | `G:/FutsalMOT_Dataset/<version>/groups/...` | 发布索引为入口，保留旧版本不覆盖 |
 | UE配置、日志、轨迹、native、校准和运行收据 | UE项目`Saved/` | 物理D盘；不存大批渲染媒体，不提交Git |
@@ -23,4 +24,4 @@ MRQ实际写入使用`grf_ue_bridge.storage_policy.require_render_destination`�
 
 清理完成后记录真实删除数量和字节数，发布版本中的来源记录指向清理收据；旧来源协议保持原bytes，另记文件已退休。EXR删除不可逆失去原深度/Cryptomatte通道；不能将mask和unknown位置标注冒充物理遮挡证据。
 
-测试小夹具和未完成号码开发不按生产媒体批量清理。空间盘点只遍历物理目录/stat，不跟联接、不重复读媒体像素或计算全量媒体hash。Git管理源码、资产和规范，不管理Saved、渲染媒体、模型或环境。
+测试小夹具和号码联调媒体按用户2026-10-29的新规则进入`test/<attempt>`，以`_test_lifecycle.json`登记结束与到期。每日04:00自动执行`tools/ue_ops/cleanup_test_render.ps1 -Apply`，只清已结束/到期的普通test子目录；成功保留24小时、失败诊断最长7天。活动任务、缺收据目录及含junction/reparse point的目录跳过，正式数据和项目关键收据不在定时清理范围。空间盘点只遍历物理目录/stat，不跟联接、不重复读媒体像素或计算全量媒体hash。Git管理源码、资产和规范，不管理Saved、渲染媒体、模型或环境。

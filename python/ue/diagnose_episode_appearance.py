@@ -13,6 +13,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 _FORMAL_MAP = "/Game/FutsalMOT/Maps/L_FutsalCourt"
 _ENTITY_IDS = ("L0", "L1", "L2", "L3", "L4", "R0", "R1", "R2", "R3", "R4")
+_APPEARANCE_POLICY_V2 = "futsalmot_appearance_v2"
+_NUMBERING_CLASSES = {
+    "atlas": "Texture2D",
+    "decal_material": "Material",
+    "mask_proxy_mesh": "StaticMesh",
+    "mask_proxy_material": "Material",
+    "mask_post_process_material": "Material",
+}
 _ASSET_ROOT = "/Game/FutsalMOT/Characters/MPFB"
 _ASSET_SPECS = tuple(
     [
@@ -107,6 +115,8 @@ def build_diagnostic_report(
     dirty_package_paths: Sequence[str],
     asset_checks: Sequence[Mapping[str, Any]],
     errors: Sequence[str] = (),
+    appearance_policy: str = "futsalmot_appearance_v1",
+    numbering: Optional[Mapping[str, Any]] = None,
 ) -> dict:
     """从只读采集结果生成可在普通 Python 测试的门禁报告。"""
     mapping = mapping if isinstance(mapping, Mapping) else {}
@@ -166,6 +176,27 @@ def build_diagnostic_report(
             if item.get("package_dirty") and isinstance(item.get("path"), str)
         }
     )
+    is_v2 = appearance_policy == _APPEARANCE_POLICY_V2
+    numbering_paths = {
+        numbering.get(field)
+        for field in _NUMBERING_CLASSES
+        if isinstance(numbering, Mapping) and isinstance(numbering.get(field), str)
+    }
+    numbering_checks = [
+        item for item in checked_assets if item.get("path") in numbering_paths
+    ]
+    observed_numbering_paths = [item.get("path") for item in numbering_checks]
+    numbering_asset_checks_ok = (
+        len(numbering_checks) == len(_NUMBERING_CLASSES)
+        and len(numbering_paths) == len(_NUMBERING_CLASSES)
+        and len(set(observed_numbering_paths)) == len(_NUMBERING_CLASSES)
+        and set(observed_numbering_paths) == numbering_paths
+        and all(
+            item.get("class_match") is True and not item.get("error")
+            and not item.get("package_dirty")
+            for item in numbering_checks
+        )
+    ) if is_v2 else None
     resolved_paths = [
         item["actor_path"] for item in roster_actors if item["resolved"]
     ]
@@ -186,9 +217,10 @@ def build_diagnostic_report(
         and not duplicate_actor_packages
         and len(roster_actors) == len(_ENTITY_IDS)
     )
-    key_asset_checks_ok = bool(checked_assets) and all(
+    base_asset_checks = [item for item in checked_assets if item.get("category") != "numbering"]
+    key_asset_checks_ok = bool(base_asset_checks) and all(
         item.get("class_match") is True and not item.get("error")
-        for item in checked_assets
+        for item in base_asset_checks
     )
     collected_errors = list(errors)
     if not formal_map_match:
@@ -213,6 +245,12 @@ def build_diagnostic_report(
         collected_errors.append("关键外观资产存在性或 class 检查未通过")
     if dirty_asset_packages:
         collected_errors.append("关键外观资产 package 已 dirty")
+    if is_v2 and not numbering_asset_checks_ok:
+        collected_errors.append("appearance v2 number asset 存在性/class/clean 检查未通过")
+    if is_v2:
+        collected_errors.append(
+            "MANUAL_REQUIRED: appearance v2 number component visual/attachment/mask lifecycle 未验收"
+        )
 
     return {
         "schema": "futsalmot_episode_appearance_diagnostic",
@@ -235,6 +273,9 @@ def build_diagnostic_report(
         "dirty_actor_package_paths": sorted(set(dirty_actor_packages)),
         "dirty_key_asset_package_paths": dirty_asset_packages,
         "key_asset_checks_ok": key_asset_checks_ok,
+        "appearance_policy": appearance_policy,
+        "numbering_asset_checks_ok": numbering_asset_checks_ok,
+        "numbering_visual_gate": "MANUAL_REQUIRED" if is_v2 else "not_applicable",
         "asset_checks": checked_assets,
         "errors": list(dict.fromkeys(collected_errors)),
         "task7_preflight_can_start": (
@@ -244,6 +285,7 @@ def build_diagnostic_report(
             and not dirty_actor_packages
             and key_asset_checks_ok
             and not dirty_asset_packages
+            and (not is_v2)
             and not errors
         ),
     }
@@ -260,9 +302,24 @@ def _load_mapping(mapping_path: Optional[str] = None) -> dict:
     return mapping
 
 
-def _asset_checks(unreal_module: Any) -> list:
+def _asset_checks(
+    unreal_module: Any,
+    numbering: Optional[Mapping[str, Any]] = None,
+) -> list:
     checks = []
-    for category, asset_id, path, expected_class in _ASSET_SPECS:
+    specs = list(_ASSET_SPECS)
+    if isinstance(numbering, Mapping):
+        specs.extend(
+            (
+                "numbering",
+                field,
+                numbering[field],
+                expected_class,
+            )
+            for field, expected_class in _NUMBERING_CLASSES.items()
+            if isinstance(numbering.get(field), str)
+        )
+    for category, asset_id, path, expected_class in specs:
         check = {
             "category": category,
             "asset_id": asset_id,
@@ -289,7 +346,11 @@ def _asset_checks(unreal_module: Any) -> list:
     return checks
 
 
-def collect_diagnostic(unreal_module: Any, mapping: Mapping[str, str]) -> dict:
+def collect_diagnostic(
+    unreal_module: Any,
+    mapping: Mapping[str, str],
+    appearance_catalog: Optional[Mapping[str, Any]] = None,
+) -> dict:
     """只从当前 Editor 状态采集地图、Actor、dirty package 和资产元数据。"""
     from episode_appearance import (
         _all_level_actors,
@@ -346,17 +407,36 @@ def collect_diagnostic(unreal_module: Any, mapping: Mapping[str, str]) -> dict:
         dirty_paths = []
         errors.append("dirty package 查询失败: {}: {}".format(type(exc).__name__, exc))
     try:
-        checks = _asset_checks(unreal_module)
+        numbering = (
+            appearance_catalog.get("numbering")
+            if isinstance(appearance_catalog, Mapping)
+            else None
+        )
+        checks = _asset_checks(unreal_module, numbering)
     except Exception as exc:
         checks = []
         errors.append("关键资产检查初始化失败: {}: {}".format(type(exc).__name__, exc))
     report = build_diagnostic_report(
-        current_level_path, mapping, actor_records, dirty_paths, checks, errors
+        current_level_path,
+        mapping,
+        actor_records,
+        dirty_paths,
+        checks,
+        errors,
+        appearance_policy=(
+            appearance_catalog.get("policy", "futsalmot_appearance_v1")
+            if isinstance(appearance_catalog, Mapping)
+            else "futsalmot_appearance_v1"
+        ),
+        numbering=numbering if "numbering" in locals() else None,
     )
     return report
 
 
-def main(mapping_path: Optional[str] = None) -> dict:
+def main(
+    mapping_path: Optional[str] = None,
+    appearance_catalog_path: Optional[str] = None,
+) -> dict:
     """在 Unreal Editor Python 环境采集并输出 JSON 诊断结果。"""
     import unreal
 
@@ -367,7 +447,29 @@ def main(mapping_path: Optional[str] = None) -> dict:
             None, {}, {}, [], [], ["actor mapping 读取失败: {}: {}".format(type(exc).__name__, exc)]
         )
     else:
-        report = collect_diagnostic(unreal, mapping)
+        catalog_path = (
+            appearance_catalog_path
+            or os.environ.get("FUTSALMOT_APPEARANCE_CATALOG")
+        )
+        catalog = None
+        if catalog_path:
+            try:
+                with Path(catalog_path).open("r", encoding="utf-8") as stream:
+                    catalog = json.load(stream)
+            except Exception as exc:
+                report = build_diagnostic_report(
+                    None,
+                    mapping,
+                    {},
+                    [],
+                    [],
+                    ["appearance catalog 读取失败: {}: {}".format(type(exc).__name__, exc)],
+                    appearance_policy=_APPEARANCE_POLICY_V2,
+                    numbering={},
+                )
+                print(json.dumps(report, ensure_ascii=False, sort_keys=True, indent=2))
+                return report
+        report = collect_diagnostic(unreal, mapping, catalog)
     print(json.dumps(report, ensure_ascii=False, sort_keys=True, indent=2))
     return report
 

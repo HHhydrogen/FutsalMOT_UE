@@ -2,7 +2,15 @@
 
 更新：2026-10-29。历史过程见Git及对应运行收据；本页不保留过期PID流水。
 
-## 当前：弱标签/可达性/历史暴露诊断已独立核查闭合，原strongmotion_RS保持主参照
+## 当前：号码系统已人工验收并固化
+
+已确认profile `back_size115_down002_v1`：原印花宽高各放大15%，中心V减0.02（源网格约下移2.25cm）；RGB与号码mask共享参数，原model/skin/kit随机系统保持启用。最终同源同机位10帧MRQ与后处理success，100人物记录、40条号码可见、769号码像素全部归属正确实例；bbox/号码validator通过。用户已人工确认，并授权本次GitHub提交。详情见[实现与证据](Docs/engineering/SEEDED_APPEARANCE_UV_NUMBERS.md)。
+
+UE已自动恢复、clean/idle后正常退出。临时媒体仅`G:/FutsalMOT_Dataset/test`，成功保留24小时、失败诊断最长7天，每天04:00按结束/到期收据清理；EXR消费者结束后均已按精确清单删除。项目Saved只保留小配置/日志/关键收据，不入Git。
+
+下一步为新数据集的完整schema适配与有限生成清单冻结；当前未发布完整新dataset，不追加近景、重跑旧研究或训练。临时Sequence与其他研究/配置WIP保留在本机，本次仅提交号码系统及必要依赖。
+
+## 前一研究阶段：弱标签/可达性/历史暴露诊断已独立核查闭合，原strongmotion_RS保持主参照
 
 [完整证据与下一步方案](Docs/research/RECORD_REUSE_DIAGNOSIS_A01_RESULTS.md)；[冻结有界协议](Docs/research/WEAK_LABEL_REACHABILITY_REUSE_A01.md)。本轮新增优化/R-S曝光/模型前向/图像推理/追踪推进/solver/GT坐标/TrackEval/渲染均0，producer/两个worker/verifier/launcher实际全退。原116/187/test封存，无本轮研究后台。
 

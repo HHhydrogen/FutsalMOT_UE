@@ -24,6 +24,7 @@
 - [GPU渲染/CPU-LBS](engineering/POSE17_GPU_RENDER_CPU_LBS.md)、[离线蒙皮诊断](engineering/POSE17_OFFLINE_LBS_DIAGNOSTIC.md)及[头部标定来源](engineering/POSE17_HEAD_SURFACE_CALIBRATION.md)。
 - [天气光照系统](engineering/WEATHER_LIGHTING_SYSTEM.md)与[地板随机流](engineering/FLOOR_DIVERSITY.md)。
 - [Pose接回原seed球衣系统](engineering/POSE_SEEDED_KIT_INTEGRATION.md)：复用appearance v1清单；定位独立Pose入口未应用及native清空材质的断点，v9后按同运动/相机验证。
+- [完整随机外观下的UV号码与数字标注](engineering/SEEDED_APPEARANCE_UV_NUMBERS.md)：五套球衣保留原输入，同MRQ job号码通道、线性EXR转整数mask及可见bbox；10帧真实联调与失败/恢复记录，临时媒体进入G盘test并定时清理。
 - [MCP Python执行范围](engineering/PYTHON_EXECUTION_SCOPE.md)：保持项目内执行边界，不为路径迁移放宽权限。
 
 ## production：批次、资产与输出
@@ -70,7 +71,7 @@
 - [UE崩溃调查](operations/UE_CRASH_FINDINGS_20261023.md)：一次正常退出不等于历史GC崩溃已根治。
 - 本机执行候选、清理清单和历史交接说明同样放在operations，是否已验证/执行以各正文和真实收据为准。
 
-未完成号码两份设计文档仍受保护，保留在原开发目录，不因本次文档整理提交号码实现或资产。P1 Python3.9、研究Python3.10及UE Python环境继续隔离。final116/187封存。
+号码系统已按用户2026-10-29人工验收结果固化；旧两份设计文档保留原开发目录，实际使用入口见[随机外观UV号码](engineering/SEEDED_APPEARANCE_UV_NUMBERS.md)。P1 Python3.9、研究Python3.10及UE Python环境继续隔离。final116/187封存。
 
 - [有界变化编码单因素学习验证](research/POSE_BOUNDED_VELOCITY_LEARNING_A01.md)与[完整结果](research/POSE_BOUNDED_VELOCITY_LEARNING_A01_RESULTS.md)：27臂27000更新/567完整检查点、513追踪、720指标/720断档配对与120+24描述均已独立终验。七场相对强motion AssA−0.0582点[−0.2245,+0.1080]，未建立可靠编码增量；全部负结果/失败保留，测试封存。
 - [新T决策接口零更新方案](research/POSE_DECISION_INTERFACE_A01.md)与[18项完整结果](research/POSE_DECISION_INTERFACE_A02_RESULTS.md)：实际数值/score2、全部事件与独立终验已完成，0更新。当前原q无可信正确分配转移，q1多为破坏，不支持直接放宽质量gate；下一步准备同缓存成熟追踪器对照，代理不当AssA收益。

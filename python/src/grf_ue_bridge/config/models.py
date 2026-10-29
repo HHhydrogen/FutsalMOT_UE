@@ -396,23 +396,64 @@ class AppearanceKitCandidate(BaseModel):
         return self
 
 
+class AppearanceNumberingConfig(BaseModel):
+    """appearance v2 球衣号码及其 UE 资产配置。"""
+
+    min: Literal[1]
+    max: Literal[99]
+    unique: Literal[True]
+    placement: Literal["back"]
+    bone: Literal["spine_03"]
+    atlas: StrictStr
+    decal_material: StrictStr
+    parameter: Literal["NumberIndex"]
+    mask_proxy_mesh: StrictStr
+    mask_proxy_material: StrictStr
+    mask_post_process_material: StrictStr
+    mask_stencil_start: Literal[32]
+
+    model_config = {"extra": "forbid"}
+
+    _validate_paths = field_validator(
+        "atlas",
+        "decal_material",
+        "mask_proxy_mesh",
+        "mask_proxy_material",
+        "mask_post_process_material",
+    )(_validate_appearance_asset_path)
 
 
 class AppearanceCatalog(BaseModel):
     """seeded episode 外观目录及其完整候选集合。"""
 
     mode: Literal["seeded"]
-    policy: Literal["futsalmot_appearance_v1"]
-    catalog_id: Literal["mpfb_players_003_009_v1"]
+    policy: Literal["futsalmot_appearance_v1", "futsalmot_appearance_v2"]
+    catalog_id: Literal["mpfb_players_003_009_v1", "mpfb_players_003_009_v2"]
     models: List[AppearanceModelCandidate]
     skins: List[AppearanceSkinCandidate]
     kits: List[AppearanceKitCandidate]
     body_texture_parameter: Literal["SkinTexture"]
+    numbering: Optional[AppearanceNumberingConfig] = Field(
+        None,
+        exclude_if=lambda value: value is None,
+        description="appearance v2 球衣号码配置；v1 不包含该字段",
+    )
 
     model_config = {"extra": "forbid"}
 
     @model_validator(mode="after")
     def validate_candidate_contract(self) -> "AppearanceCatalog":
+        if self.policy == "futsalmot_appearance_v1":
+            if self.catalog_id != "mpfb_players_003_009_v1":
+                raise ValueError("appearance v1 catalog_id 必须为 mpfb_players_003_009_v1")
+            if self.numbering is not None:
+                raise ValueError("appearance v1 不允许 numbering 配置")
+        else:
+            if self.catalog_id != "mpfb_players_003_009_v2":
+                raise ValueError("appearance v2 catalog_id 必须为 mpfb_players_003_009_v2")
+            if self.numbering is None:
+                raise ValueError("appearance v2 必须提供完整 numbering 配置")
+
         if len(self.models) != 7:
             raise ValueError("appearance models 必须包含 7 个候选")
         model_ids = [model.player_id for model in self.models]
@@ -435,7 +476,6 @@ class AppearanceCatalog(BaseModel):
         if set(kit_ids) != {"01", "02", "03", "04", "05"}:
             raise ValueError("appearance kits 必须完整覆盖 set_id 01-05")
         return self
-
 
 
 class EnvironmentConfig(BaseModel):

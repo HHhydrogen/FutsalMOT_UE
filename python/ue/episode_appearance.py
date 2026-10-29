@@ -17,6 +17,8 @@ from typing import Any, Dict, Mapping, Optional, Sequence
 APPEARANCE_SCHEMA = "futsalmot_episode_appearance"
 APPEARANCE_VERSION = 1
 APPEARANCE_POLICY = "futsalmot_appearance_v1"
+APPEARANCE_VERSION_V2 = 2
+APPEARANCE_POLICY_V2 = "futsalmot_appearance_v2"
 APPLICATION_REPORT_SCHEMA = "futsalmot_appearance_application"
 APPLICATION_REPORT_VERSION = 1
 ENTITY_IDS = ("L0", "L1", "L2", "L3", "L4", "R0", "R1", "R2", "R3", "R4")
@@ -61,6 +63,8 @@ _REPORT_FIELDS = {
     "render_result",
     "errors",
     "warnings",
+    "appearance_policy",
+    "numbering",
 }
 _ENTITY_ASSET_FIELDS = (
     "mesh",
@@ -87,6 +91,7 @@ _SHARED_SKELETON = "/Game/FutsalMOT/Characters/MPFB/Core/Skeleton/SKEL_MPFB_Base
 _SHARED_ANIM_BLUEPRINT = "/Game/FutsalMOT/Characters/MPFB/Core/Retarget/ABP_MPFB_RuntimeRetarget"
 _SNAPSHOT_SCHEMA = "futsalmot_episode_appearance_rollback"
 _SNAPSHOT_VERSION = 3
+_SNAPSHOT_VERSION_V2 = 4
 _RESTORE_VERIFIED_TOKEN = object()
 _SNAPSHOT_FIELDS = (
     "entity_id",
@@ -140,6 +145,72 @@ def _manifest_fingerprint(manifest: Mapping[str, Any]) -> str:
     return _fingerprint(payload)
 
 
+def _is_v2_manifest(manifest: Any) -> bool:
+    return isinstance(manifest, Mapping) and manifest.get("policy") == APPEARANCE_POLICY_V2
+
+
+def _numbering_contract_errors(numbering: Any) -> list:
+    if not isinstance(numbering, Mapping):
+        return ["appearance v2 numbering 必须是对象"]
+    required = {
+        "min", "max", "unique", "placement", "bone", "atlas",
+        "decal_material", "parameter", "mask_proxy_mesh",
+        "mask_proxy_material", "mask_post_process_material", "mask_stencil_start",
+    }
+    errors = []
+    if set(numbering) != required:
+        missing = sorted(required - set(numbering))
+        extra = sorted(set(numbering) - required)
+        errors.append(
+            "appearance v2 numbering 字段不匹配: 缺少={} 未知={}".format(missing, extra)
+        )
+    for field, expected in (
+        ("min", 1), ("max", 99), ("unique", True),
+        ("placement", "back"), ("bone", "spine_03"),
+        ("parameter", "NumberIndex"), ("mask_stencil_start", 32),
+    ):
+        value = numbering.get(field)
+        if type(value) is not type(expected) or value != expected:
+            errors.append("appearance v2 numbering.{} 无效".format(field))
+    for field in (
+        "atlas", "decal_material", "mask_proxy_mesh", "mask_proxy_material",
+        "mask_post_process_material",
+    ):
+        if not _is_asset_path(numbering.get(field)):
+            errors.append("appearance v2 numbering.{} 必须是 /Game/ 资产路径".format(field))
+    asset_paths = [numbering.get(field) for field in (
+        "atlas", "decal_material", "mask_proxy_mesh", "mask_proxy_material",
+        "mask_post_process_material",
+    )]
+    if all(_is_asset_path(path) for path in asset_paths) and len(set(asset_paths)) != len(asset_paths):
+        errors.append("appearance v2 numbering assets 必须使用五个不同的 catalog path")
+    return errors
+
+
+def _expected_jersey_numbers(visual_seed: int) -> dict:
+    seed_digest = hashlib.sha256(
+        "{}:{}:jersey_number".format(APPEARANCE_POLICY_V2, visual_seed).encode("utf-8")
+    ).digest()
+    namespace_seed = int.from_bytes(seed_digest[:4], "big") & 0x7FFFFFFF
+    assigned = {}
+    used = set()
+    for entity_id in ENTITY_IDS:
+        ranked = sorted(
+            range(1, 100),
+            key=lambda number: (
+                hashlib.sha256(
+                    "{}:rank:jersey_number:{}:{}:{}".format(
+                        APPEARANCE_POLICY_V2, namespace_seed, entity_id, number
+                    ).encode("utf-8")
+                ).digest(),
+                str(number),
+            ),
+        )
+        assigned[entity_id] = next(number for number in ranked if number not in used)
+        used.add(assigned[entity_id])
+    return namespace_seed, assigned
+
+
 def _is_asset_path(value: Any) -> bool:
     if not isinstance(value, str) or not value.startswith("/Game/"):
         return False
@@ -174,11 +245,14 @@ def _manifest_errors(manifest: Any, catalog: Any) -> list:
     if not isinstance(catalog, Mapping):
         return ["catalog 必须是 JSON 对象"]
 
+    is_v2 = _is_v2_manifest(manifest)
+    expected_version = APPEARANCE_VERSION_V2 if is_v2 else APPEARANCE_VERSION
+    expected_policy = APPEARANCE_POLICY_V2 if is_v2 else APPEARANCE_POLICY
     if manifest.get("schema") != APPEARANCE_SCHEMA:
         errors.append("manifest schema 无效")
-    if type(manifest.get("version")) is not int or manifest.get("version") != APPEARANCE_VERSION:
+    if type(manifest.get("version")) is not int or manifest.get("version") != expected_version:
         errors.append("manifest version 无效")
-    if manifest.get("policy") != APPEARANCE_POLICY:
+    if manifest.get("policy") != expected_policy:
         errors.append("manifest policy 无效")
     for field in ("root_seed", "ue_visual_seed"):
         value = manifest.get(field)
@@ -193,6 +267,9 @@ def _manifest_errors(manifest: Any, catalog: Any) -> list:
                 "{}:{}:{}".format(APPEARANCE_POLICY, visual_seed, namespace).encode("utf-8")
             ).digest()
             expected_seeds[namespace] = int.from_bytes(digest[:4], "big") & 0x7FFFFFFF
+        if is_v2:
+            number_seed, _ = _expected_jersey_numbers(visual_seed)
+            expected_seeds["jersey_number"] = number_seed
         if manifest.get("namespace_seeds") != expected_seeds:
             errors.append("manifest namespace_seeds 与 ue_visual_seed 不一致")
     elif type(visual_seed) is int:
@@ -213,8 +290,16 @@ def _manifest_errors(manifest: Any, catalog: Any) -> list:
         errors.append("catalog_id 缺失或无效")
     if catalog.get("mode") != "seeded":
         errors.append("catalog mode 必须为 seeded")
-    if catalog.get("policy") != APPEARANCE_POLICY:
+    if catalog.get("policy") != expected_policy:
         errors.append("catalog policy 无效")
+    if is_v2:
+        if catalog.get("catalog_id") != "mpfb_players_003_009_v2":
+            errors.append("appearance v2 catalog_id 无效")
+        errors.extend(_numbering_contract_errors(catalog.get("numbering")))
+        if manifest.get("numbering") != catalog.get("numbering"):
+            errors.append("manifest numbering 与 catalog 不一致")
+    elif "numbering" in catalog or "numbering" in manifest:
+        errors.append("appearance v1 不允许 numbering")
     if not isinstance(catalog.get("body_texture_parameter"), str) or not catalog.get(
         "body_texture_parameter", ""
     ).strip():
@@ -365,6 +450,18 @@ def _manifest_errors(manifest: Any, catalog: Any) -> list:
             for field in _ENTITY_ASSET_FIELDS:
                 if not _is_asset_path(entity.get(field)):
                     errors.append("{} {} 必须是 /Game/ 资产路径".format(entity_id, field))
+            if is_v2:
+                jersey_number = entity.get("jersey_number")
+                numbering = manifest.get("numbering")
+                minimum = numbering.get("min", 1) if isinstance(numbering, Mapping) else 1
+                maximum = numbering.get("max", 99) if isinstance(numbering, Mapping) else 99
+                if (
+                    type(minimum) is not int
+                    or type(maximum) is not int
+                    or type(jersey_number) is not int
+                    or not minimum <= jersey_number <= maximum
+                ):
+                    errors.append("{} jersey_number 必须是 1..99 整数".format(entity_id))
         if set(entity_by_id) != set(ENTITY_IDS):
             errors.append("manifest entities 必须完整覆盖 L0-L4 和 R0-R4")
 
@@ -376,6 +473,12 @@ def _manifest_errors(manifest: Any, catalog: Any) -> list:
             ]
             if len(keepers) != 1:
                 errors.append("{} 队必须恰好有一名 goalkeeper".format(team))
+
+    if is_v2 and set(entity_by_id) == set(ENTITY_IDS):
+        numbers = [entity.get("jersey_number") for entity in entity_by_id.values()]
+        valid_numbers = [number for number in numbers if type(number) is int]
+        if len(valid_numbers) != len(ENTITY_IDS) or len(set(valid_numbers)) != len(ENTITY_IDS):
+            errors.append("manifest jersey_number 必须十人完整且互不重复")
 
     if expected_seeds is not None and len(model_by_id) == 7 and len(skin_by_id) == 9 and len(kit_by_id) == 5:
         ranked_kits = sorted(
@@ -414,6 +517,10 @@ def _manifest_errors(manifest: Any, catalog: Any) -> list:
                     errors.append("{} skin assignment 与 ue_visual_seed 的 deterministic ranking 不一致".format(entity_id))
                 if entity.get("kit_set_id") != expected_kit_id:
                     errors.append("{} kit assignment 与 ue_visual_seed 的 deterministic mapping 不一致".format(entity_id))
+                if is_v2:
+                    _, expected_numbers = _expected_jersey_numbers(visual_seed)
+                    if entity.get("jersey_number") != expected_numbers[entity_id]:
+                        errors.append("{} jersey_number 与 ue_visual_seed 的 deterministic ranking 不一致".format(entity_id))
     return list(dict.fromkeys(errors))
 
 
@@ -542,6 +649,9 @@ def _preflight_contract(manifest: dict, catalog: dict, mapping: dict) -> dict:
         "errors": list(dict.fromkeys(errors)),
         "warnings": [],
         "actors": mapped,
+        "numbering_visual_gate": (
+            "MANUAL_REQUIRED" if _is_v2_manifest(manifest) else "not_applicable"
+        ),
     }
 
 
@@ -560,6 +670,12 @@ def preflight_episode_appearance(manifest: dict, catalog: dict, mapping: dict) -
             "actors": {},
         }
     result["errors"].extend(ue_result["errors"])
+    if _is_v2_manifest(manifest):
+        result["numbering_visual_gate"] = "MANUAL_REQUIRED"
+        result["task7_preflight_can_start"] = False
+        result["errors"].append(
+            "MANUAL_REQUIRED: appearance v2 number component visual/attachment/mask lifecycle 未验收"
+        )
     result["ok"] = not result["errors"]
     if ue_result.get("actors"):
         result["actors"] = [
@@ -583,6 +699,9 @@ def validate_local_recovery_evidence(
     errors = _validate_rollback_payload(snapshot)
     if not isinstance(snapshot, Mapping):
         return errors
+    expected_snapshot_version = _SNAPSHOT_VERSION_V2 if _is_v2_manifest(manifest) else _SNAPSHOT_VERSION
+    if snapshot.get("version") != expected_snapshot_version:
+        errors.append("rollback snapshot version 与 appearance policy 不匹配")
     try:
         _validate_report(report)
     except (TypeError, ValueError, KeyError, OverflowError, RecursionError) as exc:
@@ -606,6 +725,8 @@ def validate_local_recovery_evidence(
             errors.append("application report {} 与当前 manifest 不一致".format(field))
     if report.get("transaction_id") != snapshot.get("transaction_id"):
         errors.append("rollback transaction_id 与 application report 不一致")
+    if _is_v2_manifest(manifest) and report.get("numbering") != manifest.get("numbering"):
+        errors.append("application report numbering 与当前 manifest 不一致")
     if report.get("catalog_fingerprint") != _fingerprint(catalog):
         errors.append("application report catalog_fingerprint 与当前 catalog 不一致")
     actors = report.get("actors")
@@ -633,6 +754,20 @@ def validate_local_recovery_evidence(
                 errors.append("{} restored recovery report restore_status 不是 restored".format(entity_id))
             if actor.get("actor_label") != snapshots.get(entity_id, {}).get("actor_label"):
                 errors.append("{} actor_label 与 rollback snapshot 不一致".format(entity_id))
+            if _is_v2_manifest(manifest):
+                if actor.get("jersey_number") != entity.get("jersey_number"):
+                    errors.append("{} jersey_number 与 manifest 不一致".format(entity_id))
+                number_component = actor.get("number_component")
+                if not isinstance(number_component, Mapping):
+                    errors.append("{} application report number_component 缺失".format(entity_id))
+                elif report.get("state") in {"applied", "rendering"} and (
+                    number_component.get("apply_status") != "applied"
+                ):
+                    errors.append("{} number_component apply_status 不是 applied".format(entity_id))
+                elif report.get("state") == "restored" and (
+                    number_component.get("restore_status") != "restored"
+                ):
+                    errors.append("{} number_component restore_status 不是 restored".format(entity_id))
             assets = actor.get("assets")
             slots = actor.get("slots")
             if not isinstance(assets, Mapping):
@@ -711,12 +846,33 @@ def preflight_episode_appearance_recovery(
     }
 
 
-def _build_actor_snapshot(state: Mapping[str, Any]) -> dict:
+def _normalize_number_component_baseline(value: Any, entity_id: str) -> dict:
+    """复制并验证 v4 号码组件 baseline，不访问 Unreal 对象。"""
+    baseline = deepcopy(value)
+    errors = _validate_number_component_baseline(baseline, entity_id)
+    if errors:
+        raise ValueError("number component baseline 无效: {}".format("; ".join(errors)))
+    return baseline
+
+
+def _build_actor_snapshot(
+    state: Mapping[str, Any], version: int = _SNAPSHOT_VERSION
+) -> dict:
     """复制 UE 外观回滚所需字段，保留 override_materials 中的 None。"""
+    if version not in (_SNAPSHOT_VERSION, _SNAPSHOT_VERSION_V2):
+        raise ValueError("actor snapshot version 无效")
     missing = sorted(_SNAPSHOT_REQUIRED - set(state))
     if missing:
         raise ValueError("actor 快照缺少字段: {}".format(", ".join(missing)))
     snapshot = {field: deepcopy(state[field]) for field in _SNAPSHOT_FIELDS}
+    if version == _SNAPSHOT_VERSION_V2:
+        if "number_components" not in state:
+            raise ValueError("actor snapshot v4 缺少 number_components baseline")
+        snapshot["number_components"] = _normalize_number_component_baseline(
+            state["number_components"], state.get("entity_id", "unknown")
+        )
+    elif "number_components" in state:
+        raise ValueError("actor snapshot v3 不允许 number_components")
     if not isinstance(snapshot["override_materials"], list):
         raise ValueError("override_materials 必须是原生槽位数组")
     if type(snapshot["package_dirty"]) is not bool:
@@ -724,7 +880,239 @@ def _build_actor_snapshot(state: Mapping[str, Any]) -> dict:
     return snapshot
 
 
-def _validate_actor_snapshots(snapshots: Any) -> list:
+def _execute_number_component_restore_plan(
+    snapshot: Optional[Mapping[str, Any]],
+    live_component_records: Any,
+    entity_id: str,
+) -> dict:
+    """构造纯恢复计划；无 snapshot 或 UE 采集证据时要求人工门禁。"""
+    if snapshot is None or not isinstance(snapshot, Mapping):
+        return {
+            "status": "MANUAL_REQUIRED",
+            "errors": ["MANUAL_REQUIRED: v4 number component snapshot 缺失，不能推断删除/恢复"],
+        }
+    if snapshot.get("entity_id") != entity_id:
+        return {
+            "status": "restore_failed",
+            "errors": ["number component snapshot entity identity mismatch"],
+        }
+    if live_component_records is None:
+        return {
+            "status": "MANUAL_REQUIRED",
+            "errors": ["MANUAL_REQUIRED: UE number component capture 未验证，不能生成 live restore plan"],
+        }
+    if not isinstance(live_component_records, Mapping):
+        return {
+            "status": "restore_failed",
+            "errors": ["live_component_records 必须是包含 decal/mask_proxy 的对象"],
+        }
+    live_errors = _validate_number_component_baseline(live_component_records, entity_id)
+    if live_errors:
+        return {"status": "restore_failed", "errors": live_errors}
+    return {
+        "status": "prepared",
+        "entity_id": entity_id,
+        "plan": _build_number_component_restore_plan(snapshot),
+        "live_components": deepcopy(dict(live_component_records)),
+    }
+
+
+def _validate_number_component_baseline(value: Any, entity_id: str) -> list:
+    if not isinstance(value, Mapping) or set(value) != {"decal", "mask_proxy"}:
+        return ["{} number_components 必须精确包含 decal 和 mask_proxy".format(entity_id)]
+    errors = []
+    for component_name in ("decal", "mask_proxy"):
+        component = value.get(component_name)
+        prefix = "{} number_components.{}".format(entity_id, component_name)
+        if not isinstance(component, Mapping) or type(component.get("exists")) is not bool:
+            errors.append("{} 必须包含 bool exists".format(prefix))
+            continue
+        if component["exists"] is False:
+            if set(component) != {"exists"}:
+                errors.append("{} 不存在时不得包含组件状态".format(prefix))
+            continue
+        required = {
+            "exists", "component_path", "component_name", "attach_parent", "attach_bone",
+            "relative_transform", "material", "visible",
+            "render_in_main_pass", "render_in_depth_pass",
+        }
+        if component_name == "decal":
+            required.add("decal_size")
+        else:
+            required.update({"mesh", "component_name", "custom_depth_enabled", "custom_depth_stencil_value"})
+        missing_fields = sorted(required - set(component))
+        if missing_fields:
+            errors.append("{} 缺少 baseline 字段: {}".format(prefix, ", ".join(missing_fields)))
+            continue
+        path = component.get("component_path")
+        if not isinstance(path, str) or not path.startswith("/Game/"):
+            errors.append("{}.component_path 必须是 UE object path".format(prefix))
+        expected_component_name = (
+            "JerseyNumberBack" if component_name == "decal" else "JerseyNumberMaskProxy"
+        )
+        if component.get("component_name", expected_component_name) != expected_component_name:
+            errors.append("{}.component_name 必须是 {}".format(prefix, expected_component_name))
+        if (
+            not isinstance(path, str)
+            or path.rsplit(".", 1)[-1] != expected_component_name
+        ):
+            errors.append("{}.component_path 必须指向 {}".format(prefix, expected_component_name))
+        if component.get("attach_parent") != "MPFBVisual":
+            errors.append("{}.attach_parent 必须是 MPFBVisual".format(prefix))
+        if component.get("attach_bone") != "spine_03":
+            errors.append("{}.attach_bone 必须是 spine_03".format(prefix))
+        if not isinstance(component.get("material"), str) or not component["material"].startswith("/Game/"):
+            errors.append("{}.material 必须是 /Game/ 资产路径".format(prefix))
+        if component_name == "mask_proxy" and (
+            not isinstance(component.get("mesh"), str)
+            or not component["mesh"].startswith("/Game/")
+        ):
+            errors.append("{}.mesh 必须是 /Game/ 资产路径".format(prefix))
+        if component_name == "decal":
+            size = component.get("decal_size")
+            if (
+                not isinstance(size, list)
+                or len(size) != 3
+                or any(
+                    type(value) not in (int, float)
+                    or not math.isfinite(float(value))
+                    or float(value) <= 0
+                    for value in size
+                )
+            ):
+                errors.append("{}.decal_size 必须是三个正有限数".format(prefix))
+        else:
+            if type(component.get("custom_depth_enabled")) is not bool:
+                errors.append("{}.custom_depth_enabled 必须是 bool".format(prefix))
+            stencil = component.get("custom_depth_stencil_value")
+            if type(stencil) is not int or not 32 <= stencil <= 41:
+                errors.append("{}.custom_depth_stencil_value 必须是 32..41 整数".format(prefix))
+        transform = component.get("relative_transform")
+        if not isinstance(transform, Mapping):
+            errors.append("{}.relative_transform 必须是对象".format(prefix))
+        else:
+            errors.extend(
+                "{} {}".format(prefix, error)
+                for error in _transform_payload_errors(transform, "relative_transform")
+            )
+        for field in ("visible", "render_in_main_pass", "render_in_depth_pass"):
+            if type(component.get(field)) is not bool:
+                errors.append("{}.{} 必须是 bool".format(prefix, field))
+    return errors
+
+
+def _build_number_component_restore_plan(snapshot: Mapping[str, Any]) -> dict:
+    """把 v4 baseline 转换为无副作用的 restore/delete 决策。"""
+    entity_id = snapshot.get("entity_id", "unknown") if isinstance(snapshot, Mapping) else "unknown"
+    if not isinstance(snapshot, Mapping) or "number_components" not in snapshot:
+        raise ValueError("{} snapshot 缺少 number_components baseline".format(entity_id))
+    baseline = _normalize_number_component_baseline(
+        snapshot["number_components"], entity_id
+    )
+    component_names = {
+        "decal": "JerseyNumberBack",
+        "mask_proxy": "JerseyNumberMaskProxy",
+    }
+    plan = {}
+    for key, component_name in component_names.items():
+        component = baseline[key]
+        if component["exists"]:
+            plan[key] = {
+                "action": "restore_baseline",
+                "component_name": component_name,
+                "baseline": component,
+            }
+        else:
+            plan[key] = {
+                "action": "delete_if_created",
+                "component_name": component_name,
+            }
+    return plan
+
+
+def _dispatch_number_component_restore(
+    plan: Mapping[str, Any],
+    acceptance_evidence: Any,
+    *,
+    entity_id: str,
+    restore_existing: Any,
+    delete_created: Any,
+) -> dict:
+    """按纯 plan 调用 adapter callbacks；无明确人工证据时零回调退出。"""
+    if (
+        not isinstance(acceptance_evidence, Mapping)
+        or acceptance_evidence.get("status") != "verified"
+        or acceptance_evidence.get("evidence_source") != "manual_ue_acceptance"
+    ):
+        return {
+            "status": "MANUAL_REQUIRED",
+            "restored": [],
+            "deleted": [],
+            "errors": ["MANUAL_REQUIRED: v4 live component restore callbacks 未获人工 UE 验收"],
+        }
+    if not isinstance(plan, Mapping) or set(plan) != {"decal", "mask_proxy"}:
+        raise ValueError("number component restore plan 必须完整包含 decal 和 mask_proxy")
+    expected_component_names = {
+        "decal": "JerseyNumberBack",
+        "mask_proxy": "JerseyNumberMaskProxy",
+    }
+    role_errors = []
+    for key, expected_name in expected_component_names.items():
+        item = plan.get(key)
+        if not isinstance(item, Mapping) or item.get("component_name") != expected_name:
+            role_errors.append("{} restore plan component identity 必须是 {}".format(key, expected_name))
+    if role_errors:
+        return {
+            "status": "restore_failed",
+            "restored": [],
+            "deleted": [],
+            "errors": role_errors,
+        }
+    restored = []
+    deleted = []
+    errors = []
+    for key in ("decal", "mask_proxy"):
+        item = plan[key]
+        if not isinstance(item, Mapping) or item.get("component_name") != expected_component_names[key]:
+            errors.append("{} restore plan component identity 无效".format(key))
+            continue
+        try:
+            if item.get("action") == "restore_baseline":
+                baseline = item.get("baseline")
+                if not isinstance(baseline, Mapping):
+                    raise ValueError("baseline state 缺失")
+                result = restore_existing(
+                    entity_id, item["component_name"], baseline
+                )
+                if (
+                    not isinstance(result, Mapping)
+                    or result.get("status") != "restored"
+                    or result.get("readback") != baseline
+                ):
+                    raise ValueError("restore baseline readback mismatch")
+                restored.append(key)
+            elif item.get("action") == "delete_if_created":
+                result = delete_created(entity_id, item["component_name"])
+                if (
+                    not isinstance(result, Mapping)
+                    or result.get("status") != "deleted"
+                    or result.get("exists") is not False
+                ):
+                    raise ValueError("created component delete readback mismatch")
+                deleted.append(key)
+            else:
+                raise ValueError("restore action 无效")
+        except Exception as exc:
+            errors.append("{} {}: {}".format(key, item.get("action"), exc))
+    return {
+        "status": "restored" if not errors else "restore_failed",
+        "restored": restored,
+        "deleted": deleted,
+        "errors": errors,
+    }
+
+
+def _validate_actor_snapshots(snapshots: Any, version: int = _SNAPSHOT_VERSION) -> list:
     """验证十人快照完整，避免缺项时进入任何 UE mutation。"""
     if not isinstance(snapshots, list) or len(snapshots) != len(ENTITY_IDS):
         return ["actor snapshots 必须恰好包含十名球员"]
@@ -804,6 +1192,12 @@ def _validate_actor_snapshots(snapshots: Any) -> list:
             for field in ("visible", "render_in_main_pass", "render_in_depth_pass"):
                 if type(snapshot["visibility"].get(field)) is not bool:
                     errors.append("{} visibility.{} 缺失或非 bool".format(entity_id, field))
+        if version == _SNAPSHOT_VERSION_V2:
+            errors.extend(
+                _validate_number_component_baseline(
+                    snapshot.get("number_components"), entity_id
+                )
+            )
     if seen != set(ENTITY_IDS):
         errors.append("actor snapshots 必须完整覆盖 L0-L4 和 R0-R4")
     return list(dict.fromkeys(errors))
@@ -922,6 +1316,17 @@ def _selected_appearance_asset_paths(manifest: Mapping[str, Any]) -> set:
         if isinstance(entity.get(field), str)
     }
     paths.add(_BODY_MATERIAL)
+    if _is_v2_manifest(manifest):
+        numbering = manifest.get("numbering")
+        if isinstance(numbering, Mapping):
+            paths.update(
+                numbering[field]
+                for field in (
+                    "atlas", "decal_material", "mask_proxy_mesh",
+                    "mask_proxy_material", "mask_post_process_material",
+                )
+                if isinstance(numbering.get(field), str)
+            )
     return paths
 
 
@@ -1049,14 +1454,26 @@ def _build_rollback_payload(
     manifest_fingerprint: str,
     snapshots: Sequence[Mapping[str, Any]],
     asset_packages: Sequence[Mapping[str, Any]],
+    version: Optional[int] = None,
 ) -> dict:
-    errors = _validate_actor_snapshots(list(snapshots))
+    if version is None:
+        version = (
+            _SNAPSHOT_VERSION_V2
+            if any(
+                isinstance(snapshot, Mapping) and "number_components" in snapshot
+                for snapshot in snapshots
+            )
+            else _SNAPSHOT_VERSION
+        )
+    if version not in (_SNAPSHOT_VERSION, _SNAPSHOT_VERSION_V2):
+        raise ValueError("rollback snapshot version 无效")
+    errors = _validate_actor_snapshots(list(snapshots), version)
     errors.extend(_validate_asset_package_baseline(list(asset_packages)))
     if errors:
         raise ValueError("rollback snapshot 无效: {}".format("; ".join(errors)))
     return {
         "schema": _SNAPSHOT_SCHEMA,
-        "version": _SNAPSHOT_VERSION,
+        "version": version,
         "transaction_id": _snapshot_transaction_id(
             manifest_fingerprint, snapshots, asset_packages
         ),
@@ -1073,12 +1490,15 @@ def _validate_rollback_payload(payload: Any) -> list:
     errors = []
     if payload.get("schema") != _SNAPSHOT_SCHEMA:
         errors.append("rollback snapshot schema 无效")
-    if type(payload.get("version")) is not int or payload.get("version") != _SNAPSHOT_VERSION:
+    version = payload.get("version")
+    if type(version) is not int or version not in (_SNAPSHOT_VERSION, _SNAPSHOT_VERSION_V2):
         errors.append("rollback snapshot version 无效")
     if payload.get("map") != _FORMAL_MAP:
         errors.append("rollback snapshot map 无效")
+    if "jersey_number" in payload:
+        errors.append("rollback snapshot 不得保存 manifest jersey_number")
     snapshots = payload.get("actors")
-    errors.extend(_validate_actor_snapshots(snapshots))
+    errors.extend(_validate_actor_snapshots(snapshots, version if type(version) is int else _SNAPSHOT_VERSION))
     asset_packages = payload.get("asset_packages")
     errors.extend(_validate_asset_package_baseline(asset_packages))
     manifest_fingerprint = payload.get("manifest_fingerprint")
@@ -1094,6 +1514,23 @@ def _validate_rollback_payload(payload: Any) -> list:
         if transaction_id != expected:
             errors.append("rollback snapshot transaction_id 校验失败")
     return list(dict.fromkeys(errors))
+
+
+def _build_snapshot_component_restore_plan(
+    snapshot: Mapping[str, Any], version: int
+) -> dict:
+    """按 rollback 版本区分旧 snapshot 和 v4 number component plan。"""
+    if version == _SNAPSHOT_VERSION:
+        return {
+            "version": _SNAPSHOT_VERSION,
+            "number_components": {"action": "not_applicable", "status": "legacy"},
+        }
+    if version != _SNAPSHOT_VERSION_V2:
+        raise ValueError("rollback snapshot version 无效")
+    return {
+        "version": _SNAPSHOT_VERSION_V2,
+        "number_components": _build_number_component_restore_plan(snapshot),
+    }
 
 
 def _snapshot_asset_paths(snapshots: Sequence[Mapping[str, Any]]) -> set:
@@ -1520,7 +1957,19 @@ def _component_for_actor(unreal_module: Any, actor: Any) -> Any:
     return matches[0]
 
 
-def _capture_snapshot(unreal_module: Any, entity_id: str, actor: Any, dirty_paths: set) -> dict:
+def _capture_snapshot(
+    unreal_module: Any,
+    entity_id: str,
+    actor: Any,
+    dirty_paths: set,
+    version: int = _SNAPSHOT_VERSION,
+) -> dict:
+    if version == _SNAPSHOT_VERSION_V2:
+        raise RuntimeError(
+            "MANUAL_REQUIRED: v4 live number component capture requires verified UE component APIs"
+        )
+    if version != _SNAPSHOT_VERSION:
+        raise ValueError("actor snapshot version 无效")
     component = _component_for_actor(unreal_module, actor)
     actor_path = actor.get_path_name()
     package_path = _actor_package_path(actor)
@@ -1591,6 +2040,25 @@ def _preload_assignments(
     for path, class_name in referenced.items():
         if path not in loaded:
             loaded[path] = _load_asset(unreal_module, path, class_name)
+    if _is_v2_manifest(manifest):
+        numbering = manifest["numbering"]
+        for field, expected_class in (
+            ("atlas", "Texture2D"),
+            ("decal_material", "Material"),
+            ("mask_proxy_mesh", "StaticMesh"),
+            ("mask_proxy_material", "Material"),
+            ("mask_post_process_material", "Material"),
+        ):
+            path = numbering[field]
+            loaded_class = _asset_class_name(loaded.get(path))
+            if loaded_class is not None and loaded_class != expected_class:
+                raise RuntimeError(
+                    "v2 number asset class 不匹配: {} expected={} actual={}".format(
+                        path, expected_class, loaded_class
+                    )
+                )
+            if path not in loaded:
+                loaded[path] = _load_asset(unreal_module, path, expected_class)
     if _BODY_MATERIAL not in loaded:
         loaded[_BODY_MATERIAL] = _load_asset(unreal_module, _BODY_MATERIAL, "Material")
 
@@ -1915,12 +2383,19 @@ def _dirty_reset_candidates(
     }
 
 
-def _snapshot_roster(unreal_module: Any, actors: Mapping[str, Any], dirty_paths: set) -> list:
+def _snapshot_roster(
+    unreal_module: Any,
+    actors: Mapping[str, Any],
+    dirty_paths: set,
+    version: int = _SNAPSHOT_VERSION,
+) -> list:
     snapshots = [
-        _capture_snapshot(unreal_module, entity_id, actors[entity_id], dirty_paths)
+        _capture_snapshot(
+            unreal_module, entity_id, actors[entity_id], dirty_paths, version=version
+        )
         for entity_id in ENTITY_IDS
     ]
-    errors = _validate_actor_snapshots(snapshots)
+    errors = _validate_actor_snapshots(snapshots, version)
     if errors:
         raise RuntimeError("十人 baseline snapshot 不完整: {}".format("; ".join(errors)))
     return snapshots
@@ -2181,6 +2656,7 @@ def create_application_report(manifest: Mapping[str, Any], mapping: Mapping[str,
         for entity in manifest.get("entities", [])
         if isinstance(entity, Mapping) and entity.get("entity_id") in ENTITY_IDS
     }
+    is_v2 = _is_v2_manifest(manifest)
     report = {
         "schema": APPLICATION_REPORT_SCHEMA,
         "version": APPLICATION_REPORT_VERSION,
@@ -2207,6 +2683,18 @@ def create_application_report(manifest: Mapping[str, Any], mapping: Mapping[str,
                     "Jersey": entities[entity_id].get("jersey_material"),
                     "Shorts": entities[entity_id].get("shorts_material"),
                 } if entity_id in entities else {},
+                **({
+                    "jersey_number": entities[entity_id].get("jersey_number"),
+                    "number_component": {
+                        "name": "JerseyNumberBack",
+                        "bone": "spine_03",
+                        "placement": "back",
+                        "apply_status": "not_started",
+                        "restore_status": "not_started",
+                        "attachment_status": "not_started",
+                        "readback": None,
+                    },
+                } if is_v2 and entity_id in entities else {}),
             }
             for entity_id in ENTITY_IDS
         ],
@@ -2215,6 +2703,9 @@ def create_application_report(manifest: Mapping[str, Any], mapping: Mapping[str,
         "errors": [],
         "warnings": [],
     }
+    if is_v2:
+        report["appearance_policy"] = APPEARANCE_POLICY_V2
+        report["numbering"] = deepcopy(manifest.get("numbering"))
     _validate_report(report)
     return report
 
@@ -2228,6 +2719,16 @@ def _validate_report(report: Any) -> None:
         raise ValueError("application report version 无效")
     if report.get("state") not in REPORT_STATES:
         raise ValueError("application report state 无效")
+    policy = report.get("appearance_policy", APPEARANCE_POLICY)
+    if policy not in (APPEARANCE_POLICY, APPEARANCE_POLICY_V2):
+        raise ValueError("application report appearance_policy 无效")
+    is_v2 = policy == APPEARANCE_POLICY_V2
+    if is_v2:
+        numbering_errors = _numbering_contract_errors(report.get("numbering"))
+        if numbering_errors:
+            raise ValueError("application report numbering 无效: {}".format("; ".join(numbering_errors)))
+    elif "numbering" in report:
+        raise ValueError("v1 application report 不允许 numbering")
     for field in ("manifest_fingerprint", "trajectory_sha256", "catalog_fingerprint"):
         value = report.get(field)
         if not isinstance(value, str) or not _SHA256_RE.match(value):
@@ -2247,6 +2748,89 @@ def _validate_report(report: Any) -> None:
         or set(ids) != set(ENTITY_IDS)
     ):
         raise ValueError("application report actor entity 集合无效")
+    number_by_entity = {}
+    for actor in actors:
+        if not isinstance(actor, Mapping):
+            continue
+        if not is_v2:
+            if "jersey_number" in actor or "number_component" in actor:
+                raise ValueError("v1 application report 不允许号码字段")
+            continue
+        entity_id = actor.get("entity_id")
+        number = actor.get("jersey_number")
+        numbering = report["numbering"]
+        if type(number) is not int or not numbering["min"] <= number <= numbering["max"]:
+            raise ValueError("{} jersey_number 无效".format(entity_id))
+        number_by_entity[entity_id] = number
+        component = actor.get("number_component")
+        if not isinstance(component, Mapping):
+            raise ValueError("{} number_component 缺失".format(entity_id))
+        if (
+            component.get("name") != "JerseyNumberBack"
+            or component.get("bone") != "spine_03"
+            or component.get("placement") != "back"
+            or component.get("apply_status") not in {"not_started", "applied", "failed"}
+            or component.get("restore_status") not in {"not_started", "restored", "failed"}
+            or component.get("attachment_status") not in {"not_started", "verified", "failed"}
+        ):
+            raise ValueError("{} number_component contract 无效".format(entity_id))
+        readback = component.get("readback")
+        if readback is not None:
+            if not isinstance(readback, Mapping):
+                raise ValueError("{} number_component readback 必须是对象".format(entity_id))
+            expected_stencil = (
+                report["numbering"]["mask_stencil_start"]
+                + ENTITY_IDS.index(entity_id)
+            )
+            if readback.get("stencil_value") != expected_stencil:
+                raise ValueError(
+                    "{} number_component readback stencil_value 无效".format(entity_id)
+                )
+            if (
+                readback.get("attach_parent") != "MPFBVisual"
+                or readback.get("attach_bone") != "spine_03"
+                or readback.get("number_index") != number - 1
+                or readback.get("placement") != "back"
+                or readback.get("decal_component_name") != "JerseyNumberBack"
+                or readback.get("mask_proxy_component_name") != "JerseyNumberMaskProxy"
+                or type(readback.get("decal_exists")) is not bool
+                or type(readback.get("mask_proxy_exists")) is not bool
+                or not isinstance(readback.get("decal_component_path"), str)
+                or not readback["decal_component_path"].startswith("/Game/")
+                or not isinstance(readback.get("mask_proxy_component_path"), str)
+                or not readback["mask_proxy_component_path"].startswith("/Game/")
+            ):
+                raise ValueError("{} number_component readback 无效".format(entity_id))
+            if report.get("state") in {"applied", "rendering", "restored"} and (
+                readback.get("decal_exists") is not True
+                or readback.get("mask_proxy_exists") is not True
+            ):
+                raise ValueError(
+                    "{} applied number_component readback requires both components to exist".format(
+                        entity_id
+                    )
+                )
+    if is_v2 and len(number_by_entity) == len(ENTITY_IDS):
+        if len(set(number_by_entity.values())) != len(ENTITY_IDS):
+            raise ValueError("application report jersey_number 必须互不重复")
+    if is_v2 and report.get("state") in {"applied", "rendering", "restored"}:
+        for actor in actors:
+            component = actor.get("number_component")
+            if actor.get("apply_status") != "applied":
+                raise ValueError(
+                    "{} actor apply_status is not applied".format(actor.get("entity_id"))
+                )
+            if (
+                not isinstance(component, Mapping)
+                or component.get("apply_status") != "applied"
+                or component.get("attachment_status") != "verified"
+                or component.get("readback") is None
+            ):
+                raise ValueError(
+                    "{} number_component applied state 缺少完整 attachment/readback".format(
+                        actor.get("entity_id") if isinstance(actor, Mapping) else "actor"
+                    )
+                )
     if not isinstance(report.get("mrq_jobs"), list):
         raise ValueError("application report mrq_jobs 必须是列表")
     if type(report.get("mrq_pending")) is not bool:
@@ -2260,6 +2844,11 @@ def _validate_report(report: Any) -> None:
             for actor in actors
         ):
             raise ValueError("restored 状态要求十名 actor 的 restore_status 均为 restored")
+        if is_v2 and any(
+            actor["number_component"].get("restore_status") != "restored"
+            for actor in actors
+        ):
+            raise ValueError("restored 状态要求十名 number_component 均为 restored")
         if report["mrq_pending"]:
             raise ValueError("restored 状态要求 mrq_pending 为 false")
         if any(not _is_terminal_job(job) for job in report["mrq_jobs"]):
@@ -2352,9 +2941,21 @@ def transition_application_report(
     if state == "applied":
         if any(actor.get("apply_status") != "applied" for actor in updated["actors"]):
             raise ValueError("applied 状态要求十名 actor 均已应用")
+        if updated.get("appearance_policy") == APPEARANCE_POLICY_V2 and any(
+            actor.get("number_component", {}).get("apply_status") != "applied"
+            or actor.get("number_component", {}).get("attachment_status") != "verified"
+            or actor.get("number_component", {}).get("readback") is None
+            for actor in updated["actors"]
+        ):
+            raise ValueError("applied 状态要求十名 number_component attachment/readback 均已验证")
     if state == "restored":
         if any(actor.get("restore_status") != "restored" for actor in updated["actors"]):
             raise ValueError("restored 状态要求每个 actor 都已恢复")
+        if updated.get("appearance_policy") == APPEARANCE_POLICY_V2 and any(
+            actor.get("number_component", {}).get("restore_status") != "restored"
+            for actor in updated["actors"]
+        ):
+            raise ValueError("restored 状态要求每个 number_component 都已恢复")
         if updated["mrq_pending"]:
             raise ValueError("MRQ job 仍在 pending，不能标记 restored")
         if any(not _is_terminal_job(job) for job in updated["mrq_jobs"]):
@@ -2443,6 +3044,52 @@ def apply_episode_appearance(
             "ok": False,
             "operation": "apply",
             "errors": result["errors"] or ["无法建立 application report"],
+            "warnings": [],
+            "actors": result["actors"],
+            "transaction_id": None,
+            "state": "preflight_failed",
+            "rollback_snapshot_written": False,
+        }
+
+    if _is_v2_manifest(manifest):
+        try:
+            if Path(rollback_path).exists() or Path(report_path).exists():
+                return {
+                    "ok": False,
+                    "operation": "apply",
+                    "errors": [
+                        "MANUAL_REQUIRED: v2 application/recovery evidence 已存在，拒绝覆盖或补写"
+                    ],
+                    "warnings": [],
+                    "actors": result["actors"],
+                    "transaction_id": None,
+                    "state": "preflight_failed",
+                    "rollback_snapshot_written": False,
+                }
+        except (OSError, RuntimeError) as exc:
+            return {
+                "ok": False,
+                "operation": "apply",
+                "errors": ["MANUAL_REQUIRED: v2 recovery evidence 无法检查: {}".format(exc)],
+                "warnings": [],
+                "actors": result["actors"],
+                "transaction_id": None,
+                "state": "preflight_failed",
+                "rollback_snapshot_written": False,
+            }
+        error = (
+            "MANUAL_REQUIRED: appearance v2 apply 需要 Editor asset/visual lifecycle 验收"
+        )
+        report = transition_application_report(report, "preflight_failed", error=error)
+        try:
+            if not Path(report_path).exists():
+                write_application_report(report_path, report)
+        except (OSError, ValueError) as report_exc:
+            error += "; application report 写入失败: {}".format(report_exc)
+        return {
+            "ok": False,
+            "operation": "apply",
+            "errors": [error],
             "warnings": [],
             "actors": result["actors"],
             "transaction_id": None,
@@ -2690,6 +3337,16 @@ def restore_episode_appearance(
             "warnings": [],
             "state": "restore_failed",
         }
+    if report.get("appearance_policy") == APPEARANCE_POLICY_V2:
+        return {
+            "ok": False,
+            "operation": "restore",
+            "errors": [
+                "MANUAL_REQUIRED: v4 baseline capture and component restore/delete lifecycle is not verified; rollback evidence retained"
+            ],
+            "warnings": [],
+            "state": report["state"],
+        }
     retrying_failed_restore = report["state"] == "restore_failed"
     if report["state"] in ("preflight_failed", "restored"):
         errors.append("当前 report 状态不允许执行 restore: {}".format(report["state"]))
@@ -2712,7 +3369,9 @@ def restore_episode_appearance(
                     not isinstance(snapshot_payload, Mapping)
                     or snapshot_payload.get("schema") != _SNAPSHOT_SCHEMA
                     or type(snapshot_payload.get("version")) is not int
-                    or snapshot_payload.get("version") != _SNAPSHOT_VERSION
+                    or snapshot_payload.get("version") not in (
+                        _SNAPSHOT_VERSION, _SNAPSHOT_VERSION_V2
+                    )
                     or snapshot_payload.get("map") != _FORMAL_MAP
                     or not isinstance(snapshot_payload.get("actors"), list)
                     or not isinstance(snapshot_payload.get("asset_packages"), list)
@@ -2722,6 +3381,13 @@ def restore_episode_appearance(
                 snapshot_errors = _validate_rollback_payload(snapshot_payload)
                 if snapshot_errors:
                     raise ValueError("; ".join(snapshot_errors))
+                expected_snapshot_version = (
+                    _SNAPSHOT_VERSION_V2
+                    if report.get("appearance_policy") == APPEARANCE_POLICY_V2
+                    else _SNAPSHOT_VERSION
+                )
+                if snapshot_payload.get("version") != expected_snapshot_version:
+                    raise ValueError("rollback snapshot version 与 application policy 不匹配")
                 if snapshot_payload.get("transaction_id") != report.get("transaction_id"):
                     raise ValueError("rollback transaction_id 与 application report 不一致")
                 manifest_fingerprint = snapshot_payload.get("manifest_fingerprint")

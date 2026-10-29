@@ -668,3 +668,31 @@ gap轴540既有metric+540receipt、164844重复事件观察/3690原UID；三族�
 下一步仍不急加训：先另冻独立后验去坐标事件索引，连接3690UID与两端帧号/身份，涉及原含GT坐标registry的新白名单需单独隔离，本轮未读。之后仅按主mask_RS对原RS的12来源×四转移×每类2事件最多96案例槽（aligned-RS作同案例第三方法，不再扩抽），固定seed20261024/原heldoutfold或game4、UID排序缺类不补，两端±5帧×3方法最多6336已有方法帧引用。内部证据仍缺时才讨论两新RS×6train×前300最多3600逻辑推进的被动观测候选；须另签plain/observer原输出一致/coldABA/spawn及独立准入预算，不从无snapshot中间帧直接续跑。本轮未执行这些后续步骤、未选择新训练因素或Pose伪标签。
 
 完成根dfd837dad25df8ef7edd2221dfe7ee4db5d4a8ae7936b8aaeb817d7502f5e391；独立核查e317b171765033acd56356dc75b33454decad0f737f3ebffe32358bb03cec99e；producer d83d87010f611fa20c6edbdd829e66e888da861e0f6838d5153eeadaa0adbad3。完整540来源/新整数交叉/82422配对/59槽/235原事件与全部missing/失败保存在DResearch/pose/record_reuse_diagnosis_a01。每阶段历史已同步，整论文主线未宣称解决。
+
+## 完整随机外观下UV号码集成短样（2026-10-29，零训练）
+
+用户要求数据生成时同时启用已验证的模型/肤色/球衣随机系统，并显示与导出号码；随后要求以功能为主、减少测试、临时渲染统一G盘test且定时清理。已实现[完整随机外观UV号码与数字标注](../engineering/SEEDED_APPEARANCE_UV_NUMBERS.md)：复用v1原model/skin/kit分配与独立号码流，五套球衣各从自身原图派生，当前mesh的蒙皮follower与RGB/Object-ID共享同一MRQ job，P1从线性EXR导出uint8数字mask与可见tight bbox。不是训练版号或模型收益实验；优化器/LR/batch不适用，更新0、R/S训练曝光0、模型推理/追踪/TrackEval0，AssA/HOTA/IDF1未计算；116/187/test未读。
+
+实际来源仅旧合成root1048、visual1708221217、源[0,10)、CineCam_01，1920×1080、10FPS，原绿色；十人模型7/5/8/4/4/8/4/8/6/3，skin07/02/07/04/05/05/06/05/06/08，四角色kit03/04/05/01。号码18/92/86/96/99/55/21/89/63/7；无新增真实train/dev/test。当前候选实现保留原动画/骨架；该短样不代表所有7×9×5外观组合或完整比赛生产验收。
+
+初样a01号码pass构建失败，原因是旧代码把UE5.8 PostProcessPass结构体当作Setting类；RGB/Object-ID已有输出但原summary为failed。a02首次apply在渲染前被已销毁follower的UObject重名阻止，已保留pre_render_name_collision收据；修复活动组件检查与唯一名称后，正常退出并编译成功，新DLL SHA5a7eda00c3cfc89d713b7a941114845b4098e994e0a898bd6ba32c1e94add4b6。a02随后一个真实MRQ job完成10帧，collector因相机名后缀误报重复帧；未第三次渲染，修正解析并消费已有EXR完成导出。保留原failed summary，不改写成初始成功。恢复报告camera.schedule_error路径序列化问题亦修复，外观恢复/dirty空/PIE和MRQ退出及正常quit闭环。
+
+真实输出10RGB/10实例mask/10单通道号码mask、100人物号码记录，其中39条可见；599个号码像素全部属于对应实例，号码bbox与像素一致，号码validator通过。PNG预览经过sRGB/量化，不能直作ID；线性EXR三通道一致，乘255后仅在HALF误差1/16 ID内恢复0或32–41。没有将不可见号码删掉或宣称远景OCR准确。
+
+所有媒体现位于G:/FutsalMOT_Dataset/test/number_uv_random_s1048_a01与a02，原路径通过生命周期relocated_from解释；项目Saved只留小配置/日志/关键收据。a02全部EXR消费结束后精确删除10份共104714404字节，原深度/Cryptomatte不再保留；测试RGB/mask/标注24小时后可清，a01失败诊断最多7天。原生每天04:00自动清理test已停止/到期目录，跳过junction、活动任务及正式数据。原始证据Saved/JerseyNumberUV/number_uv_random_s1048_a02/postprocess_complete.json、exr_cleanup_complete.json、number_runtime_build_a01.log及Saved/Pose17Development/editor_number_uv_random_a01/a02.log。未发布完整新dataset；新body12/逐帧camera/root manifest适配及全量准入仍未完成，不追加近景/性能测试或重放旧训练。
+
+## 用户人工验收后的号码尺寸修订（2026-10-29，零训练）
+
+用户查看实际RGB/数字bbox/mask验收图后要求“数字稍微放大一点”。将UV印花宽高各增15%，中心保持[0.265,0.34]，矩形由[0.16,0.24,0.37,0.44]改为[0.14425,0.225,0.38575,0.455]；RGB和号码mask共享同一参数，原seed模型/肤色/球衣和号码分配不改。此为用户发起的独立尺寸修订，不重置原a01/a02失败历史或自动扩展候选搜索。
+
+新attempt number_uv_size115_s1048_a01沿用root1048/visual1708221217、源[0,10)、CineCam_01、1920×1080/10FPS；一次10帧MRQ单job成功，RGB/Object-ID/号码同采样，号码及appearance自动恢复且dirty/PIE/MRQ为空，正常退出UE后P1完成。10RGB/10实例mask/10单通道号码mask、100人物记录，其中41条号码可见，共825号码像素，全部属于对应球员实例；号码bbox和validator通过。原版相同10帧为39可见记录/599像素，这只是印花尺寸对应的像素变化，不是模型收益。89帧4 bbox从[646,162,654,168]变[645,161,655,169]；92帧10从[676,150,685,156]变[676,149,685,156]。原图栅格化不保证bbox每边恰好增15%。
+
+训练更新/R-S曝光/检测Pose模型推理/追踪/TrackEval均0，无权重、优化器/LR/batch不适用，未计算AssA/HOTA/IDF1，不读取封存测试、不改冻结数据。新媒体仅G:/FutsalMOT_Dataset/test/number_uv_size115_s1048_a01，前后对比和新标注截图在review_number_annotations/；生成验收图后保留24小时，EXR所有消费者结束后精确退休10份。关键收据Saved/JerseyNumberUV/number_uv_size115_s1048_a01/postprocess_complete.json及exr_cleanup_complete.json，日志Saved/Pose17Development/editor_number_uv_size115_a01.log。没有声明新完整dataset生产准入。
+
+## 固定15%号码尺寸并微下移（2026-10-29，用户人工反馈，零训练）
+
+用户明确认可15%放大尺寸并要求“往下挪动一点”。保留UV宽0.2415/高0.23，只将中心[0.265,0.34]改为[0.265,0.32]，矩形[0.14425,0.205,0.38575,0.435]；共享默认profile为back_size115_down002_v1。源球衣背片520个已有UV/位置样本给出UE V对Z约+1.12684米/UV，因此V减0.02对应约向下2.25厘米；这是源网格近似，不声称动画所有帧物理距离相同。模型、肤色、kit、号码分配沿用原流，不改已批准大小。
+
+独立number_uv_size115_down_s1048_a01使用root1048/visual1708221217、源[0,10)、CineCam_01、1920×1080/10FPS，单次10帧MRQ与P1后处理success。RGB/实例/号码同job输出；100人物记录、40条号码可见、769号码像素全部属于正确实例，bbox/号码validator通过。89帧4从[645,161,655,169]到[645,163,655,170]；92帧10从[676,149,685,156]到[676,151,685,157]，实际下移1–2px；像素tight bbox高度变化来自栅格化，UV尺寸保持不变。已生成已确认尺寸版/下移版/新mask的同区域对比图，未另做近景或追加样本。
+
+训练更新/R-S曝光/模型推理/追踪/TrackEval0，无优化器/LR/batch或新权重，不计算AssA/HOTA/IDF1，封存测试未读。外观/号码自动恢复、clean/idle后正常退出UE；全部EXR消费后精确清理10份104725083字节，RGB/两mask/标注/验收图保留在G:/FutsalMOT_Dataset/test/number_uv_size115_down_s1048_a01，24小时后按既定自动规则清理。关键收据Saved/JerseyNumberUV/number_uv_size115_down_s1048_a01/postprocess_complete.json和exr_cleanup_complete.json，日志Saved/Pose17Development/editor_number_uv_size115_down_a01.log。完整dataset尚未生产，不改旧版本或覆盖历史失败。

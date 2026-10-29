@@ -5,6 +5,7 @@
 - 项目只有一个Git根：`D:/projects/FutsalMOT_UEDataset`，分支`master`，远端`HHhydrogen/FutsalMOT_UE`。Python目录不再是submodule，不初始化嵌套Git。
 - 使用命令行Git精确暂存；不使用`git add -A`、force-push或跳过hooks。提交说明、注释及技术文档使用简体中文。
 - 用户已授权四阶段仓库整理和已验阶段成果提交推送；不重复申请同一授权。号码WIP与其他无关改动保留且不混入提交。
+- 用户2026-10-29已人工验收号码profile `back_size115_down002_v1`并明确授权固化和提交GitHub；本次可提交对应UV号码系统及必要依赖，其他未验数据生成草案、临时Sequence和无关WIP仍保留，不混入提交。
 - 用户主动删除融合备份，并明确授权删除补建副本；不再自动重建备份。旧历史在统一仓库可达，未提交内容仍是本机WIP。
 - 以实现、导出和实验为主。已验方法直接复用，每个新功能做一次必要针对检查；不逐模型重复近景、不重复媒体hash/全像素审计、不为无变化反复报告。
 
@@ -15,6 +16,8 @@
 - 工程规则集中在本文件；Python局部规则不重复Git、存储及运行状态。旧版本的流水和候选计划不覆盖当前状态。
 
 ## 存储与生命周期
+
+- 用户2026-10-29要求临时测试渲染媒体统一写`G:/FutsalMOT_Dataset/test/<attempt>/raw`，不写项目目录。已完成测试媒体保留24小时，失败诊断明确用途并最长保留7天；每天04:00按`_test_lifecycle.json`清理已结束且过期的独立test attempt，不跟随junction，不清理活动任务或正式数据。项目Saved仅保留必要小型配置、日志、轨迹/native及关键收据。
 
 - 所有渲染媒体（包括临时EXR/RGB/mask）仅写入`G:/FutsalMOT_Dataset`；新raw放`_work/<attempt>/raw`，导出放`_staging/<attempt>`，验收后同卷发布。禁止渲染写D Saved或直接覆盖成品。UE的配置、日志、轨迹、native及运行收据仍在项目原`Saved/`物理目录。
 - EXR后处理成功且所有EXR消费结束后立即按精确清单清理，不等不消费EXR的GPU训练结束；未完成/失败任务只保留明确诊断期限与用途。保留RGB、实例mask、Pose/world、轨迹、校准及成功收据。深度研究若需保留，必须在收据中登记用途与范围，不能长期默认堆积。入口与规则见[存储规范](Docs/operations/STORAGE_POLICY.md)。

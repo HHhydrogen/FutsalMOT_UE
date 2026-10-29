@@ -28,6 +28,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
+from PIL import Image
 
 from grf_ue_bridge.validation_result import CheckStatus, ValidationResult
 from grf_ue_bridge.environment import validate_environment_manifest
@@ -62,6 +63,9 @@ def _extend_unique(target: List[str], values: Sequence[str]) -> None:
             target.append(value)
 
 
+def _invalid_entity_id_message(context: str, entity_id: Any) -> str:
+    """返回稳定的 entity_id 类型错误，保留 JSON 中的实际值。"""
+    return f"{context} entity_id 类型非法 actual={entity_id!r}，要求非空字符串"
 
 
 def _frame_numbers(files: Sequence[Path]) -> List[int]:
@@ -378,6 +382,9 @@ def check_camera(
     yolo_seg_required: bool = False,
     enforce_mot_files: bool = True,
     render_required: bool = True,
+    number_mask_required: bool = False,
+    jersey_numbers: Optional[Mapping[str, int]] = None,
+    number_masks_cleaned: bool = False,
 ) -> dict:
     """审计单个相机目录，返回统计 dict，并把失败项写入 errors。
 
@@ -411,6 +418,10 @@ def check_camera(
         "seg_present": seg_dir.exists(),
         "seg_complete": False,
         "seg_ok": not bool(yolo_seg_required),
+        "number_mask_required": bool(number_mask_required),
+        "number_mask_present": (cam_dir / "number_mask").is_dir(),
+        "number_mask_complete": False,
+        "number_mask_ok": not bool(number_mask_required),
     }
 
     # 标注帧
@@ -425,6 +436,7 @@ def check_camera(
     st["mot_ok"] = True
     st["det_ok"] = True
     st["seg_ok"] = True
+    st["number_mask_ok"] = True
     ann_idx = [
         fr["frame_index"]
         for fr in frames
@@ -447,6 +459,65 @@ def check_camera(
         errors.append(f"{cam_id}: annotations 重复帧 {dup_ann[:10]}")
         st["core_ok"] = False
         st["ok"] = False
+
+    for frame in frames:
+        frame_index = frame.get("frame_index")
+        objects = frame.get("objects", [])
+        actual_entity_ids = [
+            obj.get("entity_id")
+            for obj in objects
+            if isinstance(obj, Mapping) and isinstance(obj.get("entity_id"), str)
+        ] if isinstance(objects, list) else []
+        duplicate_entity_ids = sorted({
+            entity_id for entity_id in actual_entity_ids
+            if actual_entity_ids.count(entity_id) > 1
+        })
+        if duplicate_entity_ids:
+            errors.append(
+                f"{cam_id}: frame {frame_index} duplicate entity IDs "
+                f"actual={actual_entity_ids}, duplicates={duplicate_entity_ids}"
+            )
+            st["core_ok"] = False
+            st["ok"] = False
+
+    if jersey_numbers:
+        for frame in frames:
+            frame_index = frame.get("frame_index")
+            objects = frame.get("objects", [])
+            by_entity = {
+                obj.get("entity_id"): obj
+                for obj in objects
+                if isinstance(obj, Mapping) and isinstance(obj.get("entity_id"), str)
+            } if isinstance(objects, list) else {}
+            seen_numbers: Dict[int, str] = {}
+            for entity_id, expected_number in jersey_numbers.items():
+                obj = by_entity.get(entity_id)
+                number_record = obj.get("jersey_number") if isinstance(obj, Mapping) else None
+                from grf_ue_bridge.annotation_validator import validate_jersey_number_record
+
+                record_errors = validate_jersey_number_record(
+                    number_record,
+                    label=f"{cam_id}: frame {frame_index} entity {entity_id}",
+                    expected_value=expected_number,
+                )
+                if record_errors:
+                    errors.extend(record_errors)
+                    st["number_mask_ok"] = False
+                actual_number = (
+                    number_record.get("value")
+                    if isinstance(number_record, Mapping)
+                    else None
+                )
+                if type(actual_number) is int:
+                    previous_entity = seen_numbers.get(actual_number)
+                    if previous_entity is not None:
+                        errors.append(
+                            f"{cam_id}: frame {frame_index} entity {entity_id} 与 "
+                            f"{previous_entity} jersey_number 冲突: actual={actual_number}"
+                        )
+                        st["number_mask_ok"] = False
+                    else:
+                        seen_numbers[actual_number] = entity_id
 
     # 目录产物统计
     img1_files = sorted(img1_dir.glob("*.png")) if img1_dir.exists() else []
@@ -519,6 +590,184 @@ def check_camera(
         st["ok"] = False
 
     st["mask_complete"] = bool(mask_files) and bool(exr_files) and not miss_mask and not miss_exr
+
+    number_dir = cam_dir / "number_mask"
+    number_render_dir = cam_dir / "render_number_mask"
+    number_files = sorted(number_dir.glob("*.png")) if number_dir.is_dir() else []
+    number_render_files = sorted(number_render_dir.glob("*.png")) if number_render_dir.is_dir() else []
+    _number_count, miss_number, dup_number = _counts_and_missing(number_files, expected_frames)
+    st["number_mask_missing"] = miss_number
+    st["number_mask_dup"] = dup_number
+    st["render_number_mask_png"] = len(number_render_files)
+    render_number_nums = set(_frame_numbers(number_render_files))
+    expected_render_indices = set(keep_indices)
+    miss_number_render = sorted(expected_render_indices - render_number_nums)
+    st["render_number_mask_missing"] = miss_number_render
+    if number_mask_required and not number_masks_cleaned:
+        st["number_mask_ok"] = bool(jersey_numbers) and st["number_mask_ok"]
+        if not number_dir.is_dir():
+            errors.append(
+                f"{cam_id}: frame * entity * 缺少 number_mask/ "
+                "(appearance v2 required transient was not found)"
+            )
+            st["number_mask_ok"] = False
+        if miss_number:
+            errors.append(f"{cam_id}: number_mask 缺帧 {miss_number[:10]}...")
+            st["number_mask_ok"] = False
+        if dup_number:
+            errors.append(
+                f"{cam_id}: frame {dup_number[0]} entity * number_mask duplicate frame IDs "
+                f"actual={dup_number}, expected unique frame IDs 1..{expected_frames}"
+            )
+            st["number_mask_ok"] = False
+        if number_files:
+            actual_number_frames = set(_frame_numbers(number_files))
+            annotation_number_frames = set(ann_idx)
+            if actual_number_frames != annotation_number_frames:
+                missing_number_frames = sorted(annotation_number_frames - actual_number_frames)
+                extra_number_frames = sorted(actual_number_frames - annotation_number_frames)
+                frame_detail = missing_number_frames[0] if missing_number_frames else (
+                    extra_number_frames[0] if extra_number_frames else "*"
+                )
+                errors.append(
+                    f"{cam_id}: frame {frame_detail} entity * number_mask frame set "
+                    f"actual={sorted(actual_number_frames)}, "
+                    f"annotations={sorted(annotation_number_frames)}"
+                )
+                st["number_mask_ok"] = False
+        if not number_render_files:
+            errors.append(
+                f"{cam_id}: frame * entity * 缺少 render_number_mask/*.png "
+                "(appearance v2 required MRQ number job was not found)"
+            )
+            st["number_mask_ok"] = False
+        elif miss_number_render:
+            errors.append(
+                f"{cam_id}: frame {miss_number_render[0]} entity * "
+                f"render_number_mask MRQ target missing; actual frames="
+                f"{sorted(render_number_nums)}, expected={sorted(expected_render_indices)}"
+            )
+            st["number_mask_ok"] = False
+        if dup_number_render := sorted(
+            {number for number in _frame_numbers(number_render_files)
+             if _frame_numbers(number_render_files).count(number) > 1}
+        ):
+            errors.append(
+                f"{cam_id}: frame {dup_number_render[0]} entity * "
+                f"render_number_mask duplicate frame IDs actual={dup_number_render}"
+            )
+            st["number_mask_ok"] = False
+        st["number_mask_complete"] = (
+            bool(number_files)
+            and not miss_number
+            and not dup_number
+            and bool(number_render_files)
+            and not miss_number_render
+        )
+        for path in number_files:
+            frame_index = int("".join(c for c in path.stem if c.isdigit()) or 0)
+            try:
+                with Image.open(path) as image:
+                    pixels = image.convert("L")
+                    actual_size = pixels.size
+                    camera_config = json.loads((cam_dir / "camera.json").read_text(encoding="utf-8"))
+                    expected_size = (
+                        camera_config.get("image_width") or camera_config.get("intrinsics", {}).get("width"),
+                        camera_config.get("image_height") or camera_config.get("intrinsics", {}).get("height"),
+                    )
+                    if actual_size != tuple(expected_size):
+                        errors.append(
+                            f"{cam_id}: frame {frame_index} entity * number_mask 尺寸 "
+                            f"actual={actual_size}, camera={tuple(expected_size)}"
+                        )
+                        st["number_mask_ok"] = False
+                    import numpy as np
+                    array = np.asarray(pixels)
+            except Exception as exc:
+                errors.append(
+                    f"{cam_id}: frame {frame_index} entity * number_mask 解码失败: "
+                    f"actual={type(exc).__name__}: {exc}"
+                )
+                st["number_mask_ok"] = False
+                continue
+            actual_ids = sorted(int(value) for value in np.unique(array) if int(value) != 0)
+            legal_ids = list(range(32, 42))
+            illegal_ids = sorted(set(actual_ids) - set(legal_ids))
+            if illegal_ids:
+                errors.append(
+                    f"{cam_id}: frame {frame_index} entity * number mask IDs "
+                    f"actual={actual_ids}, illegal={illegal_ids}, expected subset={legal_ids}"
+                )
+                st["number_mask_ok"] = False
+            frame = next((value for value in frames if value.get("frame_index") == frame_index), None)
+            objects = frame.get("objects", []) if isinstance(frame, Mapping) else []
+            object_map = {
+                obj.get("entity_id"): obj for obj in objects if isinstance(obj, Mapping)
+                and isinstance(obj.get("entity_id"), str)
+            } if isinstance(objects, list) else {}
+            for number_index, entity_id in enumerate(
+                [f"L{i}" for i in range(5)] + [f"R{i}" for i in range(5)]
+            ):
+                if not jersey_numbers or entity_id not in jersey_numbers:
+                    continue
+                mask_id = 32 + number_index
+                ys, xs = np.where(array == mask_id)
+                actual_count = int(len(xs))
+                actual_bbox = (
+                    [int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1]
+                    if actual_count else None
+                )
+                obj = object_map.get(entity_id)
+                number_record = obj.get("jersey_number") if isinstance(obj, Mapping) else None
+                actual_record_count = (
+                    number_record.get("visible_pixel_count")
+                    if isinstance(number_record, Mapping) else None
+                )
+                actual_record_bbox = (
+                    number_record.get("bbox_xyxy") if isinstance(number_record, Mapping) else None
+                )
+                actual_record_xywh = (
+                    number_record.get("bbox_xywh") if isinstance(number_record, Mapping) else None
+                )
+                expected_xywh = (
+                    [actual_bbox[0], actual_bbox[1],
+                     actual_bbox[2] - actual_bbox[0],
+                     actual_bbox[3] - actual_bbox[1]]
+                    if actual_bbox is not None else None
+                )
+                if actual_record_count != actual_count:
+                    errors.append(
+                        f"{cam_id}: frame {frame_index} entity {entity_id} mask ID={mask_id} "
+                        f"visible_pixel_count actual={actual_record_count!r}, mask={actual_count}"
+                    )
+                    st["number_mask_ok"] = False
+                bbox_matches = (
+                    isinstance(actual_record_bbox, list)
+                    and actual_bbox is not None
+                    and len(actual_record_bbox) == 4
+                    and all(
+                        isinstance(actual, (int, float)) and actual == expected
+                        for actual, expected in zip(actual_record_bbox, actual_bbox)
+                    )
+                ) or (actual_record_bbox is None and actual_bbox is None)
+                if not bbox_matches:
+                    errors.append(
+                        f"{cam_id}: frame {frame_index} entity {entity_id} mask ID={mask_id} "
+                        f"bbox_xyxy actual={actual_record_bbox!r}, mask min/max={actual_bbox!r}"
+                    )
+                    st["number_mask_ok"] = False
+                if actual_record_xywh != expected_xywh:
+                    errors.append(
+                        f"{cam_id}: frame {frame_index} entity {entity_id} mask ID={mask_id} "
+                        f"bbox_xywh actual={actual_record_xywh!r}, mask-derived={expected_xywh!r}"
+                    )
+                    st["number_mask_ok"] = False
+    elif number_mask_required:
+        # 清理后仍验证 canonical number records; transient mask files are intentionally absent.
+        st["number_mask_complete"] = True
+        st["number_mask_ok"] = bool(jersey_numbers) and st["number_mask_ok"]
+    if number_mask_required and not st["number_mask_ok"]:
+        st["ok"] = False
 
     # 零字节文件
     z = _zero_byte(img1_files)
@@ -639,7 +888,6 @@ def check_camera(
     return st
 
 
-
 def check_sync(
     cameras_meta: Dict[str, List[dict]],
     errors: List[str],
@@ -673,12 +921,20 @@ def check_sync(
             ref_objs = {
                 o.get("entity_id"): o
                 for o in ref.get("objects", [])
-                if isinstance(o, dict)
+                if isinstance(o, dict) and isinstance(o.get("entity_id"), str)
             }
             for o in cur.get("objects", []):
                 if not isinstance(o, dict):
                     continue
                 eid = o.get("entity_id")
+                if not isinstance(eid, str):
+                    errors.append(
+                        _invalid_entity_id_message(
+                            f"同步: 相机 {cam} 帧 {i}", eid
+                        )
+                    )
+                    st["ok"] = False
+                    continue
                 ref_o = ref_objs.get(eid)
                 if ref_o is None:
                     continue
@@ -691,7 +947,6 @@ def check_sync(
                         st["ok"] = False
     st["checked_frames"] = n
     return st
-
 
 
 def check_track_mask_mapping(cameras_meta: Dict[str, List[dict]], errors: List[str],
@@ -708,7 +963,13 @@ def check_track_mask_mapping(cameras_meta: Dict[str, List[dict]], errors: List[s
                 if not isinstance(o, dict):
                     continue
                 eid = o.get("entity_id")
-                if not eid:
+                if not isinstance(eid, str) or not eid:
+                    errors.append(
+                        _invalid_entity_id_message(
+                            f"映射: {cam} 帧 {fr.get('frame_index')}", eid
+                        )
+                    )
+                    st["ok"] = False
                     continue
                 st["checked_objects"] += 1
                 expect_track = TRACK_MAP.get(eid)
@@ -740,7 +1001,6 @@ def check_track_mask_mapping(cameras_meta: Dict[str, List[dict]], errors: List[s
                 else:
                     seen[eid] = key
     return st
-
 
 
 def check_camera_json(cam_dirs: List[Path], expected_frames: int, errors: List[str]) -> dict:
@@ -880,9 +1140,15 @@ def check_render_summary(
         else:
             warns.append(message)
         return {"ok": False, "status": status, "required": bool(required),
-                "skipped": not required, "cameras": per, "message": message}
-    return {"ok": True, "status": status, "required": bool(required), "cameras": per}
-
+                "skipped": not required, "cameras": per,
+                "jobs": summary.get("jobs"), "message": message}
+    return {
+        "ok": True,
+        "status": status,
+        "required": bool(required),
+        "cameras": per,
+        "jobs": summary.get("jobs"),
+    }
 
 
 def _check_retained_scene(episode_dir, errors):
@@ -1001,12 +1267,177 @@ def check_environment(
     return state
 
 
+def _read_camera_resolutions(cam_dirs: Sequence[Path]) -> Dict[str, List[int]]:
+    """读取每个 camera.json 的实际标注分辨率。"""
+    resolutions: Dict[str, List[int]] = {}
+    for cam_dir in cam_dirs:
+        try:
+            value = json.loads((cam_dir / "camera.json").read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError, RecursionError):
+            continue
+        if not isinstance(value, Mapping):
+            continue
+        width = value.get("image_width")
+        height = value.get("image_height")
+        intrinsics = value.get("intrinsics")
+        if (
+            not isinstance(width, int)
+            or isinstance(width, bool)
+            or not isinstance(height, int)
+            or isinstance(height, bool)
+        ) and isinstance(intrinsics, Mapping):
+            width = intrinsics.get("width")
+            height = intrinsics.get("height")
+        if (
+            isinstance(width, int)
+            and not isinstance(width, bool)
+            and isinstance(height, int)
+            and not isinstance(height, bool)
+            and width > 0
+            and height > 0
+        ):
+            resolutions[cam_dir.name] = [width, height]
+    return resolutions
 
 
+def _expected_resolution_for_camera(
+    expected_resolution: Any,
+    camera_id: str,
+) -> Optional[List[int]]:
+    """兼容单分辨率测试参数和 task camera 分辨率映射。"""
+    value = (
+        expected_resolution.get(camera_id)
+        if isinstance(expected_resolution, Mapping)
+        else expected_resolution
+    )
+    if not isinstance(value, (list, tuple)) or len(value) != 2:
+        return None
+    if not all(isinstance(item, int) and not isinstance(item, bool) for item in value):
+        return None
+    return [int(value[0]), int(value[1])]
 
 
+def _strict_int_list(value: Any, length: Optional[int] = None) -> bool:
+    """判断 JSON 数组是否只包含原生整数，不接受 bool/float。"""
+    return (
+        isinstance(value, list)
+        and (length is None or len(value) == length)
+        and all(type(item) is int for item in value)
+    )
 
 
+def _check_v2_render_summary_jobs(
+    render_summary: Optional[Mapping[str, Any]],
+    required_camera_ids: Sequence[str],
+    expected_frames: Optional[int],
+    expected_indices: Optional[Sequence[int]],
+    expected_resolution: Any,
+    errors: List[str],
+) -> None:
+    """严格校验 v2 render_summary 中每个相机的号码 MRQ job。"""
+    jobs = render_summary.get("jobs") if isinstance(render_summary, Mapping) else None
+    if not isinstance(jobs, list):
+        errors.append(
+            "appearance: v2 render_summary.jobs 必须是列表，"
+            f"actual={jobs!r}"
+        )
+        return
+
+    required = set(required_camera_ids)
+    by_camera: Dict[str, List[Mapping[str, Any]]] = {}
+    for index, job in enumerate(jobs):
+        if not isinstance(job, Mapping):
+            errors.append(f"appearance: render_summary.jobs[{index}] 必须是对象")
+            continue
+        camera_id = job.get("camera_id")
+        kind = job.get("kind")
+        if kind != "jersey_number_mask":
+            continue
+        if not isinstance(camera_id, str) or not camera_id:
+            errors.append(
+                "appearance: render_summary jersey_number_mask job camera_id "
+                f"无效 actual={camera_id!r}"
+            )
+            continue
+        by_camera.setdefault(camera_id, []).append(job)
+
+    expected_frame_set = list(expected_indices or [])
+    if not expected_frame_set and expected_frames is not None:
+        expected_frame_set = list(range(expected_frames))
+    for camera_id in sorted(set(by_camera) - required):
+        errors.append(
+            "appearance: render_summary jersey_number_mask job camera "
+            f"actual={camera_id!r}, expected one of {sorted(required)}"
+        )
+    for camera_id in sorted(required):
+        camera_jobs = by_camera.get(camera_id, [])
+        if len(camera_jobs) != 1:
+            errors.append(
+                "appearance: render_summary jersey_number_mask jobs "
+                f"camera={camera_id} actual={len(camera_jobs)}, expected=1"
+            )
+            continue
+        job = camera_jobs[0]
+        status = job.get("status")
+        if status != "success":
+            errors.append(
+                "appearance: render_summary jersey_number_mask job "
+                f"camera={camera_id} status actual={status!r}, expected='success'"
+            )
+        actual_frames = job.get("number_mask_frames")
+        if type(actual_frames) is not int:
+            errors.append(
+                "appearance: render_summary jersey_number_mask job "
+                f"camera={camera_id} frames 类型非法 actual={actual_frames!r}, "
+                "expected=整数"
+            )
+        elif expected_frames is not None and actual_frames != expected_frames:
+            errors.append(
+                "appearance: render_summary jersey_number_mask job "
+                f"camera={camera_id} frames actual={actual_frames!r}, "
+                f"expected={expected_frames}"
+            )
+        actual_indices = job.get("target_indices")
+        if not _strict_int_list(actual_indices):
+            errors.append(
+                "appearance: render_summary jersey_number_mask job "
+                f"camera={camera_id} target frame set 类型非法 actual={actual_indices!r}, "
+                "expected=整数列表"
+            )
+        elif actual_indices != expected_frame_set:
+            errors.append(
+                "appearance: render_summary jersey_number_mask job "
+                f"camera={camera_id} target frame set actual={actual_indices!r}, "
+                f"expected={expected_frame_set!r}"
+            )
+        if type(actual_frames) is int and isinstance(actual_indices, list):
+            if actual_frames != len(actual_indices):
+                errors.append(
+                    "appearance: render_summary jersey_number_mask job "
+                    f"camera={camera_id} frames 与 target frame set 数量不一致 "
+                    f"actual={actual_frames!r}, target_count={len(actual_indices)}"
+                )
+        source = job.get("number_mask_source")
+        if source != "custom_depth_stencil_png":
+            errors.append(
+                "appearance: render_summary jersey_number_mask job "
+                f"camera={camera_id} source actual={source!r}, "
+                "expected='custom_depth_stencil_png'"
+            )
+        expected_size = _expected_resolution_for_camera(expected_resolution, camera_id)
+        actual_size = job.get("output_resolution")
+        if not _strict_int_list(actual_size, length=2):
+            errors.append(
+                "appearance: render_summary jersey_number_mask job "
+                f"camera={camera_id} resolution 类型非法 actual={actual_size!r}, "
+                "expected=整数二元数组"
+            )
+        elif expected_size is not None and actual_size != expected_size:
+            errors.append(
+                "appearance: render_summary jersey_number_mask job "
+                f"camera={camera_id} resolution actual={actual_size!r}, "
+                f"expected={expected_size!r}"
+            )
 
 
 def _load_json_object(path: Path, label: str) -> dict:
@@ -1025,6 +1456,9 @@ def check_appearance(
     appearance_catalog: Any = None,
     expected_camera_ids: Optional[Sequence[str]] = None,
     render_summary: Optional[Mapping[str, Any]] = None,
+    expected_frames_per_camera: Optional[int] = None,
+    expected_render_frame_indices: Optional[Sequence[int]] = None,
+    expected_resolution: Any = None,
 ) -> dict:
     """检查已启用外观的 manifest、应用报告与当前轨迹是否一致。
 
@@ -1040,6 +1474,8 @@ def check_appearance(
     appearance_errors_start = len(errors)
     if not isinstance(appearance_catalog, Mapping):
         return state
+    appearance_v2 = appearance_catalog.get("policy") == "futsalmot_appearance_v2"
+    render_check_required = render_required or appearance_v2
 
     state.update({"required": True, "enabled": True, "skipped": False})
     manifest_path = provenance / "appearance.json"
@@ -1112,11 +1548,17 @@ def check_appearance(
     if application.get("state") != ("applied" if retained else "restored"):
         errors.append("appearance: application report state={!r}, expected={!r}".format(
             application.get("state"), "applied" if retained else "restored"))
-    manifest_entities = {
-        entity.get("entity_id"): entity
-        for entity in manifest.get("entities", [])
-        if isinstance(entity, Mapping)
-    }
+    manifest_entities = {}
+    for entity in manifest.get("entities", []):
+        if not isinstance(entity, Mapping):
+            continue
+        entity_id = entity.get("entity_id")
+        if not isinstance(entity_id, str) or not entity_id:
+            errors.append(
+                _invalid_entity_id_message("appearance: manifest", entity_id)
+            )
+            continue
+        manifest_entities[entity_id] = entity
     application_actors = application.get("actors")
     if isinstance(application_actors, list) and set(manifest_entities) == {
         "L0", "L1", "L2", "L3", "L4", "R0", "R1", "R2", "R3", "R4"
@@ -1125,6 +1567,11 @@ def check_appearance(
             if not isinstance(actor, Mapping):
                 continue
             entity_id = actor.get("entity_id")
+            if not isinstance(entity_id, str) or not entity_id:
+                errors.append(
+                    _invalid_entity_id_message("appearance: application actor", entity_id)
+                )
+                continue
             entity = manifest_entities.get(entity_id)
             if entity is None:
                 continue
@@ -1136,6 +1583,14 @@ def check_appearance(
                 errors.append(
                     f"appearance: {entity_id} restore_status 必须为 restored"
                 )
+            if appearance_catalog.get("policy") == "futsalmot_appearance_v2":
+                actual_number = actor.get("jersey_number")
+                expected_number = entity.get("jersey_number")
+                if type(actual_number) is not int or actual_number != expected_number:
+                    errors.append(
+                        f"appearance: {entity_id} application jersey_number "
+                        f"actual={actual_number!r}, manifest={expected_number!r}"
+                    )
             assets = actor.get("assets")
             if not isinstance(assets, Mapping):
                 errors.append(f"appearance: {entity_id} assets 必须为对象")
@@ -1163,7 +1618,7 @@ def check_appearance(
                         errors.append(
                             f"appearance: {entity_id} slots.{slot} 与 manifest 不匹配"
                         )
-    if render_required:
+    if render_check_required:
         render_result = application.get("render_result")
         terminal_render_statuses = {
             "success", "failed", "partial", "cancelled", "canceled", "error"
@@ -1289,13 +1744,101 @@ def check_appearance(
                 errors.append(
                     "appearance: application report mrq_jobs 与 render_result.jobs 不匹配"
                 )
-    if render_required:
+            if appearance_catalog.get("policy") == "futsalmot_appearance_v2":
+                number_jobs = [
+                    job for job in render_result.get("jobs", [])
+                    if isinstance(job, Mapping)
+                    and job.get("kind") == "jersey_number_mask"
+                ]
+                report_number_jobs = [
+                    job for job in application.get("mrq_jobs", [])
+                    if isinstance(job, Mapping)
+                    and job.get("kind") == "jersey_number_mask"
+                ]
+                by_camera: Dict[str, List[Mapping[str, Any]]] = {}
+                for job in number_jobs:
+                    camera_id = job.get("camera_id")
+                    if isinstance(camera_id, str):
+                        by_camera.setdefault(camera_id, []).append(job)
+                for camera_id in sorted(required_cameras):
+                    jobs = by_camera.get(camera_id, [])
+                    if len(jobs) != 1:
+                        errors.append(
+                            f"appearance: camera {camera_id} frame * entity * jersey_number_mask jobs "
+                            f"actual={len(jobs)}, expected=1"
+                        )
+                        continue
+                    job = jobs[0]
+                    actual_frames = job.get("number_mask_frames")
+                    expected_frames = expected_frames_per_camera
+                    camera_record = camera_results.get(camera_id)
+                    if job.get("status") != "success":
+                        errors.append(
+                            f"appearance: camera {camera_id} frame * entity * jersey_number_mask job "
+                            f"status actual={job.get('status')!r}, expected='success'"
+                        )
+                    if expected_frames is not None and actual_frames != expected_frames:
+                        errors.append(
+                            f"appearance: camera {camera_id} frame * entity * jersey_number_mask frames "
+                            f"actual={actual_frames!r}, expected={expected_frames}"
+                        )
+                    if isinstance(camera_record, Mapping):
+                        camera_frames = camera_record.get("number_mask_frames")
+                        if camera_frames != actual_frames:
+                            errors.append(
+                                f"appearance: camera {camera_id} frame * entity * number_mask_frames "
+                                f"actual={camera_frames!r}, job={actual_frames!r}"
+                            )
+                    reported_for_camera = [
+                        value for value in report_number_jobs
+                        if value.get("camera_id") == camera_id
+                    ]
+                    if len(reported_for_camera) != 1:
+                        errors.append(
+                            f"appearance: application camera {camera_id} "
+                            f"jersey_number_mask jobs actual={len(reported_for_camera)}, expected=1"
+                        )
+                    elif (
+                        reported_for_camera[0].get("status") != job.get("status")
+                        or reported_for_camera[0].get("number_mask_frames") != actual_frames
+                    ):
+                        errors.append(
+                            f"appearance: camera {camera_id} application/report number job mismatch "
+                            f"actual=({reported_for_camera[0].get('status')!r}, "
+                            f"{reported_for_camera[0].get('number_mask_frames')!r}), "
+                            f"render_result=({job.get('status')!r}, {actual_frames!r})"
+                        )
+                    summary_cameras = (
+                        render_summary.get("cameras")
+                        if isinstance(render_summary, Mapping) else None
+                    )
+                    summary_camera = (
+                        summary_cameras.get(camera_id)
+                        if isinstance(summary_cameras, Mapping) else None
+                    )
+                    if isinstance(summary_camera, Mapping):
+                        summary_frames = summary_camera.get("number_mask_frames")
+                        if summary_frames != actual_frames:
+                            errors.append(
+                                f"appearance: camera {camera_id} frame * entity * "
+                                f"render_summary number_mask_frames "
+                                f"actual={summary_frames!r}, job={actual_frames!r}"
+                            )
+    if appearance_v2:
+        _check_v2_render_summary_jobs(
+            render_summary,
+            list(expected_camera_ids or []),
+            expected_frames_per_camera,
+            expected_render_frame_indices,
+            expected_resolution,
+            errors,
+        )
+    if render_check_required:
         _check_application_render_status(application, render_summary, errors)
     state["ok"] = len(errors) == appearance_errors_start
     state["manifest_fingerprint"] = manifest.get("fingerprint")
     state["trajectory_sha256"] = current_trajectory_sha256
     return state
-
 
 
 def check_pose_coco17(
@@ -1508,6 +2051,15 @@ def check_cross_camera_identity(cam_dirs: List[Path], errors: List[str]) -> dict
                     tid = obj.get("track_id")
                     mid = obj.get("mask_id")
                     st["checked_objects"] += 1
+                    if not isinstance(eid, str) or not eid:
+                        errors.append(
+                            _invalid_entity_id_message(
+                                f"identity: {cam.name} f{fi}", eid
+                            )
+                        )
+                        st["identity_errors"] += 1
+                        st["ok"] = False
+                        continue
                     expected_tid = TRACK_MAP.get(eid)
                     expected_mid = MASK_MAP.get(eid)
                     if expected_tid is not None and tid != expected_tid:
@@ -1523,7 +2075,6 @@ def check_cross_camera_identity(cam_dirs: List[Path], errors: List[str]) -> dict
                         st["identity_errors"] += 1
                         st["ok"] = False
     return st
-
 
 
 def write_reports(
@@ -1620,24 +2171,49 @@ def write_reports(
     return jpath, mpath
 
 
-def main(argv: Optional[Sequence[str]]=None, *, appearance_catalog: Any=None, environment_profile: Any=None, episode_dir: Optional[Path]=None) -> int:
-    ap = argparse.ArgumentParser(description='soak episode 完整性审计')
-    ap.add_argument('--input', required=True, help='相机数据集根目录（含多个 camera 子目录）')
-    ap.add_argument('--expected-cameras', type=int, default=4)
-    ap.add_argument('--expected-frames-per-camera', type=int, default=300)
-    ap.add_argument('--episode', default=None, help='episode 目录（读 meta 时序，精确校验渲染帧覆盖）')
-    ap.add_argument('--render-fps', type=int, default=30, help='MRQ 渲染帧率（缺省 30）')
-    ap.add_argument('--validation-level', default='quick', choices=['quick', 'full', 'none'])
-    ap.add_argument('--mask-enabled', default='true', help='是否启用 instance_mask 校验（true/false，缺省 true）')
-    ap.add_argument('--pose-skip', default='false', help='是否跳过 pose 完整性校验（true/false，缺省 false）')
-    ap.add_argument('--render-required', default='true', help='是否要求 render_summary.json 成功（true/false，缺省 true）')
-    ap.add_argument('--mot-required', default='false', help='是否要求 MOT 的 gt/gt.txt 与 seqinfo.ini（true/false，缺省 false）')
-    ap.add_argument('--yolo-det-required', default='false', help='是否要求 labels/det/*.txt（true/false，缺省 false）')
-    ap.add_argument('--yolo-seg-required', default='false', help='是否要求 labels/seg/*.txt（true/false，缺省 false）')
-    ap.add_argument('--pose-required', default='false', help='是否要求 Runtime Pose/raw 13 骨与 12 点最终 Pose（true/false，缺省 false）')
-    ap.add_argument('--environment-required', default='false', help='是否要求 v1.5 environment provenance/apply restore（true/false）')
-    ap.add_argument('--output', default=None, help='报告输出目录（默认 <input>/audit）')
+def main(
+    argv: Optional[Sequence[str]] = None,
+    *,
+    appearance_catalog: Any = None,
+    environment_profile: Any = None,
+    episode_dir: Optional[Path] = None,
+) -> int:
+    ap = argparse.ArgumentParser(description="soak episode 完整性审计")
+    ap.add_argument("--input", required=True, help="相机数据集根目录（含多个 camera 子目录）")
+    ap.add_argument("--expected-cameras", type=int, default=4)
+    ap.add_argument("--expected-frames-per-camera", type=int, default=300)
+    ap.add_argument("--episode", default=None, help="episode 目录（读 meta 时序，精确校验渲染帧覆盖）")
+    ap.add_argument("--render-fps", type=int, default=30, help="MRQ 渲染帧率（缺省 30）")
+    ap.add_argument("--validation-level", default="quick", choices=["quick", "full", "none"])
+    ap.add_argument("--mask-enabled", default="true", help="是否启用 instance_mask 校验（true/false，缺省 true）")
+    ap.add_argument("--pose-skip", default="false", help="是否跳过 pose 完整性校验（true/false，缺省 false）")
+    ap.add_argument(
+        "--render-required", default="true",
+        help="是否要求 render_summary.json 成功（true/false，缺省 true）",
+    )
+    ap.add_argument(
+        "--mot-required", default="false",
+        help="是否要求 MOT 的 gt/gt.txt 与 seqinfo.ini（true/false，缺省 false）",
+    )
+    ap.add_argument(
+        "--yolo-det-required", default="false",
+        help="是否要求 labels/det/*.txt（true/false，缺省 false）",
+    )
+    ap.add_argument(
+        "--yolo-seg-required", default="false",
+        help="是否要求 labels/seg/*.txt（true/false，缺省 false）",
+    )
+    ap.add_argument(
+        "--pose-required", default="false",
+        help="是否要求 Runtime Pose/raw 13 骨与 12 点最终 Pose（true/false，缺省 false）",
+    )
+    ap.add_argument(
+        "--environment-required", default="false",
+        help="是否要求 v1.5 environment provenance/apply restore（true/false）",
+    )
+    ap.add_argument("--output", default=None, help="报告输出目录（默认 <input>/audit）")
     args = ap.parse_args(argv)
+
     mask_enabled = _as_bool(args.mask_enabled)
     pose_skip = _as_bool(args.pose_skip)
     render_required = _as_bool(args.render_required)
@@ -1646,145 +2222,410 @@ def main(argv: Optional[Sequence[str]]=None, *, appearance_catalog: Any=None, en
     yolo_seg_required = _as_bool(args.yolo_seg_required)
     pose_required = _as_bool(args.pose_required)
     environment_required = _as_bool(args.environment_required)
+
     dataset_dir = Path(args.input)
     if not dataset_dir.is_dir():
-        print(f'ERROR: 输入目录不存在: {dataset_dir}', file=sys.stderr)
+        print(f"ERROR: 输入目录不存在: {dataset_dir}", file=sys.stderr)
         return 1
+
     errors: List[str] = []
     warns: List[str] = []
-    resolved_episode_dir = Path(episode_dir) if episode_dir is not None else Path(args.episode) if args.episode else dataset_dir
-    report: dict = {'input': str(dataset_dir), 'expected': {'cameras': args.expected_cameras, 'frames_per_camera': args.expected_frames_per_camera}, 'requirements': {'render': render_required, 'instance_mask': mask_enabled, 'mot': mot_required, 'yolo_det': yolo_det_required, 'yolo_seg': yolo_seg_required, 'pose': pose_required, 'environment': environment_required}}
-    dataset_manifest_path = resolved_episode_dir / 'dataset_manifest.json'
+    resolved_episode_dir = (
+        Path(episode_dir)
+        if episode_dir is not None
+        else Path(args.episode) if args.episode else dataset_dir
+    )
+    report: dict = {"input": str(dataset_dir), "expected": {
+        "cameras": args.expected_cameras,
+        "frames_per_camera": args.expected_frames_per_camera,
+    }, "requirements": {
+        "render": render_required,
+        "instance_mask": mask_enabled,
+        "mot": mot_required,
+        "yolo_det": yolo_det_required,
+        "yolo_seg": yolo_seg_required,
+        "pose": pose_required,
+        "environment": environment_required,
+        "jersey_number_mask": bool(
+            isinstance(appearance_catalog, Mapping)
+            and appearance_catalog.get("policy") == "futsalmot_appearance_v2"
+        ),
+    }}
+    number_mask_required = report["requirements"]["jersey_number_mask"]
+    if number_mask_required:
+        render_required = True
+        report["requirements"]["render"] = True
+    number_masks_cleaned = False
+    dataset_manifest_path = resolved_episode_dir / "dataset_manifest.json"
     try:
-        dataset_manifest = _load_json_object(dataset_manifest_path, 'dataset_manifest.json')
+        dataset_manifest = _load_json_object(dataset_manifest_path, "dataset_manifest.json")
+        number_masks_cleaned = dataset_manifest.get("cleanup_status") == "applied"
     except (OSError, UnicodeError, ValueError, RecursionError):
         pass
-    cam_dirs = sorted((p.parent for p in dataset_dir.rglob('camera.json')))
+    jersey_numbers: Dict[str, int] = {}
+    if number_mask_required:
+        try:
+            number_manifest = _load_json_object(
+                resolved_episode_dir / "provenance" / "appearance.json",
+                "appearance.json",
+            )
+            for entity in number_manifest.get("entities", []):
+                if isinstance(entity, Mapping):
+                    entity_id = entity.get("entity_id")
+                    number = entity.get("jersey_number")
+                    if isinstance(entity_id, str) and type(number) is int:
+                        jersey_numbers[entity_id] = number
+        except (OSError, UnicodeError, ValueError, RecursionError):
+            pass
+
+    # 相机发现
+    cam_dirs = sorted(p.parent for p in dataset_dir.rglob("camera.json"))
     if len(cam_dirs) != args.expected_cameras:
-        errors.append(f'相机数量 {len(cam_dirs)} != 预期 {args.expected_cameras}')
-    meta = _load_episode_meta(resolved_episode_dir, errors) if args.episode or episode_dir is not None else None
+        errors.append(f"相机数量 {len(cam_dirs)} != 预期 {args.expected_cameras}")
+
+    # episode 时序 → keep_indices
+    meta = (
+        _load_episode_meta(resolved_episode_dir, errors)
+        if (args.episode or episode_dir is not None)
+        else None
+    )
     source_step_seconds = None
     keep_indices = list(range(args.expected_frames_per_camera))
     if meta:
-        timing = meta.get('timing') or {}
+        timing = meta.get("timing") or {}
         if isinstance(timing, dict):
             try:
-                num_steps = int(timing.get('num_steps', args.expected_frames_per_camera))
-                source_step_seconds = float(timing.get('source_step_seconds', 0.1))
-                fps = int(timing.get('playback_fps', args.render_fps))
-                if num_steps >= 0 and source_step_seconds > 0 and (fps > 0):
+                num_steps = int(timing.get("num_steps", args.expected_frames_per_camera))
+                source_step_seconds = float(timing.get("source_step_seconds", 0.1))
+                fps = int(timing.get("playback_fps", args.render_fps))
+                if num_steps >= 0 and source_step_seconds > 0 and fps > 0:
                     keep_indices = [int(round(i * source_step_seconds * fps)) for i in range(num_steps)]
-                    report['timing'] = {'source_step_seconds': source_step_seconds, 'playback_fps': fps, 'num_steps': num_steps, 'max_keep_index': max(keep_indices) if keep_indices else 0}
+                    report["timing"] = {
+                        "source_step_seconds": source_step_seconds,
+                        "playback_fps": fps,
+                        "num_steps": num_steps,
+                        "max_keep_index": max(keep_indices) if keep_indices else 0,
+                    }
             except (TypeError, ValueError, OverflowError):
-                errors.append('meta.json timing 字段非法，无法推导渲染帧覆盖')
-    elif cam_dirs:
-        (frames, _) = _read_frame_meta(cam_dirs[0])
-        if frames:
-            keep_indices = _derive_keep_indices(frames, args.render_fps, None)
-            if source_step_seconds is None and frames:
-                for fr in frames:
-                    s = fr.get('source_step')
-                    t = fr.get('time_seconds')
-                    if isinstance(s, (int, float)) and (not isinstance(s, bool)) and (s > 0) and math.isfinite(s) and isinstance(t, (int, float)) and (not isinstance(t, bool)) and math.isfinite(t):
-                        source_step_seconds = t / s
-                        break
+                errors.append("meta.json timing 字段非法，无法推导渲染帧覆盖")
+    else:
+        # 从第一个相机标注反推
+        if cam_dirs:
+            frames, _ = _read_frame_meta(cam_dirs[0])
+            if frames:
+                keep_indices = _derive_keep_indices(frames, args.render_fps, None)
+                if source_step_seconds is None and frames:
+                    for fr in frames:
+                        s = fr.get("source_step")
+                        t = fr.get("time_seconds")
+                        if (
+                            isinstance(s, (int, float))
+                            and not isinstance(s, bool)
+                            and s > 0
+                            and math.isfinite(s)
+                            and isinstance(t, (int, float))
+                            and not isinstance(t, bool)
+                            and math.isfinite(t)
+                        ):
+                            source_step_seconds = t / s
+                            break
+
+    # 每相机
     cameras: Dict[str, dict] = {}
     cameras_meta: Dict[str, List[dict]] = {}
     for cam in cam_dirs:
-        st = check_camera(cam, args.expected_frames_per_camera, keep_indices, errors, warns, mask_enabled=mask_enabled, mot_required=mot_required, yolo_det_required=yolo_det_required, yolo_seg_required=yolo_seg_required, enforce_mot_files=args.validation_level == 'none', render_required=render_required)
-        (frames, _) = _read_frame_meta(cam)
+        st = check_camera(
+            cam,
+            args.expected_frames_per_camera,
+            keep_indices,
+            errors,
+            warns,
+            mask_enabled=mask_enabled,
+            mot_required=mot_required,
+            yolo_det_required=yolo_det_required,
+            yolo_seg_required=yolo_seg_required,
+            enforce_mot_files=args.validation_level == "none",
+            render_required=render_required,
+            number_mask_required=number_mask_required,
+            jersey_numbers=jersey_numbers,
+            number_masks_cleaned=number_masks_cleaned,
+        )
+        frames, _ = _read_frame_meta(cam)
         cameras_meta[cam.name] = frames or []
         cameras[cam.name] = st
-    report['cameras'] = cameras
+    report["cameras"] = cameras
+
+    # 跨相机同步 + 映射
     sync = check_sync(cameras_meta, errors)
     mapping = check_track_mask_mapping(cameras_meta, errors, mask_enabled)
     calib = check_camera_json(cam_dirs, args.expected_frames_per_camera, errors)
-    rsummary = check_render_summary(dataset_dir, errors, warns, required=render_required, expected_camera_ids=[cam.name for cam in cam_dirs])
-    appearance = check_appearance(resolved_episode_dir, errors, render_required=render_required, appearance_catalog=appearance_catalog, expected_camera_ids=[cam.name for cam in cam_dirs], render_summary=rsummary)
-    environment = check_environment(resolved_episode_dir, dataset_dir, errors, environment_profile=environment_profile if environment_required else None, render_required=render_required)
-    pose_coco = check_pose_coco17(dataset_dir, args.expected_frames_per_camera, errors, skip=pose_skip, required=pose_required, expected_camera_ids=[cam.name for cam in cam_dirs])
+    camera_resolutions = _read_camera_resolutions(cam_dirs)
+    rsummary = check_render_summary(
+        dataset_dir,
+        errors,
+        warns,
+        required=render_required or number_mask_required,
+        expected_camera_ids=[cam.name for cam in cam_dirs],
+    )
+    appearance = check_appearance(
+        resolved_episode_dir,
+        errors,
+        render_required=render_required,
+        appearance_catalog=appearance_catalog,
+        expected_camera_ids=[cam.name for cam in cam_dirs],
+        render_summary=rsummary,
+        expected_frames_per_camera=args.expected_frames_per_camera,
+        expected_render_frame_indices=keep_indices,
+        expected_resolution=camera_resolutions,
+    )
+    environment = check_environment(
+        resolved_episode_dir,
+        dataset_dir,
+        errors,
+        environment_profile=environment_profile if environment_required else None,
+        render_required=render_required,
+    )
+    pose_coco = check_pose_coco17(
+        dataset_dir,
+        args.expected_frames_per_camera,
+        errors,
+        skip=pose_skip,
+        required=pose_required,
+        expected_camera_ids=[cam.name for cam in cam_dirs],
+    )
     cross_identity = check_cross_camera_identity(cam_dirs, errors)
-    report['sync'] = sync
-    report['mapping'] = mapping
-    report['calibration'] = calib
-    report['render_summary'] = rsummary
-    report['appearance'] = appearance
-    report['environment'] = environment
-    report['pose_coco17'] = pose_coco
-    report['cross_camera_identity'] = cross_identity
+    report["sync"] = sync
+    report["mapping"] = mapping
+    report["calibration"] = calib
+    report["render_summary"] = rsummary
+    report["appearance"] = appearance
+    report["environment"] = environment
+    report["pose_coco17"] = pose_coco
+    report["cross_camera_identity"] = cross_identity
     try:
         from grf_ue_bridge.workflows.audit_metrics import calculate_metrics
-        report['metrics'] = calculate_metrics(dataset_dir)
+        report["metrics"] = calculate_metrics(dataset_dir)
     except Exception as exc:
-        report['metrics'] = {'errors': [f'failed to calculate audit metrics: {exc}']}
+        report["metrics"] = {"errors": [f"failed to calculate audit metrics: {exc}"]}
+
+    # 可选进程内验证
     validation = None
     annotation_result = None
-    if args.validation_level != 'none':
+    if args.validation_level != "none":
         from grf_ue_bridge.annotation_validator import validate_annotation_result
+
         try:
-            annotation_result = validate_annotation_result(dataset_dir, workers=0, validation_level=args.validation_level, require_mot=mot_required, require_mask=mask_enabled, require_yolo_det=yolo_det_required, require_yolo_seg=yolo_seg_required)
+            annotation_result = validate_annotation_result(
+                dataset_dir,
+                workers=0,
+                validation_level=args.validation_level,
+                require_mot=mot_required,
+                require_mask=mask_enabled,
+                require_yolo_det=yolo_det_required,
+                require_yolo_seg=yolo_seg_required,
+                require_jersey_number_mask=number_mask_required and not number_masks_cleaned,
+            )
         except Exception as exc:
-            message = f'validate-annotations({args.validation_level}) 执行异常: {type(exc).__name__}: {exc}；请检查 annotations.jsonl、mask/ 和标签文件'
+            message = (
+                f"validate-annotations({args.validation_level}) 执行异常: "
+                f"{type(exc).__name__}: {exc}；请检查 annotations.jsonl、mask/ 和标签文件"
+            )
             errors.append(message)
             annotation_result = ValidationResult(errors=[message])
-            annotation_result.add_check('annotation', CheckStatus.FAILED, required=True, message=message)
+            annotation_result.add_check(
+                "annotation",
+                CheckStatus.FAILED,
+                required=True,
+                message=message,
+            )
             annotation_result.finalize()
-        validation = {'level': args.validation_level, 'exit_code': annotation_result.exit_code, 'passed': annotation_result.passed, 'errors': list(annotation_result.errors), 'warnings': list(annotation_result.warnings), 'checks': annotation_result.checks}
+        validation = {
+            "level": args.validation_level,
+            "exit_code": annotation_result.exit_code,
+            "passed": annotation_result.passed,
+            "errors": list(annotation_result.errors),
+            "warnings": list(annotation_result.warnings),
+            "checks": annotation_result.checks,
+        }
         _extend_unique(errors, annotation_result.errors)
         _extend_unique(warns, annotation_result.warnings)
-    report['validation'] = validation
+    report["validation"] = validation
+
     result = ValidationResult(errors=list(errors), warnings=list(warns))
-    result.add_check('camera_count', CheckStatus.PASSED if len(cam_dirs) == args.expected_cameras else CheckStatus.FAILED, required=True, message=errors[0] if len(cam_dirs) != args.expected_cameras else None, actual=len(cam_dirs), expected=args.expected_cameras)
-    result.add_check('camera_core', CheckStatus.PASSED if cameras and all((c.get('core_ok', False) for c in cameras.values())) else CheckStatus.FAILED, required=True, cameras={cid: c.get('core_ok', False) for (cid, c) in cameras.items()})
-    result.add_check('render', CheckStatus.SKIPPED if not render_required else CheckStatus.PASSED if rsummary.get('ok') else CheckStatus.FAILED, required=render_required, message=rsummary.get('message') if render_required and (not rsummary.get('ok')) else None, detail=rsummary)
-    result.add_check('appearance', CheckStatus.SKIPPED if appearance.get('skipped') else CheckStatus.PASSED if appearance.get('ok') else CheckStatus.FAILED, required=bool(appearance.get('required')), message=appearance.get('message') if not appearance.get('ok') else None, detail=appearance)
-    result.add_check('environment', CheckStatus.SKIPPED if environment.get('skipped') else CheckStatus.PASSED if environment.get('ok') else CheckStatus.FAILED, required=bool(environment.get('required')), detail=environment)
-    result.add_check('instance_mask', CheckStatus.SKIPPED if not mask_enabled else CheckStatus.PASSED if cameras and all((c.get('mask_ok', False) for c in cameras.values())) else CheckStatus.FAILED, required=mask_enabled, cameras={cid: c.get('mask_ok', False) for (cid, c) in cameras.items()})
+    result.add_check(
+        "camera_count",
+        CheckStatus.PASSED if len(cam_dirs) == args.expected_cameras else CheckStatus.FAILED,
+        required=True,
+        message=errors[0] if len(cam_dirs) != args.expected_cameras else None,
+        actual=len(cam_dirs),
+        expected=args.expected_cameras,
+    )
+    result.add_check(
+        "camera_core",
+        CheckStatus.PASSED
+        if cameras and all(c.get("core_ok", False) for c in cameras.values())
+        else CheckStatus.FAILED,
+        required=True,
+        cameras={cid: c.get("core_ok", False) for cid, c in cameras.items()},
+    )
+    result.add_check(
+        "render",
+        CheckStatus.SKIPPED if not render_required else (
+            CheckStatus.PASSED if rsummary.get("ok") else CheckStatus.FAILED
+        ),
+        required=render_required,
+        message=rsummary.get("message") if render_required and not rsummary.get("ok") else None,
+        detail=rsummary,
+    )
+    result.add_check(
+        "appearance",
+        CheckStatus.SKIPPED if appearance.get("skipped") else (
+            CheckStatus.PASSED if appearance.get("ok") else CheckStatus.FAILED
+        ),
+        required=bool(appearance.get("required")),
+        message=appearance.get("message") if not appearance.get("ok") else None,
+        detail=appearance,
+    )
+    result.add_check(
+        "environment",
+        CheckStatus.SKIPPED if environment.get("skipped") else (
+            CheckStatus.PASSED if environment.get("ok") else CheckStatus.FAILED
+        ),
+        required=bool(environment.get("required")),
+        detail=environment,
+    )
+    result.add_check(
+        "instance_mask",
+        CheckStatus.SKIPPED if not mask_enabled else (
+            CheckStatus.PASSED
+            if cameras and all(c.get("mask_ok", False) for c in cameras.values())
+            else CheckStatus.FAILED
+        ),
+        required=mask_enabled,
+        cameras={cid: c.get("mask_ok", False) for cid, c in cameras.items()},
+    )
+    result.add_check(
+        "jersey_number_mask",
+        CheckStatus.SKIPPED if not number_mask_required else (
+            CheckStatus.PASSED
+            if cameras and all(c.get("number_mask_ok", False) for c in cameras.values())
+            else CheckStatus.FAILED
+        ),
+        required=number_mask_required,
+        cameras={cid: {
+            "present": c.get("number_mask_present"),
+            "complete": c.get("number_mask_complete"),
+            "ok": c.get("number_mask_ok"),
+        } for cid, c in cameras.items()},
+    )
     annotation_mot_status = None
     if annotation_result is not None:
-        annotation_mot_status = annotation_result.checks.get('mot_export', {}).get('status')
+        annotation_mot_status = annotation_result.checks.get("mot_export", {}).get("status")
     if annotation_mot_status == CheckStatus.FAILED.value:
         mot_status = CheckStatus.FAILED
     elif annotation_mot_status == CheckStatus.SKIPPED.value:
         mot_status = CheckStatus.SKIPPED
-    elif any((not c.get('mot_ok', True) for c in cameras.values())):
+    elif any(not c.get("mot_ok", True) for c in cameras.values()):
         mot_status = CheckStatus.FAILED
     elif mot_required:
-        mot_status = CheckStatus.PASSED if cameras and all((c.get('mot_complete', False) and c.get('mot_ok', False) for c in cameras.values())) else CheckStatus.FAILED
-    elif not cameras or not all((c.get('mot_complete', False) for c in cameras.values())):
+        mot_status = (
+            CheckStatus.PASSED
+            if cameras and all(c.get("mot_complete", False) and c.get("mot_ok", False) for c in cameras.values())
+            else CheckStatus.FAILED
+        )
+    elif not cameras or not all(c.get("mot_complete", False) for c in cameras.values()):
         mot_status = CheckStatus.SKIPPED
     else:
         mot_status = CheckStatus.PASSED
-    result.add_check('mot_export', mot_status, required=mot_required, cameras={cid: {'present': c.get('mot_present'), 'ok': c.get('mot_ok')} for (cid, c) in cameras.items()})
-    for (name, required, detail_key) in (('yolo_det', yolo_det_required, 'det_ok'), ('yolo_seg', yolo_seg_required, 'seg_ok')):
-        present = any((c.get('det_present' if name == 'yolo_det' else 'seg_present') for c in cameras.values()))
-        valid = bool(cameras) and all((c.get(detail_key, False) for c in cameras.values()))
-        status = CheckStatus.SKIPPED if not required else CheckStatus.PASSED if valid and present else CheckStatus.FAILED
-        result.add_check(name, status, required=required, cameras={cid: {'present': c.get('det_present' if name == 'yolo_det' else 'seg_present'), 'ok': c.get(detail_key)} for (cid, c) in cameras.items()})
-    result.add_check('sync', CheckStatus.PASSED if sync.get('ok') else CheckStatus.FAILED, required=True, detail=sync)
-    result.add_check('mapping', CheckStatus.PASSED if mapping.get('ok') else CheckStatus.FAILED, required=True, detail=mapping)
-    result.add_check('calibration', CheckStatus.PASSED if calib.get('ok') else CheckStatus.FAILED, required=True, detail=calib)
-    result.add_check('runtime_pose', CheckStatus.SKIPPED if pose_coco.get('skipped') else CheckStatus.PASSED if pose_coco.get('ok') else CheckStatus.FAILED, required=pose_required and (not pose_coco.get('skipped')), detail=pose_coco)
-    result.add_check('cross_camera_identity', CheckStatus.PASSED if cross_identity.get('ok') else CheckStatus.FAILED, required=True, detail=cross_identity)
+    result.add_check(
+        "mot_export",
+        mot_status,
+        required=mot_required,
+        cameras={cid: {"present": c.get("mot_present"), "ok": c.get("mot_ok")} for cid, c in cameras.items()},
+    )
+    for name, required, detail_key in (
+        ("yolo_det", yolo_det_required, "det_ok"),
+        ("yolo_seg", yolo_seg_required, "seg_ok"),
+    ):
+        present = any(c.get("det_present" if name == "yolo_det" else "seg_present") for c in cameras.values())
+        valid = bool(cameras) and all(c.get(detail_key, False) for c in cameras.values())
+        status = CheckStatus.SKIPPED if not required else (
+            CheckStatus.PASSED if valid and present else CheckStatus.FAILED
+        )
+        result.add_check(
+            name,
+            status,
+            required=required,
+            cameras={cid: {"present": c.get("det_present" if name == "yolo_det" else "seg_present"), "ok": c.get(detail_key)} for cid, c in cameras.items()},
+        )
+    result.add_check(
+        "sync",
+        CheckStatus.PASSED if sync.get("ok") else CheckStatus.FAILED,
+        required=True,
+        detail=sync,
+    )
+    result.add_check(
+        "mapping",
+        CheckStatus.PASSED if mapping.get("ok") else CheckStatus.FAILED,
+        required=True,
+        detail=mapping,
+    )
+    result.add_check(
+        "calibration",
+        CheckStatus.PASSED if calib.get("ok") else CheckStatus.FAILED,
+        required=True,
+        detail=calib,
+    )
+    result.add_check(
+        "runtime_pose",
+        CheckStatus.SKIPPED if pose_coco.get("skipped") else (
+            CheckStatus.PASSED if pose_coco.get("ok") else CheckStatus.FAILED
+        ),
+        required=pose_required and not pose_coco.get("skipped"),
+        detail=pose_coco,
+    )
+    result.add_check(
+        "cross_camera_identity",
+        CheckStatus.PASSED if cross_identity.get("ok") else CheckStatus.FAILED,
+        required=True,
+        detail=cross_identity,
+    )
     if annotation_result is None:
-        result.add_check('annotation_validation', CheckStatus.SKIPPED, required=False, level='none')
+        result.add_check(
+            "annotation_validation",
+            CheckStatus.SKIPPED,
+            required=False,
+            level="none",
+        )
     else:
-        annotation_check = annotation_result.checks.get('annotation', {})
-        result.add_check('annotation_validation', annotation_check.get('status', CheckStatus.PASSED if annotation_result.passed else CheckStatus.FAILED), required=True, detail=validation)
+        annotation_check = annotation_result.checks.get("annotation", {})
+        result.add_check(
+            "annotation_validation",
+            annotation_check.get(
+                "status",
+                CheckStatus.PASSED if annotation_result.passed else CheckStatus.FAILED,
+            ),
+            required=True,
+            detail=validation,
+        )
+
     result.finalize()
     report.update(result.to_dict())
-    out_dir = Path(args.output) if args.output else dataset_dir / 'audit'
-    (jpath, mpath) = write_reports(dataset_dir, report, out_dir, args)
-    print(f"soak 审计完成: {('PASS' if report['passed'] else 'FAIL')}")
-    print(f'  相机: {len(cam_dirs)}/{args.expected_cameras}')
-    print(f'  失败项: {len(errors)}')
+
+    out_dir = Path(args.output) if args.output else dataset_dir / "audit"
+    jpath, mpath = write_reports(dataset_dir, report, out_dir, args)
+
+    # 人类可读摘要
+    print(f"soak 审计完成: {'PASS' if report['passed'] else 'FAIL'}")
+    print(f"  相机: {len(cam_dirs)}/{args.expected_cameras}")
+    print(f"  失败项: {len(errors)}")
     for e in errors[:20]:
-        print(f'    FAIL  {e}')
+        print(f"    FAIL  {e}")
     for w in warns[:10]:
-        print(f'    WARN  {w}')
-    print(f'  报告: {jpath}')
-    print(f'        {mpath}')
-    return report['exit_code']
+        print(f"    WARN  {w}")
+    print(f"  报告: {jpath}")
+    print(f"        {mpath}")
+    return report["exit_code"]
 
 
 if __name__ == "__main__":

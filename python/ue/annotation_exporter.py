@@ -56,6 +56,59 @@ from player_motion import gk_entity_ids_from_meta  # noqa: E402
 from render_preset import resolve_output_resolution  # noqa: E402
 
 CM_TO_M = 0.01  # 厘米 -> 米
+APPEARANCE_POLICY_V1 = "futsalmot_appearance_v1"
+APPEARANCE_POLICY_V2 = "futsalmot_appearance_v2"
+APPEARANCE_SCHEMA = "futsalmot_episode_appearance"
+JERSEY_ENTITY_IDS = tuple(
+    ["L{}".format(index) for index in range(5)]
+    + ["R{}".format(index) for index in range(5)]
+)
+
+
+def _load_jersey_numbers(episode_dir: Path, resolved_appearance_policy: Optional[str]) -> dict:
+    """只在 resolved v2 与 episode v2 manifest 一致时返回号码映射。"""
+    if resolved_appearance_policy == APPEARANCE_POLICY_V1:
+        return {}
+    if resolved_appearance_policy != APPEARANCE_POLICY_V2:
+        if resolved_appearance_policy is None:
+            return {}
+        raise ValueError("resolved appearance policy 必须为 appearance v1 或 v2")
+
+    manifest_path = Path(episode_dir) / "provenance" / "appearance.json"
+    if not manifest_path.is_file():
+        raise ValueError("resolved appearance v2 缺少 appearance v2 manifest")
+    with open(manifest_path, encoding="utf-8") as f:
+        manifest = json.load(f)
+    if (
+        not isinstance(manifest, dict)
+        or manifest.get("schema") != APPEARANCE_SCHEMA
+        or type(manifest.get("version")) is not int
+        or manifest.get("version") != 2
+        or manifest.get("policy") != APPEARANCE_POLICY_V2
+    ):
+        raise ValueError("resolved appearance v2 与 episode manifest policy/schema/version 不匹配")
+    numbering = manifest.get("numbering")
+    if (
+        not isinstance(numbering, dict)
+        or type(numbering.get("mask_stencil_start")) is not int
+        or numbering.get("mask_stencil_start") != 32
+    ):
+        raise ValueError("appearance v2 manifest numbering.mask_stencil_start 无效")
+    entities = manifest.get("entities")
+    if not isinstance(entities, list) or len(entities) != len(JERSEY_ENTITY_IDS):
+        raise ValueError("appearance v2 manifest entities 必须完整包含十名球员")
+    numbers = {}
+    for index, entity_id in enumerate(JERSEY_ENTITY_IDS):
+        entity = entities[index]
+        if not isinstance(entity, dict) or entity.get("entity_id") != entity_id:
+            raise ValueError("appearance v2 manifest entities 顺序无效")
+        number = entity.get("jersey_number")
+        if type(number) is not int or not 1 <= number <= 99:
+            raise ValueError("appearance v2 manifest jersey_number 必须是 1..99 整数")
+        numbers[entity_id] = number
+    if len(set(numbers.values())) != len(JERSEY_ENTITY_IDS):
+        raise ValueError("appearance v2 manifest jersey_number 必须互不重复")
+    return numbers
 
 
 def _v3(v):
@@ -424,6 +477,7 @@ def build_object_annotation(
     image_height: int,
     ball_radius_m: float = None,
     player_bbox: dict = None,
+    jersey_number: Optional[int] = None,
 ) -> dict:
     """为一个 actor 构造 CV 标注 dict。
 
@@ -465,6 +519,17 @@ def build_object_annotation(
         "is_goalkeeper": bool(info.get("is_goalkeeper", False)),
         "world_position": world_position,
     }
+    if jersey_number is not None:
+        base["jersey_number"] = {
+            "value": int(jersey_number),
+            "placement": "back",
+            "bbox_source": "visible_number_mask",
+            "in_frame": False,
+            "truncated": False,
+            "visible_pixel_count": 0,
+            "bbox_xyxy": None,
+            "bbox_xywh": None,
+        }
 
     def _not_in_frame():
         base.update({
@@ -553,6 +618,10 @@ def export_annotations(
     for e in meta.get("entities", []):
         entity_info[e.get("id")] = e
 
+    jersey_numbers = _load_jersey_numbers(
+        episode_dir, cfg.get("resolved_appearance_policy")
+    )
+
     # 帧范围（0 基 GRF step）
     selected = [f for f in frames if f["step"] >= frame_start]
     if frame_end is not None:
@@ -595,6 +664,7 @@ def export_annotations(
                         entity_id, actor, entity_info, intrinsics, extrinsics,
                         image_width, image_height, ball_radius_m=ball_radius_m,
                         player_bbox=player_bbox,
+                        jersey_number=jersey_numbers.get(entity_id),
                     )
                 )
             per_camera_objects[name].append(objects)

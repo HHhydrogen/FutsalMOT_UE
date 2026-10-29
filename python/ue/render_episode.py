@@ -33,7 +33,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from grf_ue_bridge.storage_policy import require_render_destination
+from grf_ue_bridge.storage_policy import require_render_destination, record_test_render
 
 from annotation_utils import entity_id_to_mask_id  # noqa: E402
 from dataset_export import ensure_dir, load_episode, load_mapping, write_json_atomic  # noqa: E402
@@ -96,12 +96,124 @@ def map_rendered_to_annotation(
     return mapping
 
 
+def plan_jersey_number_mask_jobs(
+    sequences_cfg,
+    sequence_package_path: str,
+    output_dir: Path,
+    image_width: int,
+    image_height: int,
+    frame_rate: int,
+    target_indices: Sequence[int],
+    *,
+    appearance_active: bool,
+    appearance_policy: Optional[str],
+    frame_range="sequence_playback",
+) -> List[dict]:
+    """规划 v2 每相机号码 mask job，不创建资产或提交 MRQ。
+
+    号码 mask 仍处于 UE 可见性人工门禁之后。这里仅生成后续 MRQ 所需的
+    数据契约，确保它与 RGB 共用 Sequence、分辨率、帧率、帧范围和目标帧。
+    v1 或非 appearance 渲染返回空列表，保持旧 job 集合不变。
+    """
+    if not appearance_active or appearance_policy not in (
+        "futsalmot_appearance_v2", "futsalmot_appearance_v1_uv_numbers"
+    ):
+        return []
+
+    targets = [int(index) for index in target_indices]
+    plans = []
+    for sequence in sequences_cfg or []:
+        sequence_name = sequence.get("name")
+        camera_id = sequence.get("camera_actor") or sequence_name
+        if not sequence_name or not camera_id:
+            continue
+        camera_output = Path(output_dir) / camera_id
+        plans.append({
+            "name": sequence_name + "_NUMBER_MASK",
+            "cam_id": camera_id,
+            "seq_asset_path": "{}/{}".format(sequence_package_path, sequence_name),
+            "cam_out": camera_output,
+            "render_dir": camera_output / "render_number_mask",
+            "number_mask_dir": camera_output / "number_mask",
+            "kind": "jersey_number_mask",
+            "number_mask_source": "custom_depth_stencil_png",
+            "output_resolution": (int(image_width), int(image_height)),
+            "frame_rate": int(frame_rate),
+            "frame_range": frame_range,
+            "target_indices": list(targets),
+            "appearance_policy": appearance_policy,
+        })
+    return plans
 
 
+def _number_mask_plan_skeletons(
+    sequences_cfg, sequence_package_path: str, output_dir: Path, episode_id: str
+) -> List[dict]:
+    """在详细 v2 规划失败前保留每个配置 camera 的确定性计划元数据。"""
+    plans = []
+    for sequence in sequences_cfg or []:
+        sequence_name = sequence.get("name")
+        camera_id = sequence.get("camera_actor") or sequence_name
+        if not sequence_name or not camera_id:
+            continue
+        camera_output = Path(output_dir) / episode_id / camera_id
+        plans.append({
+            "name": sequence_name + "_NUMBER_MASK",
+            "cam_id": camera_id,
+            "seq_asset_path": "{}/{}".format(sequence_package_path, sequence_name),
+            "cam_out": camera_output,
+            "render_dir": camera_output / "render_number_mask",
+            "number_mask_dir": camera_output / "number_mask",
+            "kind": "jersey_number_mask",
+            "number_mask_source": "custom_depth_stencil_png",
+            "target_indices": [],
+            "appearance_policy": "futsalmot_appearance_v2",
+        })
+    return plans
 
 
+def _unscheduled_number_mask_jobs(plans, accepted_camera_ids, reason):
+    """保留未进入 MRQ queue 的 v2 camera plans 作为失败终态 job。"""
+    unscheduled = []
+    accepted_camera_ids = set(accepted_camera_ids)
+    for plan in plans:
+        if plan.get("cam_id") in accepted_camera_ids:
+            continue
+        job = dict(plan)
+        job["schedule_error"] = reason
+        unscheduled.append(job)
+    return unscheduled
 
 
+def _plan_v2_number_mask_jobs(
+    sequences_cfg,
+    annotation_cfg,
+    sequence_package_path,
+    episode_dir,
+    output_dir,
+):
+    """在所有 v2 render setup gate 之前创建号码 mask plans。"""
+    render_cfg = annotation_cfg.get("render_rgb") or {}
+    meta, frames = load_episode(episode_dir)
+    episode_id = meta.get("episode_id") or Path(episode_dir).name
+    source_step = float(meta["timing"].get("source_step_seconds", 0.1))
+    frame_rate = int(
+        annotation_cfg.get("playback_fps") or render_cfg.get("frame_rate") or 30
+    )
+    keep_indices = select_rendered_frame_indices(len(frames), source_step, frame_rate)
+    image_width, image_height = resolve_output_resolution(annotation_cfg)
+    plans = plan_jersey_number_mask_jobs(
+        sequences_cfg,
+        sequence_package_path,
+        Path(output_dir) / episode_id,
+        image_width,
+        image_height,
+        frame_rate,
+        keep_indices,
+        appearance_active=True,
+        appearance_policy="futsalmot_appearance_v2",
+    )
+    return episode_id, plans
 
 
 def find_rendered_frame_numbers(render_dir: Path) -> Dict[int, Path]:
@@ -161,7 +273,11 @@ def find_final_image_files(render_dir: Path) -> Dict[int, Path]:
     preferred = []
     for prefix, mapping in groups.items():
         normalized = prefix.lower()
-        if normalized == "finalimage" or normalized.startswith("finalimage"):
+        if normalized in ("finalimage", "final"):
+            return mapping
+        if "numbermask" in normalized:
+            continue
+        if normalized.startswith("finalimage"):
             preferred.append(mapping)
         elif normalized == "final" or normalized.startswith("final."):
             preferred.append(mapping)
@@ -195,8 +311,86 @@ def find_object_id_files(render_dir: Path) -> Dict[int, Path]:
     return files
 
 
+def find_jersey_number_mask_files(render_dir: Path) -> Dict[int, Path]:
+    """扫描号码 mask scratch 输出并按 MRQ 帧号返回文件。
+
+    目录文件系统顺序不属于帧契约；调用方必须按 ``keep_indices`` 映射，不能
+    依赖 ``rglob`` 返回顺序。优先选择名称包含 number/mask/jersey 的 PNG 组，
+    无明确前缀时使用帧数最多的组以兼容临时 MRQ 输出。
+    """
+    # Do not use the legacy ``{frame: path}`` group builder here: it silently
+    # replaces a file when two output paths contain the same MRQ frame.  The
+    # v2 number pass has one canonical source per frame, so ambiguity must
+    # remain visible to the async terminal state machine.
+    groups: Dict[str, Dict[int, List[Path]]] = {}
+    for path in sorted(render_dir.rglob("*.png")):
+        stem = path.stem
+        digits = ""
+        for char in reversed(stem):
+            if not char.isdigit():
+                break
+            digits = char + digits
+        if not digits:
+            continue
+        prefix = stem[: -len(digits)].rstrip("._")
+        groups.setdefault(prefix, {}).setdefault(int(digits), []).append(path)
+
+    # 同一job的FinalImage/BurnIn不是号码重复帧；只取显式命名的NumberMask输出。
+    named_number_pass = {name: rows for name, rows in groups.items() if "FinalImageNumberMask" in name or name == "NumberMask"}
+    if named_number_pass:
+        groups = named_number_pass
+    preferred = [
+        mapping
+        for prefix, mapping in groups.items()
+        if any(token in prefix.lower() for token in ("number", "jersey", "mask"))
+    ]
+    selected = preferred or list(groups.values())
+    if not selected:
+        return {}
+
+    # Preserve the established longest-prefix-group selection, but inspect
+    # every discovered PNG before choosing it.  The v2 directory is dedicated
+    # to this pass, so a duplicate frame in any other path is invalid even
+    # when a longer preferred group would otherwise win the heuristic.
+    all_paths_by_frame: Dict[int, List[Path]] = {}
+    for mapping in groups.values():
+        for frame, paths in mapping.items():
+            all_paths_by_frame.setdefault(frame, []).extend(paths)
+    duplicates: Dict[int, List[Path]] = {}
+    for frame, paths in sorted(all_paths_by_frame.items()):
+        if len(paths) > 1:
+            duplicates[frame] = paths
+    if duplicates:
+        details = "; ".join(
+            "{} ({})".format(frame, ", ".join(str(path) for path in paths))
+            for frame, paths in sorted(duplicates.items())
+        )
+        raise ValueError("jersey number mask 帧号重复，输出路径不明确: " + details)
+
+    chosen = max(selected, key=lambda mapping: len(mapping))
+    return {
+        frame: paths[0]
+        for frame, paths in chosen.items()
+    }
 
 
+def archive_jersey_number_mask_frames(
+    render_dir: Path,
+    number_mask_dir: Path,
+    keep_indices: Sequence[int],
+) -> int:
+    """将号码 mask 按 RGB/annotation 帧号归档到 ``number_mask/``。"""
+    rendered = find_jersey_number_mask_files(render_dir)
+    mapping = map_rendered_to_annotation(sorted(rendered), keep_indices)
+    if not mapping:
+        return 0
+    ensure_dir(number_mask_dir)
+    copied = 0
+    for frame_index, rendered_number in mapping.items():
+        source = rendered[rendered_number]
+        shutil.copy2(source, Path(number_mask_dir) / "{:06d}.png".format(frame_index))
+        copied += 1
+    return copied
 
 
 def _link_or_copy_frame_atomic(source: Path, destination: Path) -> None:
@@ -945,6 +1139,7 @@ def _build_combined_mrq_job(
     post_process_material: str = None,
     preset=None,
     cv_gt=None,
+    number_post_process_material=None,
 ):
     """构建同一 MRQ job 的 RGB、Object-ID EXR 与 Pose BurnIn 输出。"""
     import unreal
@@ -994,6 +1189,16 @@ def _build_combined_mrq_job(
     _configure_object_id_pass(oid)
     _apply_mrq_preset(config, preset, cv_gt, is_mask=False)
     _add_job_console_variables(config, post_process_console_vars(preset, cv_gt))
+
+    if number_post_process_material:
+        deferred = config.find_or_add_setting_by_class(unreal.MoviePipelineDeferredPassBase)
+        pp = unreal.MoviePipelinePostProcessPass()
+        pp.set_editor_property("material", unreal.load_asset(number_post_process_material))
+        pp.set_editor_property("enabled", True)
+        pp.set_editor_property("name", "NumberMask")
+        deferred.set_editor_property("additional_post_process_materials", [pp])
+        deferred.set_editor_property("disable_multisample_effects", True)
+        _enable_custom_depth_in_job(config)
 
     if not _set_job_config(job, config):
         raise RuntimeError("无法把 combined MRQ 配置挂到 job")
@@ -1358,23 +1563,16 @@ def _configure_mask_job(
             raise RuntimeError(
                 f"post_process_material 资产不存在: {post_process_material}"
             )
-        # DeferredPassBase：负责场景渲染，custom depth/stencil 在此写入。
-        config.find_or_add_setting_by_class(unreal.MoviePipelineDeferredPassBase)
-        # 独立 MoviePipelinePostProcessPass：直接输出材质结果（读取 custom stencil）。
-        # 不再用 additional_post_process_materials（结构体数组）——它输出的
-        # FinalImageM_StencilToID.* 实测全 0，怀疑其不在带 custom depth 的通道里渲染。
-        pp_cls = getattr(unreal, "MoviePipelinePostProcessPass", None)
-        if pp_cls is None:
-            raise RuntimeError("MoviePipelinePostProcessPass 不存在")
-        try:
-            pp_pass = config.find_or_add_setting_by_class(pp_cls)
-            pp_pass.set_editor_property("material", mat)
-            pp_pass.set_editor_property("enabled", True)
-            print(
-                f"  [MRQ] mask pass: 独立 MoviePipelinePostProcessPass + {post_process_material}"
-            )
-        except Exception as e:
-            raise RuntimeError(f"配置 MoviePipelinePostProcessPass 失败: {e}")
+        # UE5.8 的 PostProcessPass 是结构体，必须挂在 DeferredPass 的数组中。
+        deferred = config.find_or_add_setting_by_class(unreal.MoviePipelineDeferredPassBase)
+        pp_pass = unreal.MoviePipelinePostProcessPass()
+        pp_pass.set_editor_property("material", mat)
+        pp_pass.set_editor_property("enabled", True)
+        pp_pass.set_editor_property("name", "NumberMask" if "Number" in post_process_material else "InstanceMask")
+        deferred.set_editor_property("additional_post_process_materials", [pp_pass])
+        deferred.set_editor_property("render_main_pass", False)
+        deferred.set_editor_property("disable_multisample_effects", True)
+        print(f"  [MRQ] mask pass: DeferredPass.additional_post_process_materials + {post_process_material}")
     else:
         # 默认 object_id_pass：MoviePipelineObjectIdRenderPass
         added = False
@@ -1564,19 +1762,44 @@ class _AsyncRenderPipeline:
     任何同步阻塞都会让渲染卡死（上一版本 _render_and_wait 的根因）。
     """
 
-    def __init__(self, jobs, episode_id, output_dir, keep_indices, on_complete=None, environment_active=False, environment_policy=None, environment_manifest_fingerprint=None, environment_preset=None, environment_preflight_verified=False, environment_transaction_state=None):
+    def __init__(
+        self,
+        jobs,
+        episode_id,
+        output_dir,
+        keep_indices,
+        on_complete=None,
+        requested_jobs=None,
+        require_number_mask_jobs=False,
+        environment_active=False,
+        environment_policy=None,
+        environment_manifest_fingerprint=None,
+        environment_preset=None,
+        environment_preflight_verified=False,
+        environment_transaction_state=None,
+    ):
         self.environment_active = environment_active is True
-        self.environment_metadata = {'environment_policy': environment_policy, 'environment_manifest_fingerprint': environment_manifest_fingerprint, 'environment_preset': environment_preset} if self.environment_active else {}
+        self.environment_metadata = (
+            {
+                "environment_policy": environment_policy,
+                "environment_manifest_fingerprint": environment_manifest_fingerprint,
+                "environment_preset": environment_preset,
+            }
+            if self.environment_active
+            else {}
+        )
         self.environment_preflight_verified = environment_preflight_verified
         self.environment_transaction_state = environment_transaction_state
         self.jobs = list(jobs)
-        self.requested_jobs = list(jobs)
+        self.requested_jobs = list(jobs if requested_jobs is None else requested_jobs)
         if self.environment_active:
             for job in self.jobs + self.requested_jobs:
                 job.update(self.environment_metadata)
         self.episode_id = episode_id
         self.output_dir = Path(output_dir)
         self.keep_indices = list(keep_indices)
+        self.require_number_mask_jobs = bool(require_number_mask_jobs)
+        record_test_render(self.output_dir, "rendering")
         self.on_complete = on_complete
         self.error_messages = []
         self.fatal_output_errors = []
@@ -1586,79 +1809,153 @@ class _AsyncRenderPipeline:
         self.terminal_result = None
         self.summary_write_error = None
         self.summary_invalidated = False
-        self._watch_handle = None
+        self._watch_handle = None  # slate post-tick 兜底检测的句柄
         self._watch_state = None
         self._restore_map_path = None
         self._cancel_wait = None
 
     def summary_path(self) -> Path:
         """渲染完成标记（render_summary.json）的路径。"""
-        return self.output_dir / self.episode_id / 'render_summary.json'
+        return self.output_dir / self.episode_id / "render_summary.json"
 
-    def start(self, subsystem, queue, executor, map_path, image_width, image_height, frame_rate, file_name_format, zero_pad) -> bool:
+    # ── 生命周期 ──────────────────────────────────────────────────
+
+    def start(self, subsystem, queue, executor, map_path,
+              image_width, image_height, frame_rate,
+              file_name_format, zero_pad) -> bool:
         """清空队列、构建并加入全部 job、绑定 delegate、提交渲染后立即返回。"""
         try:
-            return self._start(subsystem, queue, executor, map_path, image_width, image_height, frame_rate, file_name_format, zero_pad)
+            return self._start(
+                subsystem, queue, executor, map_path, image_width, image_height,
+                frame_rate, file_name_format, zero_pad,
+            )
         except BaseException as exc:
             if not self.finished:
-                self._finalize(failed=True, reason='MRQ setup/submission 异常: {}: {}'.format(type(exc).__name__, exc))
+                self._finalize(
+                    failed=True,
+                    reason="MRQ setup/submission 异常: {}: {}".format(
+                        type(exc).__name__, exc
+                    ),
+                )
             raise
 
-    def _start(self, subsystem, queue, executor, map_path, image_width, image_height, frame_rate, file_name_format, zero_pad) -> bool:
+    def _start(self, subsystem, queue, executor, map_path,
+               image_width, image_height, frame_rate,
+               file_name_format, zero_pad) -> bool:
         """执行队列构建与提交；提交成功返回 True。"""
         self._restore_map_path = str(map_path).split(".")[0]
         _clear_queue(queue)
+
         prepared = []
         for info in self.jobs:
             try:
-                if info.get('kind') == 'combined':
-                    job = _build_combined_mrq_job(queue, info['seq_asset_path'], map_path, info['render_dir'], image_width, image_height, frame_rate, file_name_format, zero_pad, mask_source=info.get('mask_source', 'object_id_pass'), post_process_material=info.get('post_process_material'), preset=info.get('preset'), cv_gt=info.get('cv_gt'))
-                elif info.get('kind') == 'mask':
-                    job = _build_mask_job(queue, info['seq_asset_path'], map_path, info['render_dir'], image_width, image_height, frame_rate, file_name_format, zero_pad, mask_source=info.get('mask_source', 'custom_depth_pass'), post_process_material=info.get('post_process_material'), preset=info.get('preset'), cv_gt=info.get('cv_gt'))
+                if info.get("shared_job_name"):
+                    parent = next(p for p in prepared if p["name"] == info["shared_job_name"])
+                    info["job"] = parent["job"]
+                    prepared.append(info)
+                    continue
+                if info.get("kind") == "combined":
+                    job = _build_combined_mrq_job(
+                        queue, info["seq_asset_path"], map_path, info["render_dir"],
+                        image_width, image_height, frame_rate, file_name_format, zero_pad,
+                        mask_source=info.get("mask_source", "object_id_pass"),
+                        post_process_material=info.get("post_process_material"),
+                        preset=info.get("preset"), cv_gt=info.get("cv_gt"),
+                        number_post_process_material=info.get("number_post_process_material"),
+                    )
+                elif info.get("kind") == "jersey_number_mask":
+                    job = _build_mask_job(
+                        queue, info["seq_asset_path"], map_path, info["render_dir"],
+                        image_width, image_height, frame_rate, file_name_format, zero_pad,
+                        mask_source="post_process_material",
+                        post_process_material=info["post_process_material"],
+                        preset=info.get("preset"), cv_gt=info.get("cv_gt"),
+                    )
+                elif info.get("kind") == "mask":
+                    job = _build_mask_job(
+                        queue, info["seq_asset_path"], map_path, info["render_dir"],
+                        image_width, image_height, frame_rate, file_name_format, zero_pad,
+                        mask_source=info.get("mask_source", "custom_depth_pass"),
+                        post_process_material=info.get("post_process_material"),
+                        preset=info.get("preset"), cv_gt=info.get("cv_gt"),
+                    )
                 else:
-                    job = _build_mrq_job(queue, info['seq_asset_path'], map_path, info['render_dir'], image_width, image_height, frame_rate, file_name_format, zero_pad, preset=info.get('preset'), cv_gt=info.get('cv_gt'))
+                    job = _build_mrq_job(
+                        queue, info["seq_asset_path"], map_path, info["render_dir"],
+                        image_width, image_height, frame_rate, file_name_format, zero_pad,
+                        preset=info.get("preset"), cv_gt=info.get("cv_gt"),
+                    )
             except Exception as e:
                 print(f"  ERROR: 构建 MRQ job 失败 {info['name']}: {e}")
                 self.error_messages.append(f"{info['name']}: {e}")
-                self.failed_job_names.add(info['name'])
+                self.failed_job_names.add(info["name"])
+                if info.get("kind") == "jersey_number_mask":
+                    info["schedule_error"] = "MRQ job 构建失败: {}: {}".format(
+                        type(e).__name__, e
+                    )
                 continue
-            info['job'] = job
+            info["job"] = job
             prepared.append(info)
         if not prepared:
-            self._finalize(failed=True, reason='没有任何可提交的 MRQ job')
+            self._finalize(failed=True, reason="没有任何可提交的 MRQ job")
             return False
         self.jobs = prepared
+
         self.executor = executor
+
+        # 绑定 delegate：MRQ 完成 / 出错时驱动后续阶段（而非同步等待）
         completion_delegate_bound = False
-        for (delegate_name, cb) in (('on_executor_finished_delegate', self._on_finished), ('on_executor_errored_delegate', self._on_errored)):
+        for delegate_name, cb in (
+            ("on_executor_finished_delegate", self._on_finished),
+            ("on_executor_errored_delegate", self._on_errored),
+        ):
             delegate = getattr(executor, delegate_name, None)
             if delegate is None:
-                print(f'  WARNING: executor 无 {delegate_name}，无法绑定回调')
+                print(f"  WARNING: executor 无 {delegate_name}，无法绑定回调")
                 continue
             try:
                 delegate.add_callable(cb)
-                print(f'  已绑定 {delegate_name}')
-                if delegate_name == 'on_executor_finished_delegate':
+                print(f"  已绑定 {delegate_name}")
+                if delegate_name == "on_executor_finished_delegate":
                     completion_delegate_bound = True
             except Exception as e:
-                print(f'  WARNING: 绑定 {delegate_name} 失败: {e}')
+                print(f"  WARNING: 绑定 {delegate_name} 失败: {e}")
+
         watchdog_registered = False
         if not completion_delegate_bound:
             watchdog_registered = self._start_completion_watchdog()
-        if callable(self.on_complete) and (not completion_delegate_bound) and (not watchdog_registered):
-            self._finalize(failed=True, reason='MRQ completion source unavailable: finished delegate binding and watchdog registration both failed')
+        if (
+            callable(self.on_complete)
+            and not completion_delegate_bound
+            and not watchdog_registered
+        ):
+            self._finalize(
+                failed=True,
+                reason=(
+                    "MRQ completion source unavailable: finished delegate binding "
+                    "and watchdog registration both failed"
+                ),
+            )
             return False
+
         if not _submit_render(subsystem, executor):
-            self._finalize(failed=True, reason='无法提交 MRQ 渲染（render_queue_with_executor_instance 等均失败）')
+            self._finalize(failed=True,
+                           reason="无法提交 MRQ 渲染（render_queue_with_executor_instance 等均失败）")
             return False
+
+        # UE submit API 可在调用栈内同步触发 finished delegate。
         if self.finished:
             return False
-        print('\n=== MRQ 渲染已异步提交（不阻塞编辑器主线程）===')
-        print(f'  Sequence 数: {len(self.jobs)}，全部加入同一个 MRQ queue')
+
+        print("\n=== MRQ 渲染已异步提交（不阻塞编辑器主线程）===")
+        print(f"  MRQ job数: {len([j for j in self.jobs if not j.get('shared_job_name')])}，输出记录数: {len(self.jobs)}")
         for info in self.jobs:
-            print(f"    - {info['name']} -> {info['img1_dir']}")
-        print(f'  渲染完成后自动：复制 RGB -> img1/，写完成标记 {self.summary_path()}')
-        print('  请保持编辑器运行；完成后控制台会打印结果汇总。')
+            destination = info.get("img1_dir") or info.get("number_mask_dir")
+            print(f"    - {info['name']} -> {destination}")
+        print(f"  渲染完成后自动：复制 RGB -> img1/，写完成标记 {self.summary_path()}")
+        print("  请保持编辑器运行；完成后控制台会打印结果汇总。")
+
+        # 兜底：finished delegate 不触发的 UE 版本也能完成收尾（非阻塞轮询）
         if not watchdog_registered:
             self._start_completion_watchdog()
         return True
@@ -1685,6 +1982,65 @@ class _AsyncRenderPipeline:
             )
             raise
         return True
+
+    # ── delegate 回调（游戏线程触发，可安全访问 unreal 与文件系统）──
+
+    def _on_finished(self, executor, success):
+        """MRQ 整批渲染结束。签名与 on_executor_finished_delegate 一致：(executor, success)。
+
+        UE 5.8 的 delegate 绑定会检查回调签名：必须是显式参数，不能用 *args（变参
+        计为 0 个形参，报 "Callable has the incorrect number of arguments
+        (expected 2, got 0)"，导致绑定失败、回调永不触发）。
+        """
+        if self.finished:
+            return
+        try:
+            print(f"  [MRQ] on_executor_finished_delegate 回调触发（success={success}）")
+            if self._cancel_wait is not None:
+                self._request_cancelled_completion()
+                return
+            if not success:
+                cancelled = self._executor_cancelled(executor)
+                if cancelled:
+                    self._request_cancelled_completion()
+                    return
+                self._request_failed_completion("MRQ finished 委托报告 success=False")
+                return
+            self._copy_and_finalize()
+        except Exception as e:
+            # 回调异常必须可见（UE 默认吞掉 delegate 异常）。watchdog / 手动入口
+            # 仍可收尾，但打印 traceback 便于定位。
+            print(f"  [MRQ 回调异常] _on_finished: {e}")
+            traceback.print_exc()
+            self._request_failed_completion(
+                "MRQ finished 收尾异常: {}: {}".format(type(e).__name__, e)
+            )
+
+    def _on_errored(self, executor, pipeline, is_fatal, errors):
+        """MRQ 渲染出错（不中断最终收尾，成败由 finished 委托决定）。
+
+        签名与 on_executor_errored_delegate 一致：
+        (executor, pipeline, is_fatal, errors)。errors 为 MRQ 控制台输出条目列表。
+        """
+        try:
+            try:
+                entries = list(errors)
+            except TypeError:
+                entries = [errors]
+            parts = [str(e) for e in entries if str(e)]
+            if not parts:
+                parts.append(str(errors))
+            self.error_messages.append(" | ".join(parts))
+            print(f"  [MRQ 错误] {' | '.join(parts)}")
+        except Exception as e:
+            print(f"  [MRQ 回调异常] _on_errored: {e}")
+            traceback.print_exc()
+
+    # ── 完成检测兜底（非阻塞 watchdog）──────────────────────────────
+
+    def _request_cancelled_completion(self):
+        """取消回调可能发生在 PIE 拆卸栈内，只登记等待，不在该栈恢复资产。"""
+        self._request_deferred_completion(cancelled=True)
 
     def _request_failed_completion(self, reason):
         """没有明确取消证据的失败保持 failed，但同样等待 Editor World 安全。"""
@@ -1715,57 +2071,6 @@ class _AsyncRenderPipeline:
                     self._cancel_wait.get("status"), self._cancel_wait.get("reason")
                 ),
             )
-
-    def _on_finished(self, executor, success):
-        """MRQ 整批渲染结束。签名与 on_executor_finished_delegate 一致：(executor, success)。
-
-        UE 5.8 的 delegate 绑定会检查回调签名：必须是显式参数，不能用 *args（变参
-        计为 0 个形参，报 "Callable has the incorrect number of arguments
-        (expected 2, got 0)"，导致绑定失败、回调永不触发）。
-        """
-        if self.finished:
-            return
-        try:
-            print(f'  [MRQ] on_executor_finished_delegate 回调触发（success={success}）')
-            if self._cancel_wait is not None:
-                self._request_cancelled_completion()
-                return
-            if not success:
-                cancelled = self._executor_cancelled(executor)
-                if cancelled:
-                    self._request_cancelled_completion()
-                    return
-                self._request_failed_completion('MRQ finished 委托报告 success=False')
-                return
-            self._copy_and_finalize()
-        except Exception as e:
-            print(f'  [MRQ 回调异常] _on_finished: {e}')
-            traceback.print_exc()
-            self._request_failed_completion('MRQ finished 收尾异常: {}: {}'.format(type(e).__name__, e))
-
-    def _on_errored(self, executor, pipeline, is_fatal, errors):
-        """MRQ 渲染出错（不中断最终收尾，成败由 finished 委托决定）。
-
-        签名与 on_executor_errored_delegate 一致：
-        (executor, pipeline, is_fatal, errors)。errors 为 MRQ 控制台输出条目列表。
-        """
-        try:
-            try:
-                entries = list(errors)
-            except TypeError:
-                entries = [errors]
-            parts = [str(e) for e in entries if str(e)]
-            if not parts:
-                parts.append(str(errors))
-            self.error_messages.append(' | '.join(parts))
-            print(f"  [MRQ 错误] {' | '.join(parts)}")
-        except Exception as e:
-            print(f'  [MRQ 回调异常] _on_errored: {e}')
-            traceback.print_exc()
-
-    def _request_cancelled_completion(self):
-        """取消回调可能发生在 PIE 拆卸栈内，只登记等待，不在该栈恢复资产。"""
-        self._request_deferred_completion(cancelled=True)
 
     def _poll_cancelled_completion(self):
         """只保留字符串/布尔证据；每次查询后释放临时 World 引用。"""
@@ -1805,7 +2110,6 @@ class _AsyncRenderPipeline:
                 ),
             )
 
-
     def _start_completion_watchdog(self):
         """注册 slate post-tick 兜底：finished delegate 不触发时也能收尾。
 
@@ -1823,14 +2127,20 @@ class _AsyncRenderPipeline:
         try:
             import unreal
         except Exception as exc:
-            print('  WARNING: 无法加载 slate watchdog API: {}'.format(exc))
+            print("  WARNING: 无法加载 slate watchdog API: {}".format(exc))
             self._watch_handle = None
             return False
-        self._watch_state = {'last_total': -1, 'stable_ticks': 0, 'start': time.monotonic(), 'seen_rendering': False}
+
+        self._watch_state = {
+            "last_total": -1,
+            "stable_ticks": 0,
+            "start": time.monotonic(),
+            "seen_rendering": False,
+        }
 
         def _on_tick(_delta):
             if self.finished:
-                return False
+                return False  # 已收尾，注销本回调
             st = self._watch_state
             if self._cancel_wait is not None or self._executor_cancelled(self.executor):
                 self._poll_cancelled_completion()
@@ -1838,27 +2148,34 @@ class _AsyncRenderPipeline:
             rendering = self._executor_rendering()
             present = self._all_keep_frames_present()
             total = self._total_render_files()
-            if total == st['last_total']:
-                st['stable_ticks'] += 1
+            if total == st["last_total"]:
+                st["stable_ticks"] += 1
             else:
-                st['stable_ticks'] = 0
-            st['last_total'] = total
+                st["stable_ticks"] = 0
+            st["last_total"] = total
             if rendering is True:
-                st['seen_rendering'] = True
-            elapsed = time.monotonic() - st['start']
+                st["seen_rendering"] = True
+            elapsed = time.monotonic() - st["start"]
+
             if rendering is False and self.error_messages:
-                self._request_failed_completion('MRQ executor error: {}'.format(' | '.join(self.error_messages)))
+                self._request_failed_completion(
+                    "MRQ executor error: {}".format(" | ".join(self.error_messages))
+                )
                 return not self.finished
+
             if rendering is False and present:
-                print('  [MRQ] watchdog：executor 不再渲染且目标帧齐全，开始收尾')
+                print("  [MRQ] watchdog：executor 不再渲染且目标帧齐全，开始收尾")
                 self._copy_and_finalize()
                 return False
-            if rendering is None and present and (st['stable_ticks'] >= 1200):
-                print('  [MRQ] watchdog：文件数稳定兜底，开始收尾')
+            if rendering is None and present and st["stable_ticks"] >= 1200:
+                print("  [MRQ] watchdog：文件数稳定兜底，开始收尾")
                 self._copy_and_finalize()
                 return False
-            if elapsed > 1800.0 and st['stable_ticks'] >= 600:
-                print('  WARNING: MRQ 渲染超时且文件数长时间无变化，按当前文件收尾')
+            # 硬超时：仅当渲染已停止推进（文件数长时间无变化）才收尾。
+            # 长序列 soak（900 帧×2 job×4 相机 ≈ 7200 帧）渲染可能超过 30 分钟，
+            # 只要文件仍在增长就不应强制收尾，避免把进行中的渲染误判为 partial。
+            if elapsed > 1800.0 and st["stable_ticks"] >= 600:
+                print("  WARNING: MRQ 渲染超时且文件数长时间无变化，按当前文件收尾")
                 self._copy_and_finalize()
                 return False
             return True
@@ -1867,32 +2184,38 @@ class _AsyncRenderPipeline:
             try:
                 return _on_tick(delta)
             except Exception as exc:
-                self._finalize(failed=True, reason='MRQ watchdog 收尾异常: {}: {}'.format(type(exc).__name__, exc))
+                self._finalize(
+                    failed=True,
+                    reason="MRQ watchdog 收尾异常: {}: {}".format(
+                        type(exc).__name__, exc
+                    ),
+                )
                 return False
+
         try:
             handle = unreal.register_slate_post_tick_callback(_guarded_tick)
         except Exception as e:
-            print(f'  WARNING: 无法注册 slate post-tick 兜底检测: {e}（依赖 finished delegate）')
+            print(f"  WARNING: 无法注册 slate post-tick 兜底检测: {e}（依赖 finished delegate）")
             self._watch_handle = None
             return False
         if handle is None:
-            print('  WARNING: slate post-tick watchdog 未返回有效 registration handle')
+            print("  WARNING: slate post-tick watchdog 未返回有效 registration handle")
             self._watch_handle = None
             return False
         self._watch_handle = handle
-        print('  已注册非阻塞完成检测（watchdog，每编辑帧检查一次）')
+        print("  已注册非阻塞完成检测（watchdog，每编辑帧检查一次）")
         return True
 
     def _executor_rendering(self) -> Optional[bool]:
         """executor 是否正在渲染。is_rendering API 不可用时返回 None。"""
-        m = getattr(self.executor, 'is_rendering', None)
+        m = getattr(self.executor, "is_rendering", None)
         if m is None:
             return None
         return bool(m())
 
     @staticmethod
     def _executor_cancelled(executor) -> bool:
-        for name in ('is_cancelled', 'is_canceled', 'was_cancelled', 'was_canceled'):
+        for name in ("is_cancelled", "is_canceled", "was_cancelled", "was_canceled"):
             value = getattr(executor, name, None)
             if value is None:
                 continue
@@ -1907,16 +2230,35 @@ class _AsyncRenderPipeline:
         if self._executor_rendering() is True:
             return False
         for info in self.jobs:
-            if info.get('kind') == 'combined':
-                available_rgb = find_final_image_files(info['render_dir'])
-                available_mask = find_object_id_files(info['render_dir'])
-                if not all((n in available_rgb and n in available_mask for n in self.keep_indices)):
+            target_indices = info.get("target_indices", self.keep_indices)
+            if info.get("kind") == "jersey_number_mask":
+                try:
+                    available = (find_object_id_files(info["render_dir"]) if info.get("shared_job_name")
+                                 else find_jersey_number_mask_files(info["render_dir"]))
+                except (OSError, ValueError, TypeError) as exc:
+                    message = "号码 mask 输出检查失败: {}: {}".format(
+                        type(exc).__name__, exc
+                    )
+                    if message not in self.error_messages:
+                        self.error_messages.append(message)
+                    if message not in self.fatal_output_errors:
+                        self.fatal_output_errors.append(message)
+                    self.failed_job_names.add(info.get("name"))
+                    info["schedule_error"] = message
                     return False
-            elif info.get('kind') == 'mask':
-                available = find_mask_files(info['render_dir'])
+                if not all(n in available for n in target_indices):
+                    return False
+                continue
+            if info.get("kind") == "combined":
+                available_rgb = find_final_image_files(info["render_dir"])
+                available_mask = find_object_id_files(info["render_dir"])
+                if not all(n in available_rgb and n in available_mask for n in target_indices):
+                    return False
+            elif info.get("kind") == "mask":
+                available = find_mask_files(info["render_dir"])
             else:
-                available = find_rendered_frame_numbers(info['render_dir'])
-            if info.get('kind') != 'combined' and (not all((n in available for n in self.keep_indices))):
+                available = find_rendered_frame_numbers(info["render_dir"])
+            if info.get("kind") != "combined" and not all(n in available for n in target_indices):
                 return False
         return True
 
@@ -1927,9 +2269,15 @@ class _AsyncRenderPipeline:
         cached = getattr(self, "_render_file_count_cache", None)
         if rendering is True and cached is not None and 0 <= now - cached[0] < 2.0:
             return cached[1]
-        total = sum((len(list(info['render_dir'].rglob('*.png'))) + len(list(info['render_dir'].rglob('*.exr'))) for info in self.jobs))
+        total = sum(
+            len(list(info["render_dir"].rglob("*.png")))
+            + len(list(info["render_dir"].rglob("*.exr")))
+            for info in self.jobs
+        )
         self._render_file_count_cache = (now, total) if rendering is True else None
         return total
+
+    # ── 收尾：复制 RGB + 轻量校验 + 写完成标记 ─────────────────────
 
     def _copy_and_finalize(self, cancelled=False):
         """finished 成功后：逐 camera 复制 RGB（img1/）与统计 Instance-ID Mask 对齐。"""
@@ -1942,24 +2290,72 @@ class _AsyncRenderPipeline:
         total_mask_copied = 0
         expected = len(self.keep_indices)
         for info in self.jobs:
-            cam_id = info['cam_id']
-            (render_dir, out_dir) = (info['render_dir'], info['img1_dir'])
-            is_mask = info.get('kind') == 'mask'
-            is_combined = info.get('kind') == 'combined'
+            cam_id = info["cam_id"]
+            target_indices = info.get("target_indices", self.keep_indices)
+            if info.get("kind") == "jersey_number_mask":
+                entry = per_camera.setdefault(cam_id, {
+                    "sequence": info["name"],
+                    "expected_frames": expected,
+                    "ok": True,
+                })
+                try:
+                    if info.get("shared_job_name"):
+                        # 号码值从同帧EXR线性通道由P1导出，禁止把sRGB PNG直接当整数ID。
+                        number_mask_frames = len(find_object_id_files(info["shared_exr_dir"]))
+                        info["number_mask_source"] = "shared_mrq_linear_exr"
+                    else:
+                        number_mask_frames = archive_jersey_number_mask_frames(
+                            info["render_dir"], info["number_mask_dir"], target_indices
+                        )
+                except (OSError, ValueError, TypeError) as exc:
+                    message = "号码 mask 归档失败: {}: {}".format(
+                        type(exc).__name__, exc
+                    )
+                    self.fatal_output_errors.append(
+                        "{}: {}".format(info["name"], message)
+                    )
+                    self.error_messages.append(
+                        "{}: {}".format(info["name"], message)
+                    )
+                    self.failed_job_names.add(info["name"])
+                    info["schedule_error"] = message
+                    number_mask_frames = 0
+                    entry["schedule_error"] = message
+                entry["number_mask_frames"] = number_mask_frames
+                entry["number_mask_source"] = info.get(
+                    "number_mask_source", "custom_depth_stencil_png"
+                )
+                entry["ok"] = entry["ok"] and number_mask_frames == len(target_indices)
+                mark = "OK" if number_mask_frames == len(target_indices) else (
+                    "MISSING" if number_mask_frames == 0 else "PARTIAL"
+                )
+                print(
+                    "  [{}] {}: number_mask/归档 {}/{} 帧".format(
+                        mark, cam_id, number_mask_frames, len(target_indices)
+                    )
+                )
+                continue
+            render_dir, out_dir = info["render_dir"], info["img1_dir"]
+            is_mask = info.get("kind") == "mask"
+            is_combined = info.get("kind") == "combined"
             if is_combined:
                 copied = copy_rendered_frames(render_dir, out_dir, self.keep_indices)
-                mask_dir = info['render_mask_dir']
+                mask_dir = info["render_mask_dir"]
                 mask_copied = archive_object_id_frames(render_dir, mask_dir, self.keep_indices)
                 total_copied += copied
                 total_mask_copied += mask_copied
-                entry = per_camera.setdefault(cam_id, {'sequence': info['name'], 'expected_frames': expected, 'ok': True})
-                entry['img1_frames'] = copied
-                entry['mask_frames'] = mask_copied
-                entry['mask_source'] = 'object_id_exr'
-                entry['ok'] = copied == expected and mask_copied == expected
-                print(f"  [{('OK' if entry['ok'] else 'PARTIAL')}] {cam_id}: combined RGB {copied}/{expected}, mask(EXR) {mask_copied}/{expected}")
-                if copied == expected and render_dir.is_dir():
-                    for rp in render_dir.glob('*.png'):
+                entry = per_camera.setdefault(cam_id, {
+                    "sequence": info["name"],
+                    "expected_frames": expected,
+                    "ok": True,
+                })
+                entry["img1_frames"] = copied
+                entry["mask_frames"] = mask_copied
+                entry["mask_source"] = "object_id_exr"
+                entry["ok"] = copied == expected and mask_copied == expected
+                print(f"  [{'OK' if entry['ok'] else 'PARTIAL'}] {cam_id}: combined RGB {copied}/{expected}, mask(EXR) {mask_copied}/{expected}")
+                if copied == expected and render_dir.is_dir() and not info.get("number_post_process_material"):
+                    for rp in render_dir.glob("*.png"):
                         try:
                             rp.unlink()
                         except OSError:
@@ -1973,44 +2369,56 @@ class _AsyncRenderPipeline:
                 total_mask_copied += copied
             else:
                 total_copied += copied
-            entry = per_camera.setdefault(cam_id, {'sequence': info['name'], 'expected_frames': expected, 'ok': True})
+            entry = per_camera.setdefault(cam_id, {
+                "sequence": info["name"],
+                "expected_frames": expected,
+                "ok": True,
+            })
             if is_mask:
-                entry['mask_frames'] = copied
+                entry["mask_frames"] = copied
+                # Object ID EXR 源：记录来源；mask/*.png 由 P1 `cryptomatte-to-mask` 生成
                 mask_srcs = [p.suffix.lower() for p in find_mask_files(render_dir).values()]
-                is_exr = bool(mask_srcs) and all((s == '.exr' for s in mask_srcs))
-                entry['mask_source'] = 'object_id_exr' if is_exr else 'png'
-                label = 'mask(EXR) 对齐' if is_exr else 'mask/写入'
+                is_exr = bool(mask_srcs) and all(s == ".exr" for s in mask_srcs)
+                entry["mask_source"] = "object_id_exr" if is_exr else "png"
+                label = "mask(EXR) 对齐" if is_exr else "mask/写入"
             else:
-                entry['img1_frames'] = copied
-                label = 'img1/写入'
-                ann_count = self._check_annotation_frame_count(info['cam_out'])
+                entry["img1_frames"] = copied
+                label = "img1/写入"
+                ann_count = self._check_annotation_frame_count(info["cam_out"])
                 if ann_count is not None:
-                    entry['annotations_jsonl_frames'] = ann_count
-                    entry['annotation_img1_match'] = ann_count == copied
+                    entry["annotations_jsonl_frames"] = ann_count
+                    entry["annotation_img1_match"] = ann_count == copied
+                # Zero-waste（C6-P1.7）：img1 是唯一 RGB 物理副本。
+                # 复制成功后删除 render/ 的 FinalImage / BurnInOverlay PNG（不保留重复 RGB）。
                 if copied == expected and render_dir.is_dir():
                     removed = 0
-                    for rp in render_dir.glob('*.png'):
+                    for rp in render_dir.glob("*.png"):
                         try:
                             rp.unlink()
                             removed += 1
                         except OSError:
                             pass
                     if removed:
-                        print(f'  [zero-waste] {cam_id}: render/ 已删除 {removed} 张重复 RGB PNG（img1 为唯一副本）')
-            entry['ok'] = entry['ok'] and copied == expected
-            mark = 'MISSING' if copied == 0 else 'OK' if copied == expected else 'PARTIAL'
-            print(f'  [{mark}] {cam_id}: {label} {copied}/{expected} 帧')
+                        print(f"  [zero-waste] {cam_id}: render/ 已删除 {removed} 张重复 RGB PNG（img1 为唯一副本）")
+            entry["ok"] = entry["ok"] and (copied == expected)
+            mark = "MISSING" if copied == 0 else ("OK" if copied == expected else "PARTIAL")
+            print(f"  [{mark}] {cam_id}: {label} {copied}/{expected} 帧")
+
         if cancelled:
-            (status, reason) = ('cancelled', 'MRQ executor cancelled; available frames were retained')
+            status, reason = "cancelled", "MRQ executor cancelled; available frames were retained"
         elif total_copied == 0:
-            (status, reason) = ('failed', '渲染未产生任何可用的 RGB / mask 帧')
+            status, reason = "failed", "渲染未产生任何可用的 RGB / mask 帧"
+        elif self.fatal_output_errors:
+            status, reason = "failed", "; ".join(self.fatal_output_errors)
         elif self.failed_job_names:
-            (status, reason) = ('partial', '部分 MRQ job 在构建阶段失败')
-        elif all((e['ok'] for e in per_camera.values())):
-            (status, reason) = ('success', None)
+            status, reason = "partial", "部分 MRQ job 在构建阶段失败"
+        elif all(e["ok"] for e in per_camera.values()):
+            status, reason = "success", None
         else:
-            (status, reason) = ('partial', '部分 camera 的渲染帧数与预期不符（可能缺帧）')
-        self._finalize(failed=status == 'failed', status=status, per_camera=per_camera, total_copied=total_copied, total_mask_frames=total_mask_copied, reason=reason)
+            status, reason = "partial", "部分 camera 的渲染帧数与预期不符（可能缺帧）"
+        self._finalize(failed=(status == "failed"), status=status,
+                       per_camera=per_camera, total_copied=total_copied,
+                       total_mask_frames=total_mask_copied, reason=reason)
 
     def _check_annotation_frame_count(self, cam_out: Path) -> Optional[int]:
         """轻量校验：annotations.jsonl 行数 vs img1/ PNG 数。
@@ -2018,18 +2426,20 @@ class _AsyncRenderPipeline:
         一致返回 None；不一致返回 annotations.jsonl 帧数；无标注文件返回 None。
         纯文件检查，不导入 P1 代码（保持 UE/P1 运行时隔离）。
         """
-        ann_path = cam_out / 'annotations.jsonl'
-        img1_dir = cam_out / 'img1'
+        ann_path = cam_out / "annotations.jsonl"
+        img1_dir = cam_out / "img1"
         if not ann_path.exists() or not img1_dir.exists():
             return None
         try:
-            ann_count = sum((1 for _ in open(ann_path, encoding='utf-8')))
+            ann_count = sum(1 for _ in open(ann_path, encoding="utf-8"))
         except OSError:
             return None
-        img_count = len(list(img1_dir.glob('*.png')))
+        img_count = len(list(img1_dir.glob("*.png")))
         return ann_count if ann_count != img_count else None
 
-    def _finalize(self, failed, status=None, per_camera=None, total_copied=0, total_mask_frames=0, reason=None, defer_callback=False):
+    def _finalize(self, failed, status=None, per_camera=None,
+                  total_copied=0, total_mask_frames=0, reason=None,
+                  defer_callback=False):
         """写完成标记 render_summary.json，并释放模块级引用（只执行一次）。"""
         global _ACTIVE_RENDER
         if self.finished:
@@ -2039,6 +2449,8 @@ class _AsyncRenderPipeline:
         self.finished = True
         if _ACTIVE_RENDER is self:
             _ACTIVE_RENDER = None
+
+        # 注销 watchdog（若有）
         if self._watch_handle is not None:
             try:
                 import unreal
@@ -2046,41 +2458,148 @@ class _AsyncRenderPipeline:
             except Exception:
                 pass
             self._watch_handle = None
-        status = status or ('failed' if failed else 'success')
-        summary = {'episode_id': self.episode_id, 'status': status, 'reason': reason, 'total_img1_frames': total_copied, 'total_mask_frames': total_mask_frames, 'cameras': per_camera or {}, 'mrq_errors': self.error_messages or None, 'finished_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 'note': 'MRQ 渲染完成回调写入。完整标注校验请在 P1 运行：uv run grf-ue validate-annotations <output_dir>'}
+
+        status = status or ("failed" if failed else "success")
+        summary = {
+            "episode_id": self.episode_id,
+            "status": status,
+            "reason": reason,
+            "total_img1_frames": total_copied,
+            "total_mask_frames": total_mask_frames,
+            "cameras": per_camera or {},
+            "mrq_errors": self.error_messages or None,
+            "finished_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "note": "MRQ 渲染完成回调写入。完整标注校验请在 P1 运行："
+                    "uv run grf-ue validate-annotations <output_dir>",
+        }
         camera_results = per_camera if per_camera is not None else {}
+        if status == "failed" and any(
+            info.get("kind") == "jersey_number_mask"
+            for info in self.requested_jobs
+        ):
+            for info in self.requested_jobs:
+                if info.get("kind") != "jersey_number_mask":
+                    continue
+                camera_id = info.get("cam_id")
+                if not camera_id or camera_id in camera_results:
+                    continue
+                camera_results[camera_id] = {
+                    "sequence": info.get("name"),
+                    "expected_frames": len(
+                        info.get("target_indices", self.keep_indices)
+                    ),
+                    "ok": False,
+                    "schedule_error": reason or "MRQ setup/submission failed",
+                }
+        scheduled_number_jobs = {
+            (info.get("cam_id"), info.get("name"))
+            for info in self.jobs
+            if info.get("kind") == "jersey_number_mask"
+        }
+        for info in self.requested_jobs:
+            if info.get("kind") != "jersey_number_mask":
+                continue
+            key = (info.get("cam_id"), info.get("name"))
+            if key in scheduled_number_jobs:
+                continue
+            cam_id = info.get("cam_id")
+            entry = camera_results.setdefault(cam_id, {
+                "sequence": info.get("name"),
+                "expected_frames": len(self.keep_indices),
+                "ok": False,
+            })
+            entry["number_mask_frames"] = 0
+            entry["number_mask_source"] = info.get(
+                "number_mask_source", "custom_depth_stencil_png"
+            )
+            entry["schedule_error"] = info.get(
+                "schedule_error", "number-mask plan was not added to the async job set"
+            )
+            entry["ok"] = False
+
+        omitted_number_cameras = [
+            info.get("cam_id")
+            for info in self.requested_jobs
+            if info.get("kind") == "jersey_number_mask"
+            and (info.get("cam_id"), info.get("name")) not in scheduled_number_jobs
+        ]
+        if omitted_number_cameras and status == "success":
+            status = "partial"
+            reason = "部分 v2 number-mask camera 未进入 MRQ job 集合"
+
         job_results = []
         for info in self.requested_jobs:
-            job_name = info.get('name')
-            camera_id = info.get('cam_id')
+            job_name = info.get("name")
+            camera_id = info.get("cam_id")
             camera_result = camera_results.get(camera_id) or {}
-            expected = camera_result.get('expected_frames')
-            if info.get('kind') == 'mask':
-                copied = camera_result.get('mask_frames')
+            expected = camera_result.get("expected_frames")
+            if info.get("kind") == "jersey_number_mask":
+                copied = camera_result.get("number_mask_frames")
+                expected_for_job = len(info.get("target_indices", self.keep_indices))
+            elif info.get("kind") == "mask":
+                copied = camera_result.get("mask_frames")
                 expected_for_job = expected
-            elif info.get('kind') == 'combined':
-                copied = min(camera_result.get('img1_frames', 0), camera_result.get('mask_frames', 0))
+            elif info.get("kind") == "combined":
+                copied = min(
+                    camera_result.get("img1_frames", 0),
+                    camera_result.get("mask_frames", 0),
+                )
                 expected_for_job = expected
             else:
-                copied = camera_result.get('img1_frames')
+                copied = camera_result.get("img1_frames")
                 expected_for_job = expected
-            if info.get('schedule_error'):
-                job_status = 'failed'
+            if info.get("schedule_error"):
+                job_status = "failed"
             elif job_name in self.failed_job_names:
-                job_status = 'failed'
-            elif status == 'cancelled':
-                job_status = 'cancelled'
-            elif status == 'skipped':
-                job_status = 'skipped'
-            elif status == 'failed':
-                job_status = 'failed'
-            elif copied is not None and expected_for_job is not None and (copied == expected_for_job):
-                job_status = 'success'
+                job_status = "failed"
+            elif status == "cancelled":
+                job_status = "cancelled"
+            elif status == "skipped":
+                job_status = "skipped"
+            elif status == "failed":
+                job_status = "failed"
+            elif (
+                copied is not None
+                and expected_for_job is not None
+                and copied == expected_for_job
+            ):
+                job_status = "success"
             else:
-                job_status = 'failed'
-            job_result = {'camera_id': camera_id, 'job_name': job_name, 'status': job_status}
+                job_status = "failed"
+            job_result = {
+                "camera_id": camera_id,
+                "job_name": job_name,
+                "status": job_status,
+            }
+            if info.get("kind") == "jersey_number_mask":
+                job_result.update({
+                    "kind": "jersey_number_mask",
+                    "number_mask_frames": camera_result.get("number_mask_frames", 0),
+                    "number_mask_source": camera_result.get(
+                        "number_mask_source", info.get(
+                            "number_mask_source", "custom_depth_stencil_png"
+                        )
+                    ),
+                    "target_indices": list(
+                        info.get("target_indices", self.keep_indices)
+                    ),
+                    "shared_job_name": info.get("shared_job_name"),
+                    "output_resolution": list(info.get("output_resolution", ()))
+                    if info.get("output_resolution") is not None
+                    else None,
+                })
+                if info.get("schedule_error"):
+                    job_result["schedule_error"] = info["schedule_error"]
             job_results.append(job_result)
-        self.terminal_result = {'episode_id': self.episode_id, 'status': status, 'reason': reason, 'cameras': camera_results, 'jobs': job_results, 'mrq_errors': self.error_messages or None, 'finished_at': summary['finished_at']}
+        self.terminal_result = {
+            "episode_id": self.episode_id,
+            "status": status,
+            "reason": reason,
+            "cameras": camera_results,
+            "jobs": job_results,
+            "mrq_errors": self.error_messages or None,
+            "finished_at": summary["finished_at"],
+        }
         if defer_callback:
             self.terminal_result.update(restore_deferred=True, manual_required=True)
             summary.update(restore_deferred=True, manual_required=True)
@@ -2090,56 +2609,152 @@ class _AsyncRenderPipeline:
             for job_result in job_results:
                 job_result.update(self.environment_metadata)
             self.terminal_result.update(self.environment_metadata)
-            self.terminal_result['environment_restore_ready'] = bool(status == 'success' and (not self.fatal_output_errors))
+            self.terminal_result["environment_restore_ready"] = bool(
+                status == "success" and not self.fatal_output_errors
+            )
             summary.update(self.environment_metadata)
-            summary['environment_restore_ready'] = self.terminal_result['environment_restore_ready']
-            summary['jobs'] = job_results
+            summary["environment_restore_ready"] = self.terminal_result[
+                "environment_restore_ready"
+            ]
+            summary["jobs"] = job_results
+        if self.require_number_mask_jobs or any(
+            info.get("kind") == "jersey_number_mask"
+            for info in self.requested_jobs
+        ):
+            requested_number_jobs = [
+                info for info in self.requested_jobs
+                if info.get("kind") == "jersey_number_mask"
+            ]
+            job_terminal = all(
+                job.get("status") in {"success", "failed", "cancelled", "skipped"}
+                for job in job_results
+            )
+            number_masks_complete = bool(requested_number_jobs) and all(
+                (camera_results.get(info.get("cam_id")) or {}).get(
+                    "number_mask_frames"
+                ) == len(info.get("target_indices", self.keep_indices))
+                for info in requested_number_jobs
+            )
+            self.terminal_result["appearance_restore_ready"] = bool(
+                status == "success"
+                and job_terminal
+                and number_masks_complete
+                and len([
+                    job for job in job_results
+                    if job.get("kind") == "jersey_number_mask"
+                ]) == len(requested_number_jobs)
+                and all(entry.get("ok") is True for entry in camera_results.values())
+                and all(job.get("status") == "success" for job in job_results)
+            )
+            summary["appearance_restore_ready"] = self.terminal_result[
+                "appearance_restore_ready"
+            ]
+            summary["jobs"] = job_results
         if self.summary_write_error is not None:
-            self.terminal_result['summary_write_error'] = self.summary_write_error
-        summary.update({'status': status, 'reason': reason, 'cameras': camera_results, 'mrq_errors': self.error_messages or None})
+            self.terminal_result["summary_write_error"] = self.summary_write_error
+
+        summary.update({
+            "status": status,
+            "reason": reason,
+            "cameras": camera_results,
+            "mrq_errors": self.error_messages or None,
+        })
         try:
             write_json_atomic(self.summary_path(), summary)
         except Exception as exc:
-            self.summary_write_error = '{}: {}'.format(type(exc).__name__, exc)
+            self.summary_write_error = "{}: {}".format(type(exc).__name__, exc)
             try:
                 summary_path = self.summary_path()
                 if summary_path.exists():
                     summary_path.unlink()
-                temporary_path = summary_path.with_name(summary_path.name + '.tmp')
+                temporary_path = summary_path.with_name(summary_path.name + ".tmp")
                 if temporary_path.exists():
                     temporary_path.unlink()
                 self.summary_invalidated = not summary_path.exists()
             except Exception as invalidate_exc:
                 self.summary_invalidated = False
-                self.error_messages.append('render_summary 失效标记失败: {}: {}'.format(type(invalidate_exc).__name__, invalidate_exc))
+                self.error_messages.append(
+                    "render_summary 失效标记失败: {}: {}".format(
+                        type(invalidate_exc).__name__, invalidate_exc
+                    )
+                )
             failed = True
-            status = 'failed'
-            reason = 'render_summary 写入失败: {}'.format(self.summary_write_error)
+            status = "failed"
+            reason = "render_summary 写入失败: {}".format(self.summary_write_error)
             self.error_messages.append(reason)
-            summary.update({'status': status, 'reason': reason, 'mrq_errors': self.error_messages, 'summary_write_error': self.summary_write_error, 'summary_invalidated': self.summary_invalidated})
-            self.terminal_result.update({'status': status, 'reason': reason, 'mrq_errors': self.error_messages, 'summary_write_error': self.summary_write_error, 'summary_invalidated': self.summary_invalidated})
+            summary.update({
+                "status": status,
+                "reason": reason,
+                "mrq_errors": self.error_messages,
+                "summary_write_error": self.summary_write_error,
+                "summary_invalidated": self.summary_invalidated,
+            })
+            self.terminal_result.update({
+                "status": status,
+                "reason": reason,
+                "mrq_errors": self.error_messages,
+                "summary_write_error": self.summary_write_error,
+                "summary_invalidated": self.summary_invalidated,
+            })
+            if self.require_number_mask_jobs or any(
+                info.get("kind") == "jersey_number_mask"
+                for info in self.requested_jobs
+            ):
+                self.terminal_result["appearance_restore_ready"] = False
+                summary["appearance_restore_ready"] = False
             if self.environment_active:
-                self.terminal_result['environment_restore_ready'] = False
-                summary['environment_restore_ready'] = False
-            print('  [MRQ summary 写入异常] {}'.format(self.summary_write_error))
+                self.terminal_result["environment_restore_ready"] = False
+                summary["environment_restore_ready"] = False
+            print("  [MRQ summary 写入异常] {}".format(self.summary_write_error))
             traceback.print_exc()
-        print(f"\n=== MRQ 渲染{('失败' if failed else '完成')}: {status} ===")
-        print(f'  完成标记: {self.summary_path()}')
+
+        print(f"\n=== MRQ 渲染{'失败' if failed else '完成'}: {status} ===")
+        print(f"  完成标记: {self.summary_path()}")
         if failed:
-            print(f'  原因: {reason}')
-        print(f'  后续步骤（P1）：uv run grf-ue validate-annotations {self.output_dir}')
+            print(f"  原因: {reason}")
+        print(f"  后续步骤（P1）：uv run grf-ue validate-annotations {self.output_dir}")
+        record_test_render(self.output_dir, "complete" if status == "success" else "failed_stopped")
         if callable(self.on_complete) and not defer_callback:
             try:
                 self.on_complete(self.terminal_result)
             except Exception as exc:
-                print('  [MRQ callback 异常] {}: {}'.format(type(exc).__name__, exc))
+                print("  [MRQ callback 异常] {}: {}".format(type(exc).__name__, exc))
                 traceback.print_exc()
 
 
-def _finalize_sync_render(callback, episode_id, output_dir, status, reason=None, *, environment_active=False, environment_policy=None, environment_manifest_fingerprint=None, environment_preset=None, environment_preflight_verified=False, environment_transaction_state=None):
+def _finalize_sync_render(
+    callback,
+    episode_id,
+    output_dir,
+    status,
+    reason=None,
+    *,
+    require_number_mask_jobs=False,
+    requested_jobs=None,
+    environment_active=False,
+    environment_policy=None,
+    environment_manifest_fingerprint=None,
+    environment_preset=None,
+    environment_preflight_verified=False,
+    environment_transaction_state=None,
+):
     """为同步跳过或错误写入终态摘要，并在摘要落盘后调用回调。"""
-    pipeline = _AsyncRenderPipeline([], episode_id, output_dir, [], on_complete=callback, environment_active=environment_active, environment_policy=environment_policy, environment_manifest_fingerprint=environment_manifest_fingerprint, environment_preset=environment_preset, environment_preflight_verified=environment_preflight_verified, environment_transaction_state=environment_transaction_state)
-    pipeline._finalize(failed=status == 'failed', status=status, reason=reason)
+    pipeline = _AsyncRenderPipeline(
+        [],
+        episode_id,
+        output_dir,
+        [],
+        on_complete=callback,
+        requested_jobs=requested_jobs,
+        require_number_mask_jobs=require_number_mask_jobs,
+        environment_active=environment_active,
+        environment_policy=environment_policy,
+        environment_manifest_fingerprint=environment_manifest_fingerprint,
+        environment_preset=environment_preset,
+        environment_preflight_verified=environment_preflight_verified,
+        environment_transaction_state=environment_transaction_state,
+    )
+    pipeline._finalize(failed=status == "failed", status=status, reason=reason)
     return pipeline.terminal_result
 
 
@@ -2152,10 +2767,15 @@ def _should_save_level(appearance_active, environment_active):
     return not (appearance_active or environment_active)
 
 
-def _prepare_stencil_for_render(mapping_path, appearance_active=False, environment_active=False):
+def _prepare_stencil_for_render(
+    mapping_path, appearance_active=False, environment_active=False
+):
     """准备 stencil mask；active 事务期间禁止保存地图。"""
     if appearance_active:
-        raise RuntimeError('appearance mask_source=post_process_material 需要修改并保存 External Actor stencil，当前无法证明保存内容排除随机外观')
+        raise RuntimeError(
+            "appearance mask_source=post_process_material 需要修改并保存 External Actor stencil，"
+            "当前无法证明保存内容排除随机外观"
+        )
     _ensure_custom_depth_stencil_enabled()
     if mapping_path is not None and Path(mapping_path).exists():
         mapping = load_mapping(Path(mapping_path))
@@ -2164,12 +2784,14 @@ def _prepare_stencil_for_render(mapping_path, appearance_active=False, environme
         if _should_save_level(appearance_active, environment_active):
             _save_current_level()
         else:
-            print('  [MRQ] environment 事务期间跳过关卡保存（stencil 仅保留在内存）')
+            print("  [MRQ] environment 事务期间跳过关卡保存（stencil 仅保留在内存）")
     else:
-        print('  WARNING: instance_mask.enabled=true 但未提供有效 mapping_path，无法设置 stencil')
+        print("  WARNING: instance_mask.enabled=true 但未提供有效 mapping_path，无法设置 stencil")
 
 
-def _bake_first_frame_for_render(meta, frames, mapping_path, appearance_active=False, environment_active=False):
+def _bake_first_frame_for_render(
+    meta, frames, mapping_path, appearance_active=False, environment_active=False
+):
     """把首帧位置临时烘焙到 Actor，供 MRQ/PIE spawn 使用。"""
     if not frames or mapping_path is None:
         return False
@@ -2177,28 +2799,55 @@ def _bake_first_frame_for_render(meta, frames, mapping_path, appearance_active=F
         mapping = load_mapping(Path(mapping_path))
         actors = find_all_actors(mapping)
         if appearance_active:
-            player_entity_ids = ('L0', 'L1', 'L2', 'L3', 'L4', 'R0', 'R1', 'R2', 'R3', 'R4')
-            actors = {entity_id: actor for (entity_id, actor) in actors.items() if entity_id in player_entity_ids}
+            player_entity_ids = (
+                "L0", "L1", "L2", "L3", "L4",
+                "R0", "R1", "R2", "R3", "R4",
+            )
+            actors = {
+                entity_id: actor
+                for entity_id, actor in actors.items()
+                if entity_id in player_entity_ids
+            }
         if not actors:
             return False
         gk_ids = gk_entity_ids_from_meta(meta)
         apply_preview_frame(actors, frames[0], {}, gk_entity_ids=gk_ids)
         if appearance_active:
-            print('  [MRQ] 首帧 spawn 状态已临时烘焙（appearance 事务期间不保存关卡）')
+            print("  [MRQ] 首帧 spawn 状态已临时烘焙（appearance 事务期间不保存关卡）")
         elif not _should_save_level(appearance_active, environment_active):
-            print('  [MRQ] 首帧 spawn 状态已临时烘焙（environment 事务期间不保存关卡）')
+            print("  [MRQ] 首帧 spawn 状态已临时烘焙（environment 事务期间不保存关卡）")
         else:
             _save_current_level()
-            print('  [MRQ] 首帧 spawn 状态已烘焙（actor 设到帧 0 并保存关卡）')
+            print("  [MRQ] 首帧 spawn 状态已烘焙（actor 设到帧 0 并保存关卡）")
         return True
     except Exception as exc:
         if appearance_active:
             raise
-        print('  WARNING: 首帧 spawn 状态烘焙失败（帧 0 可能渲染成关卡默认位置）: {}'.format(exc))
+        print("  WARNING: 首帧 spawn 状态烘焙失败（帧 0 可能渲染成关卡默认位置）: {}".format(exc))
         return False
 
 
-def _render_sequences_impl(sequences_cfg, annotation_cfg: dict, sequence_package_path: str, episode_dir: Path, output_dir: Path, mapping_path: Path=None, on_complete=None, appearance_active=False, environment_active=False, environment_policy=None, environment_manifest_fingerprint=None, environment_preset=None, environment_preflight_verified=False, environment_transaction_state=None) -> None:
+def _render_sequences_impl(
+    sequences_cfg,
+    annotation_cfg: dict,
+    sequence_package_path: str,
+    episode_dir: Path,
+    output_dir: Path,
+    mapping_path: Path = None,
+    on_complete=None,
+    appearance_active=False,
+    appearance_policy=None,
+    appearance_visibility_gate_verified=False,
+    number_mask_post_process_material=None,
+    appearance_render_evidence=None,
+    _plan_state=None,
+    environment_active=False,
+    environment_policy=None,
+    environment_manifest_fingerprint=None,
+    environment_preset=None,
+    environment_preflight_verified=False,
+    environment_transaction_state=None,
+) -> None:
     """异步用 MRQ 渲染所有 Sequence 的 RGB 帧（+ Instance-ID Mask），提交后立即返回。
 
     sequences_cfg: ue profile 的 sequences 列表（每个含 name/camera_actor）。
@@ -2212,133 +2861,510 @@ def _render_sequences_impl(sequences_cfg, annotation_cfg: dict, sequence_package
     本函数不阻塞编辑器主线程。
     """
     import unreal
+
     global _ACTIVE_RENDER
-    render_cfg = annotation_cfg.get('render_rgb') or {}
-    environment_render_kwargs = {'environment_active': environment_active, 'environment_policy': environment_policy, 'environment_manifest_fingerprint': environment_manifest_fingerprint, 'environment_preset': environment_preset, 'environment_preflight_verified': environment_preflight_verified, 'environment_transaction_state': environment_transaction_state}
-    if environment_active is True and (not (environment_policy == 'futsalmot_environment_v1_5' and isinstance(environment_manifest_fingerprint, str) and bool(environment_manifest_fingerprint.strip()) and isinstance(environment_preset, str) and bool(environment_preset.strip()) and (environment_preflight_verified is True) and (environment_transaction_state in {'applied', 'rendering'}))):
-        reason = 'MANUAL_REQUIRED: active environment render gate 未通过'
+    render_cfg = annotation_cfg.get("render_rgb") or {}
+    is_v2_appearance = (
+        appearance_active and appearance_policy in (
+            "futsalmot_appearance_v2", "futsalmot_appearance_v1_uv_numbers"
+        )
+    )
+    environment_render_kwargs = {
+        "environment_active": environment_active,
+        "environment_policy": environment_policy,
+        "environment_manifest_fingerprint": environment_manifest_fingerprint,
+        "environment_preset": environment_preset,
+        "environment_preflight_verified": environment_preflight_verified,
+        "environment_transaction_state": environment_transaction_state,
+    }
+    if environment_active is True and not (
+        environment_policy == "futsalmot_environment_v1_5"
+        and isinstance(environment_manifest_fingerprint, str)
+        and bool(environment_manifest_fingerprint.strip())
+        and isinstance(environment_preset, str)
+        and bool(environment_preset.strip())
+        and environment_preflight_verified is True
+        and environment_transaction_state in {"applied", "rendering"}
+    ):
+        reason = "MANUAL_REQUIRED: active environment render gate 未通过"
         try:
-            gate_episode_id = load_episode(episode_dir)[0].get('episode_id', Path(episode_dir).name)
+            gate_episode_id = load_episode(episode_dir)[0].get(
+                "episode_id", Path(episode_dir).name
+            )
         except Exception:
             gate_episode_id = Path(episode_dir).name
-        terminal = _finalize_sync_render(on_complete, gate_episode_id, output_dir, 'failed', reason, environment_active=True, **{key: value for (key, value) in environment_render_kwargs.items() if key != 'environment_active'})
-        return {'callback_ownership_transferred': False, 'terminal_result': terminal}
+        terminal = _finalize_sync_render(
+            on_complete,
+            gate_episode_id,
+            output_dir,
+            "failed",
+            reason,
+            require_number_mask_jobs=is_v2_appearance,
+            environment_active=True,
+            **{
+                key: value
+                for key, value in environment_render_kwargs.items()
+                if key != "environment_active"
+            },
+        )
+        return {
+            "callback_ownership_transferred": False,
+            "terminal_result": terminal,
+        }
+    number_mask_plans = []
     episode_id = Path(episode_dir).name
+    if _plan_state is not None and is_v2_appearance:
+        number_mask_plans = _number_mask_plan_skeletons(
+            sequences_cfg,
+            sequence_package_path,
+            Path(output_dir),
+            episode_id,
+        )
+        _plan_state["episode_id"] = episode_id
+        _plan_state["number_mask_plans"] = list(number_mask_plans)
+    if is_v2_appearance and sequences_cfg:
+        episode_id, number_mask_plans = _plan_v2_number_mask_jobs(
+            sequences_cfg,
+            annotation_cfg,
+            sequence_package_path,
+            episode_dir,
+            output_dir,
+        )
+    if _plan_state is not None:
+        _plan_state["episode_id"] = episode_id
+        _plan_state["number_mask_plans"] = list(number_mask_plans)
+
     if _ACTIVE_RENDER is not None:
-        print('WARNING: 已有 MRQ 渲染正在进行，忽略本次请求（等待上一批完成）')
+        print("WARNING: 已有 MRQ 渲染正在进行，忽略本次请求（等待上一批完成）")
         if callable(on_complete):
-            terminal = _finalize_sync_render(None, episode_id, output_dir, 'failed', '已有 MRQ 渲染正在进行，拒绝并发提交', **environment_render_kwargs)
+            requested_jobs = _unscheduled_number_mask_jobs(
+                number_mask_plans,
+                set(),
+                "已有 MRQ 渲染正在进行，拒绝并发提交",
+            )
+            terminal = _finalize_sync_render(
+                None, episode_id, output_dir, "failed",
+                "已有 MRQ 渲染正在进行，拒绝并发提交",
+                require_number_mask_jobs=(
+                    appearance_active
+                    and appearance_policy in ("futsalmot_appearance_v2", "futsalmot_appearance_v1_uv_numbers")
+                ),
+                requested_jobs=requested_jobs,
+                **environment_render_kwargs,
+            )
+            if appearance_active and appearance_policy in ("futsalmot_appearance_v2", "futsalmot_appearance_v1_uv_numbers"):
+                terminal["appearance_restore_ready"] = False
             on_complete(terminal)
-            return {'callback_ownership_transferred': False, 'terminal_result': terminal}
+            return {
+                "callback_ownership_transferred": False,
+                "terminal_result": terminal,
+            }
         return None
-    if not render_cfg.get('enabled', False):
-        print('render_rgb.enabled = false，跳过渲染')
+
+    if not render_cfg.get("enabled", False):
+        print("render_rgb.enabled = false，跳过渲染")
         if callable(on_complete):
-            terminal = _finalize_sync_render(on_complete, Path(episode_dir).name, output_dir, 'skipped', 'render_rgb.enabled = false', **environment_render_kwargs)
-            return {'callback_ownership_transferred': False, 'terminal_result': terminal}
+            terminal = _finalize_sync_render(
+                on_complete, Path(episode_dir).name, output_dir, "skipped",
+                "render_rgb.enabled = false",
+                require_number_mask_jobs=is_v2_appearance,
+                requested_jobs=number_mask_plans,
+                **environment_render_kwargs,
+            )
+            return {
+                "callback_ownership_transferred": False,
+                "terminal_result": terminal,
+            }
         return None
-    (preset, cv_gt) = resolve_preset(render_cfg)
+
+    if is_v2_appearance:
+        from diagnose_jersey_number_mask import validate_v2_render_evidence
+
+        image_width, image_height = resolve_output_resolution(annotation_cfg)
+        frame_rate = int(
+            annotation_cfg.get("playback_fps") or render_cfg.get("frame_rate") or 30
+        )
+        meta, frames = load_episode(episode_dir)
+        episode_id = meta.get("episode_id") or Path(episode_dir).name
+        source_step = float(meta["timing"].get("source_step_seconds", 0.1))
+        keep_indices = select_rendered_frame_indices(
+            len(frames), source_step, frame_rate
+        )
+        if appearance_policy == "futsalmot_appearance_v1_uv_numbers":
+            from episode_number_uv import validate_render_evidence as validate_v2_render_evidence
+        evidence_validation = validate_v2_render_evidence(
+            appearance_render_evidence,
+            number_mask_post_process_material,
+        )
+        gate_reason = None if evidence_validation["ok"] else "; ".join(
+            evidence_validation["errors"]
+        )
+        if evidence_validation["ok"]:
+            number_mask_post_process_material = evidence_validation[
+                "number_mask_post_process_material"
+            ]
+        if gate_reason:
+            print(
+                "  [MRQ planning] v2 号码 mask 规划 {} 个 job；{}，当前不提交 MRQ".format(
+                    len(number_mask_plans), gate_reason
+                )
+            )
+            terminal = {
+                "episode_id": episode_id,
+                "status": "failed",
+                "reason": gate_reason,
+                "jobs": [],
+                "appearance_restore_ready": False,
+            }
+            if callable(on_complete):
+                terminal = _finalize_sync_render(
+                    on_complete,
+                    episode_id,
+                    output_dir,
+                    "failed",
+                    terminal["reason"],
+                    require_number_mask_jobs=True,
+                    requested_jobs=number_mask_plans,
+                    **environment_render_kwargs,
+                )
+                terminal["appearance_restore_ready"] = False
+            return {
+                "callback_ownership_transferred": False,
+                "terminal_result": terminal,
+                "number_mask_plans": number_mask_plans,
+            }
+
+    # CV GT preset：缺省 cv_gt（deterministic），null/cinematic 为保留/不覆盖模式
+    preset, cv_gt = resolve_preset(render_cfg)
     if preset:
-        print(f'  [MRQ] render preset = {preset}')
+        print(f"  [MRQ] render preset = {preset}")
     else:
-        print('  [MRQ] render preset = null（不覆盖，保持关卡/相机现状）')
-    mask_cfg = annotation_cfg.get('instance_mask') or {}
-    mask_enabled = bool(mask_cfg.get('enabled', False))
-    mask_source = mask_cfg.get('mask_source', 'object_id_pass')
-    post_process_material = mask_cfg.get('post_process_material')
+        print("  [MRQ] render preset = null（不覆盖，保持关卡/相机现状）")
+
+    mask_cfg = annotation_cfg.get("instance_mask") or {}
+    mask_enabled = bool(mask_cfg.get("enabled", False))
+    mask_source = mask_cfg.get("mask_source", "object_id_pass")
+    post_process_material = mask_cfg.get("post_process_material")
     if mask_enabled:
-        if mask_source == 'post_process_material':
-            _prepare_stencil_for_render(mapping_path, appearance_active=appearance_active, environment_active=environment_active)
+        if mask_source == "post_process_material":
+            _prepare_stencil_for_render(
+                mapping_path,
+                appearance_active=appearance_active,
+                environment_active=environment_active,
+            )
             if not post_process_material:
                 post_process_material = create_stencil_to_color_material()
                 if post_process_material:
-                    print(f'  [MRQ] 自动创建 stencil→颜色 材质: {post_process_material}')
+                    print(f"  [MRQ] 自动创建 stencil→颜色 材质: {post_process_material}")
                 else:
-                    print('  WARNING: 自动创建 stencil 材质失败，请手动建材质并填 post_process_material')
+                    print("  WARNING: 自动创建 stencil 材质失败，请手动建材质并填 post_process_material")
+        # object_id_pass（默认）：Object ID + Cryptomatte EXR，无需 custom stencil
     else:
-        print('instance_mask.enabled = false，跳过 mask 渲染（仅 RGB）')
-    (image_width, image_height) = resolve_output_resolution(annotation_cfg)
-    frame_rate = int(annotation_cfg.get('playback_fps') or render_cfg.get('frame_rate') or 30)
-    file_name_format = render_cfg.get('file_name_format', '{frame_number}')
-    zero_pad = int(render_cfg.get('zero_pad_frame_numbers', 6))
-    (meta, frames) = load_episode(episode_dir)
+        print("instance_mask.enabled = false，跳过 mask 渲染（仅 RGB）")
+
+    # C5.1：分辨率唯一来源 = render_rgb.output_resolution（MRQ 渲染分辨率），
+    # 兼容旧任务 image_width/height；冲突或缺失时 fail fast（不静默 1280x720）。
+    image_width, image_height = resolve_output_resolution(annotation_cfg)
+    # 帧映射用 Sequence display rate（playback_fps），不是 MRQ 输出 frame_rate。
+    # MRQ 渲染 Sequence 的 display rate（= playback_fps），渲染全范围后按映射取帧。
+    frame_rate = int(
+        annotation_cfg.get("playback_fps") or render_cfg.get("frame_rate") or 30
+    )
+    file_name_format = render_cfg.get("file_name_format", "{frame_number}")
+    zero_pad = int(render_cfg.get("zero_pad_frame_numbers", 6))
+
+    meta, frames = load_episode(episode_dir)
+    # 首帧 spawn 状态烘焙：MRQ/PIE 中 possessable actor 的第 0 帧可能尚未被 Level
+    # Sequence 接管，渲染成**关卡放置的默认位置**（与相机同一类问题，相机已用
+    # _add_camera_transform_track 静态烘焙解决，球员没有）。先把 actor 设到第 0 帧
+    # 并保存关卡，使 PIE spawn 状态 == Sequence 帧 0 值——无论接管是否滞后一帧，
+    # 帧 0 都不会闪回默认位置（第 3/6 帧由 Sequence 接管，本就正确）。
     if frames and mapping_path is not None:
-        _bake_first_frame_for_render(meta, frames, mapping_path, appearance_active=appearance_active, environment_active=environment_active)
-    episode_id = meta.get('episode_id') or episode_dir.name
-    source_step = float(meta['timing'].get('source_step_seconds', 0.1))
+        _bake_first_frame_for_render(
+            meta,
+            frames,
+            mapping_path,
+            appearance_active=appearance_active,
+            environment_active=environment_active,
+        )
+    episode_id = meta.get("episode_id") or episode_dir.name
+    source_step = float(meta["timing"].get("source_step_seconds", 0.1))
     keep_indices = select_rendered_frame_indices(len(frames), source_step, frame_rate)
+
     if not sequences_cfg:
-        print('WARNING: sequences 为空，无可渲染的 Sequence')
+        print("WARNING: sequences 为空，无可渲染的 Sequence")
         if callable(on_complete):
-            terminal = _finalize_sync_render(None, episode_id, output_dir, 'skipped', 'sequences 为空，无可渲染的 Sequence', **environment_render_kwargs)
+            terminal = _finalize_sync_render(
+                None,
+                episode_id,
+                output_dir,
+                "skipped",
+                "sequences 为空，无可渲染的 Sequence",
+                require_number_mask_jobs=is_v2_appearance,
+                requested_jobs=number_mask_plans,
+                **environment_render_kwargs,
+            )
+            if is_v2_appearance:
+                terminal["appearance_restore_ready"] = False
             on_complete(terminal)
-            return {'callback_ownership_transferred': False, 'terminal_result': terminal}
+            return {
+                "callback_ownership_transferred": False,
+                "terminal_result": terminal,
+            }
         return None
-    _apply_cv_gt_camera_post_process(sequences_cfg, preset, cv_gt, save_level=_should_save_level(appearance_active, environment_active))
+
+    # CV GT preset：先把确定性后处理写到每个 Camera（覆盖关卡 Post Process Volume）
+    _apply_cv_gt_camera_post_process(
+        sequences_cfg, preset, cv_gt,
+        save_level=_should_save_level(appearance_active, environment_active),
+    )
+
+    # 收集要渲染的 Sequence（资产必须已存在）
     jobs = []
     for seq_entry in sequences_cfg:
-        seq_name = seq_entry.get('name')
-        cam_id = seq_entry.get('camera_actor') or seq_name
+        seq_name = seq_entry.get("name")
+        cam_id = seq_entry.get("camera_actor") or seq_name
         if not seq_name:
             continue
-        seq_asset_path = f'{sequence_package_path}/{seq_name}'
+        seq_asset_path = f"{sequence_package_path}/{seq_name}"
         if not unreal.EditorAssetLibrary.does_asset_exist(seq_asset_path):
-            print(f'  WARNING: Sequence 不存在，跳过: {seq_asset_path}（请先 --mode sequence 创建）')
+            print(f"  WARNING: Sequence 不存在，跳过: {seq_asset_path}（请先 --mode sequence 创建）")
             continue
         cam_out = Path(output_dir) / episode_id / cam_id
-        render_dir = cam_out / 'render'
-        img1_dir = cam_out / 'img1'
+        render_dir = cam_out / "render"
+        img1_dir = cam_out / "img1"
         ensure_dir(render_dir)
-        _clear_dir(render_dir)
-        if mask_enabled and mask_source == 'object_id_pass':
-            render_mask_dir = cam_out / 'render_mask'
-            mask_dir = cam_out / 'mask'
+        _clear_dir(render_dir)  # 清空上一次渲染残留，避免旧帧混入
+        if mask_enabled and mask_source == "object_id_pass":
+            render_mask_dir = cam_out / "render_mask"
+            mask_dir = cam_out / "mask"
             ensure_dir(render_mask_dir)
             _clear_dir(render_mask_dir)
             _clear_dir(mask_dir)
-            jobs.append({'name': seq_name, 'cam_id': cam_id, 'seq_asset_path': seq_asset_path, 'cam_out': cam_out, 'render_dir': render_dir, 'render_mask_dir': render_mask_dir, 'img1_dir': img1_dir, 'kind': 'combined', 'mask_source': 'object_id_pass', 'preset': preset, 'cv_gt': cv_gt})
-            print(f'  待渲染 COMBINED RGB+MASK: {seq_name} -> {img1_dir}, {render_mask_dir}')
+            jobs.append({
+                "name": seq_name,
+                "cam_id": cam_id,
+                "seq_asset_path": seq_asset_path,
+                "cam_out": cam_out,
+                "render_dir": render_dir,
+                "render_mask_dir": render_mask_dir,
+                "img1_dir": img1_dir,
+                "kind": "combined",
+                "mask_source": "object_id_pass",
+                "preset": preset,
+                "cv_gt": cv_gt,
+            })
+            print(f"  待渲染 COMBINED RGB+MASK: {seq_name} -> {img1_dir}, {render_mask_dir}")
         else:
-            jobs.append({'name': seq_name, 'cam_id': cam_id, 'seq_asset_path': seq_asset_path, 'cam_out': cam_out, 'render_dir': render_dir, 'img1_dir': img1_dir, 'kind': 'rgb', 'preset': preset, 'cv_gt': cv_gt})
-            print(f'  待渲染 RGB: {seq_name} -> {img1_dir}')
-        if mask_enabled and mask_source != 'object_id_pass':
-            mask_render_dir = cam_out / 'render_mask'
-            mask_dir = cam_out / 'mask'
+            jobs.append({
+                "name": seq_name,
+                "cam_id": cam_id,
+                "seq_asset_path": seq_asset_path,
+                "cam_out": cam_out,
+                "render_dir": render_dir,
+                "img1_dir": img1_dir,
+                "kind": "rgb",
+                "preset": preset,
+                "cv_gt": cv_gt,
+            })
+            print(f"  待渲染 RGB: {seq_name} -> {img1_dir}")
+
+        if mask_enabled and mask_source != "object_id_pass":
+            mask_render_dir = cam_out / "render_mask"
+            mask_dir = cam_out / "mask"
             ensure_dir(mask_render_dir)
             _clear_dir(mask_render_dir)
-            _clear_dir(mask_dir)
-            jobs.append({'name': seq_name + '_MASK', 'cam_id': cam_id, 'seq_asset_path': seq_asset_path, 'cam_out': cam_out, 'render_dir': mask_render_dir, 'img1_dir': mask_dir, 'kind': 'mask', 'mask_source': mask_source, 'post_process_material': post_process_material, 'preset': preset, 'cv_gt': cv_gt})
-            print(f'  待渲染 MASK: {seq_name} -> {mask_dir}')
-    accepted_rgb_camera_ids = {job['cam_id'] for job in jobs}
+            _clear_dir(mask_dir)  # 清空旧的 mask 拷贝，避免上一次的无效帧残留
+            jobs.append({
+                "name": seq_name + "_MASK",
+                "cam_id": cam_id,
+                "seq_asset_path": seq_asset_path,
+                "cam_out": cam_out,
+                "render_dir": mask_render_dir,
+                "img1_dir": mask_dir,
+                "kind": "mask",
+                "mask_source": mask_source,
+                "post_process_material": post_process_material,
+                "preset": preset,
+                "cv_gt": cv_gt,
+            })
+            print(f"  待渲染 MASK: {seq_name} -> {mask_dir}")
+
+    accepted_rgb_camera_ids = {job["cam_id"] for job in jobs}
+    unscheduled_number_jobs = _unscheduled_number_mask_jobs(
+        number_mask_plans,
+        accepted_rgb_camera_ids,
+        "camera has no accepted RGB job",
+    )
+    scheduled_number_camera_ids = {
+        plan["cam_id"] for plan in number_mask_plans
+        if plan["cam_id"] in accepted_rgb_camera_ids
+    }
+    if number_mask_plans:
+        for plan in number_mask_plans:
+            if plan["cam_id"] not in scheduled_number_camera_ids:
+                continue
+            if appearance_policy == "futsalmot_appearance_v1_uv_numbers":
+                parent = next((j for j in jobs if j["cam_id"] == plan["cam_id"] and j.get("kind") == "combined"), None)
+                if parent is None:
+                    raise RuntimeError("UV号码要求RGB/Object-ID同一combined job")
+                parent["number_post_process_material"] = number_mask_post_process_material
+                plan.update(shared_job_name=parent["name"], render_dir=parent["render_dir"],
+                            shared_exr_dir=parent["render_mask_dir"],
+                            post_process_material=number_mask_post_process_material,
+                            appearance_policy=appearance_policy)
+                ensure_dir(plan["number_mask_dir"])
+                jobs.append(plan)
+                print("  UV号码与RGB/Object-ID共享同一MRQ job: " + parent["name"])
+                continue
+            render_dir = plan["render_dir"]
+            number_mask_dir = plan["number_mask_dir"]
+            ensure_dir(render_dir)
+            _clear_dir(render_dir)
+            ensure_dir(number_mask_dir)
+            _clear_dir(number_mask_dir)
+            plan.update({
+                "post_process_material": number_mask_post_process_material,
+                "preset": preset,
+                "cv_gt": cv_gt,
+            })
+            jobs.append(plan)
+            print(
+                "  待渲染 JERSEY NUMBER MASK: {} -> {}".format(
+                    plan["name"], render_dir
+                )
+            )
+
     if not jobs:
-        print('WARNING: 没有任何可渲染的 Sequence')
+        print("WARNING: 没有任何可渲染的 Sequence")
         if callable(on_complete):
-            no_job_status = 'skipped'
-            no_job_reason = '没有任何可渲染的 Sequence'
-            terminal = _finalize_sync_render(None, episode_id, output_dir, no_job_status, no_job_reason, **environment_render_kwargs)
+            no_job_status = "failed" if is_v2_appearance else "skipped"
+            no_job_reason = (
+                "camera has no accepted RGB job"
+                if is_v2_appearance
+                else "没有任何可渲染的 Sequence"
+            )
+            no_job_requested = (
+                _unscheduled_number_mask_jobs(
+                    number_mask_plans,
+                    set(),
+                    "camera has no accepted RGB job",
+                )
+                if is_v2_appearance
+                else number_mask_plans
+            )
+            terminal = _finalize_sync_render(
+                None,
+                episode_id,
+                output_dir,
+                no_job_status,
+                no_job_reason,
+                require_number_mask_jobs=is_v2_appearance,
+                requested_jobs=no_job_requested,
+                **environment_render_kwargs,
+            )
+            if is_v2_appearance:
+                terminal["appearance_restore_ready"] = False
             on_complete(terminal)
-            return {'callback_ownership_transferred': False, 'terminal_result': terminal}
+            return {
+                "callback_ownership_transferred": False,
+                "terminal_result": terminal,
+            }
         return None
+
     map_path = _get_current_map_path()
     subsystem = _mrq_subsystem()
     queue = _mrq_get_queue(subsystem)
     if queue is None:
         _list_mrq_classes()
-        raise RuntimeError('无法获取 MRQ 队列（MoviePipelineQueueSubsystem.get_queue() 返回 None）。已打印 [MRQ 诊断]，请把输出贴回。')
+        raise RuntimeError(
+            "无法获取 MRQ 队列（MoviePipelineQueueSubsystem.get_queue() 返回 None）。"
+            "已打印 [MRQ 诊断]，请把输出贴回。"
+        )
     executor = _mrq_executor()
-    pipeline = _AsyncRenderPipeline(jobs, episode_id, output_dir, keep_indices, on_complete=on_complete, environment_active=environment_active, environment_policy=environment_policy, environment_manifest_fingerprint=environment_manifest_fingerprint, environment_preset=environment_preset, environment_preflight_verified=environment_preflight_verified, environment_transaction_state=environment_transaction_state)
-    _ACTIVE_RENDER = pipeline
-    submitted = pipeline.start(subsystem, queue, executor, map_path, image_width, image_height, frame_rate, file_name_format, zero_pad)
+
+    requested_jobs = list(jobs) + unscheduled_number_jobs
+    pipeline = _AsyncRenderPipeline(
+        jobs,
+        episode_id,
+        output_dir,
+        keep_indices,
+        on_complete=on_complete,
+        requested_jobs=requested_jobs,
+        require_number_mask_jobs=is_v2_appearance,
+        environment_active=environment_active,
+        environment_policy=environment_policy,
+        environment_manifest_fingerprint=environment_manifest_fingerprint,
+        environment_preset=environment_preset,
+        environment_preflight_verified=environment_preflight_verified,
+        environment_transaction_state=environment_transaction_state,
+    )
+    _ACTIVE_RENDER = pipeline  # 模块级引用：脚本返回后防止 pipeline 被 GC
+    submitted = pipeline.start(
+        subsystem, queue, executor, map_path,
+        image_width, image_height, frame_rate,
+        file_name_format, zero_pad,
+    )
     if callable(on_complete):
-        return {'callback_ownership_transferred': bool(submitted or (pipeline.terminal_result or {}).get('restore_deferred')), 'terminal_result': pipeline.terminal_result}
+        return {
+            "callback_ownership_transferred": bool(
+                submitted or (pipeline.terminal_result or {}).get("restore_deferred")
+            ),
+            "terminal_result": pipeline.terminal_result,
+        }
     return None
 
 
-def render_sequences(sequences_cfg, annotation_cfg: dict, sequence_package_path: str, episode_dir: Path, output_dir: Path, mapping_path: Path=None, on_complete=None, appearance_active=False, environment_active=False, environment_policy=None, environment_manifest_fingerprint=None, environment_preset=None, environment_preflight_verified=False, environment_transaction_state=None):
+def render_sequences(
+    sequences_cfg,
+    annotation_cfg: dict,
+    sequence_package_path: str,
+    episode_dir: Path,
+    output_dir: Path,
+    mapping_path: Path = None,
+    on_complete=None,
+    appearance_active=False,
+    appearance_policy=None,
+    appearance_visibility_gate_verified=False,
+    number_mask_post_process_material=None,
+    appearance_render_evidence=None,
+    environment_active=False,
+    environment_policy=None,
+    environment_manifest_fingerprint=None,
+    environment_preset=None,
+    environment_preflight_verified=False,
+    environment_transaction_state=None,
+):
     """异步提交 MRQ；若提供回调，同步终态也会在返回前回调。"""
     if on_complete is None:
-        return _render_sequences_impl(sequences_cfg, annotation_cfg, sequence_package_path, episode_dir, output_dir, mapping_path, appearance_active=appearance_active, environment_active=environment_active, environment_policy=environment_policy, environment_manifest_fingerprint=environment_manifest_fingerprint, environment_preset=environment_preset, environment_preflight_verified=environment_preflight_verified, environment_transaction_state=environment_transaction_state)
+        return _render_sequences_impl(
+            sequences_cfg, annotation_cfg, sequence_package_path, episode_dir,
+            output_dir, mapping_path, appearance_active=appearance_active,
+            appearance_policy=appearance_policy,
+            appearance_visibility_gate_verified=appearance_visibility_gate_verified,
+            number_mask_post_process_material=number_mask_post_process_material,
+            appearance_render_evidence=appearance_render_evidence,
+            environment_active=environment_active,
+            environment_policy=environment_policy,
+            environment_manifest_fingerprint=environment_manifest_fingerprint,
+            environment_preset=environment_preset,
+            environment_preflight_verified=environment_preflight_verified,
+            environment_transaction_state=environment_transaction_state,
+        )
     callback_called = False
+    plan_state = {
+        "episode_id": Path(episode_dir).name,
+        "number_mask_plans": (
+            _number_mask_plan_skeletons(
+                sequences_cfg,
+                sequence_package_path,
+                Path(output_dir),
+                Path(episode_dir).name,
+            )
+            if appearance_active and appearance_policy in ("futsalmot_appearance_v2", "futsalmot_appearance_v1_uv_numbers")
+            else []
+        ),
+    }
 
     def _once(result):
         nonlocal callback_called
@@ -2348,14 +3374,47 @@ def render_sequences(sequences_cfg, annotation_cfg: dict, sequence_package_path:
         try:
             on_complete(result)
         except Exception as exc:
-            print('  [MRQ callback 异常] {}: {}'.format(type(exc).__name__, exc))
+            print("  [MRQ callback 异常] {}: {}".format(type(exc).__name__, exc))
             traceback.print_exc()
+
     try:
-        return _render_sequences_impl(sequences_cfg, annotation_cfg, sequence_package_path, episode_dir, output_dir, mapping_path, on_complete=_once, appearance_active=appearance_active, environment_active=environment_active, environment_policy=environment_policy, environment_manifest_fingerprint=environment_manifest_fingerprint, environment_preset=environment_preset, environment_preflight_verified=environment_preflight_verified, environment_transaction_state=environment_transaction_state)
+        return _render_sequences_impl(
+            sequences_cfg, annotation_cfg, sequence_package_path, episode_dir,
+            output_dir, mapping_path, on_complete=_once,
+            appearance_active=appearance_active,
+            appearance_policy=appearance_policy,
+            appearance_visibility_gate_verified=appearance_visibility_gate_verified,
+            number_mask_post_process_material=number_mask_post_process_material,
+            appearance_render_evidence=appearance_render_evidence,
+            _plan_state=plan_state,
+            environment_active=environment_active,
+            environment_policy=environment_policy,
+            environment_manifest_fingerprint=environment_manifest_fingerprint,
+            environment_preset=environment_preset,
+            environment_preflight_verified=environment_preflight_verified,
+            environment_transaction_state=environment_transaction_state,
+        )
     except BaseException as exc:
         if not callback_called:
-            reason = 'render setup failed: {}: {}'.format(type(exc).__name__, exc)
-            _finalize_sync_render(_once, Path(episode_dir).name, output_dir, 'failed', reason, environment_active=environment_active, environment_policy=environment_policy, environment_manifest_fingerprint=environment_manifest_fingerprint, environment_preset=environment_preset, environment_preflight_verified=environment_preflight_verified, environment_transaction_state=environment_transaction_state)
+            is_v2 = appearance_active and appearance_policy in ("futsalmot_appearance_v2", "futsalmot_appearance_v1_uv_numbers")
+            reason = "render setup failed: {}: {}".format(type(exc).__name__, exc)
+            requested_jobs = _unscheduled_number_mask_jobs(
+                plan_state["number_mask_plans"],
+                set(),
+                reason,
+            )
+            _finalize_sync_render(
+                _once, plan_state["episode_id"], output_dir, "failed",
+                reason,
+                require_number_mask_jobs=is_v2,
+                requested_jobs=requested_jobs,
+                environment_active=environment_active,
+                environment_policy=environment_policy,
+                environment_manifest_fingerprint=environment_manifest_fingerprint,
+                environment_preset=environment_preset,
+                environment_preflight_verified=environment_preflight_verified,
+                environment_transaction_state=environment_transaction_state,
+            )
         raise
 
 

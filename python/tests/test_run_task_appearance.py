@@ -15,6 +15,7 @@ from ue import run_task
 class FakeAppearanceTransaction:
     def __init__(self):
         self.restore_calls = []
+        self.incomplete_render_results = []
         self.callback_ownership_transferred = False
         self.restore_result = None
 
@@ -25,6 +26,10 @@ class FakeAppearanceTransaction:
         self.restore_calls.append((final_status, render_result))
         self.restore_result = {"ok": True, "state": "restored"}
         return self.restore_result
+
+    def record_incomplete_render_result(self, render_result):
+        self.incomplete_render_results.append(render_result)
+        return {"ok": True, "operation": "restore_deferred"}
 
 
 def test_legacy_mode_runs_without_an_appearance_transaction():
@@ -41,6 +46,105 @@ def test_legacy_mode_runs_without_an_appearance_transaction():
 def test_pose_finalize_does_not_enable_appearance_application():
     assert not run_task._appearance_enabled_for_mode({"appearance": {}} , "pose-finalize")
     assert run_task._appearance_enabled_for_mode({"appearance": {}}, "full")
+
+
+def test_render_appearance_options_carry_manifest_policy_for_planning():
+    assert run_task._render_appearance_options(None, None) == {}
+    assert run_task._render_appearance_options(
+        {"manifest": {"policy": "futsalmot_appearance_v1"}}, object()
+    ) == {
+        "appearance_active": True,
+        "appearance_policy": "futsalmot_appearance_v1",
+    }
+    assert run_task._render_appearance_options(
+        {"manifest": {"policy": "futsalmot_appearance_v2"}}, object()
+    ) == {
+        "appearance_active": True,
+        "appearance_policy": "futsalmot_appearance_v2",
+    }
+
+
+def test_render_options_open_number_mask_only_after_verified_preflight():
+    prepared = {
+        "manifest": {
+            "policy": "futsalmot_appearance_v2",
+            "numbering": {
+                "mask_post_process_material": "/Game/FutsalMOT/Materials/M_NumberMask"
+            },
+        },
+        "preflight": {
+            "numbering_visual_gate": "verified",
+            "task7_preflight_can_start": True,
+        },
+    }
+
+    options = run_task._render_appearance_options(prepared, {})
+
+    assert options == {
+        "appearance_active": True,
+        "appearance_policy": "futsalmot_appearance_v2",
+    }
+
+
+def test_render_options_keep_v2_locked_without_structured_render_evidence():
+    prepared = {
+        "manifest": {
+            "policy": "futsalmot_appearance_v2",
+            "numbering": {
+                "mask_post_process_material": "/Game/FutsalMOT/Materials/M_NumberMask"
+            },
+        },
+        "preflight": {
+            "numbering_visual_gate": "verified",
+            "task7_preflight_can_start": True,
+        },
+    }
+
+    options = run_task._render_appearance_options(prepared, {})
+
+    assert "appearance_visibility_gate_verified" not in options
+    assert "number_mask_post_process_material" not in options
+    assert "appearance_render_evidence" not in options
+
+
+def test_render_options_forward_only_complete_structured_render_evidence():
+    from diagnose_jersey_number_mask import build_render_contract_report
+    from tests.test_jersey_number_render_contract import _valid_report_inputs
+
+    evidence = {
+        "appearance_preflight": {
+            "task7_preflight_can_start": True,
+            "numbering_visual_gate": "verified",
+        },
+        "diagnostic": build_render_contract_report(**_valid_report_inputs()),
+        "number_mask_material": {
+            "path": "/Game/FutsalMOT/Materials/M_NumberMask",
+            "exists": True,
+            "actual_class": "Material",
+            "evidence_source": "ue_asset_data",
+        },
+    }
+    prepared = {
+        "manifest": {
+            "policy": "futsalmot_appearance_v2",
+            "numbering": {
+                "mask_post_process_material": "/Game/FutsalMOT/Materials/M_NumberMask"
+            },
+        },
+        "preflight": {
+            "numbering_visual_gate": "verified",
+            "task7_preflight_can_start": True,
+        },
+        "render_evidence": evidence,
+    }
+
+    options = run_task._render_appearance_options(prepared, {})
+
+    assert options["appearance_visibility_gate_verified"] is True
+    assert options["number_mask_post_process_material"] == (
+        "/Game/FutsalMOT/Materials/M_NumberMask"
+    )
+    assert options["appearance_render_evidence"] is evidence
 
 
 def test_static_player_visuals_and_seeded_appearance_are_mutually_exclusive():
@@ -125,6 +229,157 @@ def test_appearance_inputs_are_validated_before_all_ten_preflight(tmp_path, monk
     assert prepared["public_report_path"] == (
         episode_dir / "provenance" / "appearance_application.json"
     )
+
+
+@pytest.mark.parametrize(
+    "preflight",
+    [
+        {"ok": False, "errors": ["MANUAL_REQUIRED: v2 number visual gate"], "actors": []},
+        {"ok": True, "errors": [], "actors": []},
+    ],
+)
+def test_v2_unverified_preflight_blocks_apply_before_mutation(tmp_path, monkeypatch, preflight):
+    episode_dir = tmp_path / "episode"
+    provenance = episode_dir / "provenance"
+    provenance.mkdir(parents=True)
+    (episode_dir / "meta.json").write_text("{}", encoding="utf-8")
+    (episode_dir / "frames.jsonl").write_text('{"step":0}\n', encoding="utf-8")
+    (provenance / "appearance.json").write_text(
+        json.dumps({"policy": "futsalmot_appearance_v2"}), encoding="utf-8"
+    )
+    events = []
+    adapter = SimpleNamespace(
+        validate_appearance_inputs=lambda *_args: [],
+        preflight_episode_appearance=lambda *_args: preflight,
+    )
+    monkeypatch.setitem(sys.modules, "episode_appearance", adapter)
+    monkeypatch.setattr(
+        run_task,
+        "_apply_prepared_appearance",
+        lambda *_args: events.append("mutated") or pytest.fail("apply must not start"),
+    )
+
+    with pytest.raises(RuntimeError, match="MANUAL_REQUIRED"):
+        run_task._prepare_episode_appearance(
+            {"appearance": {"policy": "futsalmot_appearance_v2"}},
+            "sequence",
+            episode_dir,
+            {"L0": "Player_L0"},
+            tmp_path,
+            "task_v2",
+        )
+
+    assert events == []
+
+
+def test_v2_verified_preflight_is_retained_for_render_planning(tmp_path, monkeypatch):
+    episode_dir = tmp_path / "episode"
+    provenance = episode_dir / "provenance"
+    provenance.mkdir(parents=True)
+    (episode_dir / "meta.json").write_text("{}", encoding="utf-8")
+    (episode_dir / "frames.jsonl").write_text('{"step":0}\n', encoding="utf-8")
+    (provenance / "appearance.json").write_text(
+        json.dumps({
+            "policy": "futsalmot_appearance_v2",
+            "numbering": {
+                "mask_post_process_material": "/Game/FutsalMOT/Materials/M_NumberMask"
+            },
+        }),
+        encoding="utf-8",
+    )
+    verified_preflight = {
+        "ok": True,
+        "errors": [],
+        "actors": [],
+        "numbering_visual_gate": "verified",
+        "task7_preflight_can_start": True,
+    }
+    adapter = SimpleNamespace(
+        validate_appearance_inputs=lambda *_args: [],
+        preflight_episode_appearance=lambda *_args: verified_preflight,
+    )
+    monkeypatch.setitem(sys.modules, "episode_appearance", adapter)
+
+    prepared = run_task._prepare_episode_appearance(
+        {"appearance": {"policy": "futsalmot_appearance_v2"}},
+        "render",
+        episode_dir,
+        {"L0": "Player_L0"},
+        tmp_path,
+        "task_v2",
+    )
+
+    options = run_task._render_appearance_options(prepared, {})
+    assert prepared["preflight"] is verified_preflight
+    assert options == {
+        "appearance_active": True,
+        "appearance_policy": "futsalmot_appearance_v2",
+    }
+
+
+def test_v2_apply_helper_cannot_bypass_preflight_manual_gate():
+    events = []
+    prepared = {
+        "adapter": SimpleNamespace(
+            apply_episode_appearance=lambda *_args: events.append("apply")
+            or {"ok": True, "state": "applied"}
+        ),
+        "manifest": {"policy": "futsalmot_appearance_v2"},
+        "catalog": {},
+        "mapping": {},
+        "preflight": {"numbering_visual_gate": "MANUAL_REQUIRED"},
+        "rollback_path": Path("rollback.json"),
+        "report_path": Path("report.json"),
+        "public_report_path": Path("public.json"),
+    }
+
+    with pytest.raises(RuntimeError, match="MANUAL_REQUIRED"):
+        run_task._apply_prepared_appearance(prepared)
+
+    assert events == []
+
+
+def test_v2_unresolved_local_recovery_evidence_is_preserved_for_manual_gate(
+    tmp_path, monkeypatch
+):
+    episode_dir = tmp_path / "episode"
+    provenance = episode_dir / "provenance"
+    provenance.mkdir(parents=True)
+    (episode_dir / "meta.json").write_text("{}", encoding="utf-8")
+    (episode_dir / "frames.jsonl").write_text('{"step":0}\n', encoding="utf-8")
+    (provenance / "appearance.json").write_text(
+        json.dumps({"policy": "futsalmot_appearance_v2"}), encoding="utf-8"
+    )
+    rollback_path, report_path = run_task._appearance_runtime_paths(tmp_path, "task_v2")
+    rollback_path.parent.mkdir(parents=True)
+    rollback_path.write_text("preserve-v2-rollback", encoding="utf-8")
+    report_path.write_text("preserve-v2-report", encoding="utf-8")
+    adapter = SimpleNamespace(
+        validate_appearance_inputs=lambda *_args: [],
+        preflight_episode_appearance=lambda *_args: {
+            "ok": False,
+            "errors": ["MANUAL_REQUIRED: v2 visual gate"],
+            "numbering_visual_gate": "MANUAL_REQUIRED",
+            "task7_preflight_can_start": False,
+        },
+        validate_local_recovery_evidence=lambda *_args: pytest.fail(
+            "v2 recovery must stop before retirement or baseline acceptance"
+        ),
+    )
+    monkeypatch.setitem(sys.modules, "episode_appearance", adapter)
+
+    with pytest.raises(RuntimeError, match="MANUAL_REQUIRED"):
+        run_task._prepare_episode_appearance(
+            {"appearance": {"policy": "futsalmot_appearance_v2"}},
+            "sequence",
+            episode_dir,
+            {"L0": "Player_L0"},
+            tmp_path,
+            "task_v2",
+        )
+
+    assert rollback_path.read_text(encoding="utf-8") == "preserve-v2-rollback"
+    assert report_path.read_text(encoding="utf-8") == "preserve-v2-report"
 
 
 def test_existing_runtime_recovery_evidence_blocks_preflight_overwrite(tmp_path, monkeypatch):
@@ -694,6 +949,175 @@ def test_render_callback_ownership_signal_transfers_restore_to_callback():
     ]
 
 
+def test_partial_number_mask_terminal_result_is_recorded_without_appearance_restore():
+    report_path = Path("in-memory-appearance-report.json")
+    report = {
+        "state": "rendering",
+        "mrq_pending": True,
+        "mrq_jobs": [],
+        "errors": [],
+        "actors": [],
+    }
+    restore_calls = []
+
+    class Adapter:
+        @staticmethod
+        def read_application_report(_path):
+            return dict(report)
+
+        @staticmethod
+        def write_application_report(_path, value):
+            report.clear()
+            report.update(value)
+
+        @staticmethod
+        def restore_episode_appearance(*args, **kwargs):
+            restore_calls.append((args, kwargs))
+            return {"ok": True, "state": "restored"}
+
+    transaction = run_task._AppearanceTransaction(
+        Adapter(), Path("rollback.json"), report_path, Path("public-report.json")
+    )
+    transaction._publish_report = lambda: None
+    captured = {}
+
+    def submit(*, on_complete):
+        captured["callback"] = on_complete
+        return {"callback_ownership_transferred": True}
+
+    result = run_task._submit_render_with_appearance(submit, transaction)
+    terminal_result = {
+        "status": "partial",
+        "appearance_restore_ready": False,
+        "reason": "number mask target frame missing",
+        "jobs": [
+            {"camera_id": "CamA", "job_name": "Seq_CamA", "status": "success"},
+            {
+                "camera_id": "CamA",
+                "job_name": "Seq_CamA_NUMBER_MASK",
+                "kind": "jersey_number_mask",
+                "status": "failed",
+                "number_mask_frames": 1,
+            },
+        ],
+        "cameras": {
+            "CamA": {
+                "ok": False,
+                "expected_frames": 2,
+                "img1_frames": 2,
+                "number_mask_frames": 1,
+            }
+        },
+    }
+
+    assert result["callback_ownership_transferred"] is True
+    captured["callback"](terminal_result)
+
+    assert transaction.render_deferred is True
+    assert report["render_result"]["appearance_restore_ready"] is False
+    assert report["mrq_jobs"][1]["kind"] == "jersey_number_mask"
+    assert report["mrq_jobs"][1]["number_mask_frames"] == 1
+    assert report["mrq_pending"] is True
+    assert restore_calls == []
+    assert transaction.restore_result is None
+
+
+def test_empty_v2_skipped_result_defers_appearance_restore():
+    report_path = Path("empty-v2-appearance-report.json")
+    report = {
+        "state": "rendering",
+        "mrq_pending": True,
+        "mrq_jobs": [],
+        "errors": [],
+        "actors": [],
+    }
+    restore_calls = []
+
+    class Adapter:
+        @staticmethod
+        def read_application_report(_path):
+            return dict(report)
+
+        @staticmethod
+        def write_application_report(_path, value):
+            report.clear()
+            report.update(value)
+
+        @staticmethod
+        def restore_episode_appearance(*args, **kwargs):
+            restore_calls.append((args, kwargs))
+            return {"ok": True, "state": "restored"}
+
+    transaction = run_task._AppearanceTransaction(
+        Adapter(), Path("rollback.json"), report_path, Path("public-report.json")
+    )
+    transaction._publish_report = lambda: None
+    captured = {}
+
+    def submit(*, on_complete):
+        captured["callback"] = on_complete
+        return {
+            "callback_ownership_transferred": False,
+            "terminal_result": {
+                "status": "skipped",
+                "jobs": [],
+                "cameras": {},
+                "appearance_restore_ready": False,
+            },
+        }
+
+    result = run_task._submit_render_with_appearance(submit, transaction)
+
+    assert result["callback_ownership_transferred"] is False
+    assert transaction.render_deferred is True
+    assert transaction.restore_result is None
+    assert report["mrq_pending"] is True
+    assert report["render_result"]["appearance_restore_ready"] is False
+    assert restore_calls == []
+
+
+def test_v2_restore_absent_readiness_field_defers_restore():
+    report = {
+        "state": "rendering",
+        "mrq_pending": True,
+        "mrq_jobs": [],
+        "errors": [],
+        "actors": [],
+    }
+    restore_calls = []
+
+    class Adapter:
+        @staticmethod
+        def read_application_report(_path):
+            return dict(report)
+
+        @staticmethod
+        def write_application_report(_path, value):
+            report.clear()
+            report.update(value)
+
+        @staticmethod
+        def restore_episode_appearance(*args, **kwargs):
+            restore_calls.append((args, kwargs))
+            return {"ok": True, "state": "restored"}
+
+    transaction = run_task._AppearanceTransaction(
+        Adapter(), Path("rollback.json"), Path("report.json"), Path("public.json"),
+        appearance_policy="futsalmot_appearance_v2",
+    )
+    transaction._publish_report = lambda: None
+
+    result = transaction.restore(
+        "failed",
+        {"status": "failed", "jobs": [], "cameras": {}},
+    )
+
+    assert result["restore_deferred"] is True
+    assert transaction.render_deferred is True
+    assert report["mrq_pending"] is True
+    assert restore_calls == []
+
+
 def test_synchronous_completion_during_submit_does_not_transfer_ownership():
     transaction = FakeAppearanceTransaction()
 
@@ -819,6 +1243,66 @@ def test_terminal_render_diagnostics_survive_in_public_application_report(tmp_pa
     json.dumps(render_result, allow_nan=False)
 
 
+def test_render_failure_details_and_summary_invalidity_survive_public_report(tmp_path):
+    report_path = tmp_path / "runtime" / "appearance_application.json"
+    public_report_path = tmp_path / "episode" / "appearance_application.json"
+    report = {"state": "rendering", "mrq_pending": True, "errors": [], "actors": []}
+    report_path.parent.mkdir(parents=True)
+    report_path.write_text(json.dumps(report), encoding="utf-8")
+    terminal_result = {
+        "status": "failed",
+        "appearance_restore_ready": False,
+        "reason": "MRQ setup/submission 异常",
+        "summary_write_error": "OSError: disk full",
+        "summary_invalidated": True,
+        "jobs": [
+            {
+                "camera_id": "CamA",
+                "job_name": "Seq_CamA",
+                "status": "failed",
+                "schedule_error": "MRQ setup/submission 异常",
+            }
+        ],
+        "cameras": {
+            "CamA": {
+                "ok": False,
+                "expected_frames": 2,
+                "img1_frames": 0,
+                "schedule_error": "MRQ setup/submission 异常",
+            }
+        },
+    }
+
+    class Adapter:
+        @staticmethod
+        def read_application_report(_path):
+            return dict(report)
+
+        @staticmethod
+        def write_application_report(path, value):
+            report.clear()
+            report.update(value)
+            Path(path).parent.mkdir(parents=True, exist_ok=True)
+            Path(path).write_text(json.dumps(value), encoding="utf-8")
+
+    transaction = run_task._AppearanceTransaction(
+        Adapter(), tmp_path / "rollback.json", report_path, public_report_path,
+        appearance_policy="futsalmot_appearance_v2",
+    )
+    transaction._publish_report = lambda: None
+
+    transaction.restore("failed", terminal_result)
+
+    persisted = report["render_result"]
+    assert persisted["summary_invalidated"] is True
+    assert persisted["cameras"]["CamA"]["schedule_error"] == (
+        "MRQ setup/submission 异常"
+    )
+    assert persisted["jobs"][0]["schedule_error"] == (
+        "MRQ setup/submission 异常"
+    )
+
+
 def test_restore_failure_is_published_with_terminal_render_result(tmp_path):
     report_path = tmp_path / "appearance_application.json"
     public_report_path = tmp_path / "episode" / "appearance_application.json"
@@ -932,3 +1416,50 @@ def test_run_task_reloads_episode_appearance_adapter():
     module_block = source.split("_UE_MODULE_NAMES = (", 1)[1].split(")", 1)[0]
 
     assert '"episode_appearance"' in module_block
+
+
+def test_environment_and_appearance_apply_are_ordered_and_environment_rolls_back():
+    events = []
+
+    class EnvironmentTransaction:
+        def restore(self, reason):
+            events.append(("environment-restore", reason))
+            return {"ok": True, "state": "restored"}
+
+    environment_prepared = SimpleNamespace(
+        apply=lambda: events.append("environment-apply") or EnvironmentTransaction()
+    )
+    appearance_prepared = SimpleNamespace(
+        apply=lambda: events.append("appearance-apply")
+        or (_ for _ in ()).throw(RuntimeError("appearance failed"))
+    )
+
+    with pytest.raises(RuntimeError, match="appearance failed"):
+        run_task._apply_prepared_environment_and_appearance(
+            environment_prepared, appearance_prepared
+        )
+
+    assert events == [
+        "environment-apply",
+        "appearance-apply",
+        ("environment-restore", "apply_failed"),
+    ]
+
+
+def test_environment_apply_failure_does_not_start_appearance():
+    events = []
+
+    environment_prepared = SimpleNamespace(
+        apply=lambda: events.append("environment-apply")
+        or (_ for _ in ()).throw(RuntimeError("MANUAL_REQUIRED: environment"))
+    )
+    appearance_prepared = SimpleNamespace(
+        apply=lambda: events.append("appearance-apply")
+    )
+
+    with pytest.raises(RuntimeError, match="MANUAL_REQUIRED"):
+        run_task._apply_prepared_environment_and_appearance(
+            environment_prepared, appearance_prepared
+        )
+
+    assert events == ["environment-apply"]

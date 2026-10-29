@@ -57,6 +57,53 @@ def appearance_catalog() -> dict:
     }
 
 
+def appearance_catalog_v2() -> dict:
+    catalog = appearance_catalog()
+    catalog.update(
+        {
+            "policy": "futsalmot_appearance_v2",
+            "catalog_id": "mpfb_players_003_009_v2",
+            "numbering": {
+                "min": 1,
+                "max": 99,
+                "unique": True,
+                "placement": "back",
+                "bone": "spine_03",
+                "atlas": "/Game/FutsalMOT/Characters/MPFB/Textures/JerseyNumbers/T_MPFB_JerseyNumbers_01_99",
+                "decal_material": "/Game/FutsalMOT/Characters/MPFB/Materials/M_MPFB_JerseyNumber_Decal",
+                "parameter": "NumberIndex",
+                "mask_proxy_mesh": "/Game/FutsalMOT/Characters/MPFB/Meshes/SM_MPFB_JerseyNumberMaskQuad",
+                "mask_proxy_material": "/Game/FutsalMOT/Characters/MPFB/Materials/M_MPFB_JerseyNumberMask",
+                "mask_post_process_material": "/Game/FutsalMOT/Materials/M_StencilToID",
+                "mask_stencil_start": 32,
+            },
+        }
+    )
+    return catalog
+
+
+@pytest.mark.parametrize("malformed_id", [["L0"], {"id": "L0"}])
+def test_v2_manifest_validation_reports_malformed_entity_id(malformed_id, tmp_path):
+    catalog = appearance_catalog_v2()
+    meta = appearance_meta()
+    frames_path = tmp_path / "frames.jsonl"
+    frames_path.write_text('{"step": 0}\n', encoding="utf-8")
+    from grf_ue_bridge.appearance import build_appearance_manifest
+
+    manifest = build_appearance_manifest(meta, frames_path, catalog)
+    manifest["entities"][0]["entity_id"] = malformed_id
+
+    errors = validate_appearance_manifest(
+        manifest, meta=meta, frames_path=frames_path, catalog=catalog
+    )
+
+    assert errors
+    rendered = " ".join(errors)
+    assert "actual entity IDs" in rendered
+    assert repr(malformed_id) in rendered
+    assert "unhashable" not in rendered.lower()
+
+
 def appearance_meta(*, ue_visual_seed: int = 1001) -> dict:
     entities = []
     for entity_id in ENTITY_IDS:
@@ -113,6 +160,226 @@ def test_appearance_seed_protocol_is_stable_in_a_subprocess():
     assert json.loads(process.stdout) == derive_appearance_seeds(1001)
 
 
+def test_v2_manifest_uses_only_v2_jersey_number_namespace(tmp_path):
+    catalog = appearance_catalog_v2()
+    manifest = build_appearance_manifest(
+        appearance_meta(ue_visual_seed=1001), write_frames(tmp_path), catalog
+    )
+
+    v1_seeds = derive_appearance_seeds(1001)
+    expected_number_seed = int.from_bytes(
+        hashlib.sha256(
+            b"futsalmot_appearance_v2:1001:jersey_number"
+        ).digest()[:4],
+        "big",
+    ) & 0x7FFFFFFF
+
+    assert manifest["policy"] == "futsalmot_appearance_v2"
+    assert manifest["version"] == 2
+    assert manifest["namespace_seeds"] == {
+        **v1_seeds,
+        "jersey_number": expected_number_seed,
+    }
+    assert manifest["numbering"] == catalog["numbering"]
+
+
+def test_v2_manifest_assigns_deterministic_unique_numbers_in_range(tmp_path):
+    catalog = appearance_catalog_v2()
+    meta = appearance_meta(ue_visual_seed=1001)
+    frames_path = write_frames(tmp_path)
+
+    first = build_appearance_manifest(meta, frames_path, catalog)
+    second = build_appearance_manifest(meta, frames_path, copy.deepcopy(catalog))
+    numbers = [entity["jersey_number"] for entity in first["entities"]]
+
+    assert first == second
+    assert len(numbers) == len(ENTITY_IDS) == 10
+    assert len(set(numbers)) == 10
+    assert all(1 <= number <= 99 for number in numbers)
+    assert [entity["entity_id"] for entity in first["entities"]] == list(ENTITY_IDS)
+
+    number_seed = first["namespace_seeds"]["jersey_number"]
+    expected = {}
+    used = set()
+    for entity_id in ENTITY_IDS:
+        ranked = sorted(
+            range(1, 100),
+            key=lambda number: (
+                hashlib.sha256(
+                    (
+                        "futsalmot_appearance_v2:rank:jersey_number:"
+                        f"{number_seed}:{entity_id}:{number}"
+                    ).encode("utf-8")
+                ).digest(),
+                str(number),
+            ),
+        )
+        expected[entity_id] = next(number for number in ranked if number not in used)
+        used.add(expected[entity_id])
+    assert {
+        entity["entity_id"]: entity["jersey_number"] for entity in first["entities"]
+    } == expected
+
+
+def test_v2_different_visual_seed_changes_at_least_one_number(tmp_path):
+    catalog = appearance_catalog_v2()
+    frames_path = write_frames(tmp_path)
+    first = build_appearance_manifest(
+        appearance_meta(ue_visual_seed=1001), frames_path, catalog
+    )
+    second = build_appearance_manifest(
+        appearance_meta(ue_visual_seed=1002), frames_path, catalog
+    )
+
+    assert [entity["jersey_number"] for entity in first["entities"]] != [
+        entity["jersey_number"] for entity in second["entities"]
+    ]
+
+
+def test_v2_numbering_configuration_and_entity_values_bind_fingerprint(tmp_path):
+    catalog = appearance_catalog_v2()
+    meta = appearance_meta()
+    frames_path = write_frames(tmp_path)
+    manifest = build_appearance_manifest(meta, frames_path, catalog)
+
+    changed_catalog = copy.deepcopy(catalog)
+    changed_catalog["numbering"]["atlas"] += "_changed"
+    changed_manifest = build_appearance_manifest(meta, frames_path, changed_catalog)
+    changed_entity = copy.deepcopy(manifest)
+    changed_entity["entities"][0]["jersey_number"] += 1
+
+    assert manifest["catalog_fingerprint"] != changed_manifest["catalog_fingerprint"]
+    assert manifest["fingerprint"] != changed_manifest["fingerprint"]
+    assert any(
+        "jersey_number" in error
+        for error in validate_appearance_manifest(
+            changed_entity,
+            meta=meta,
+            frames_path=frames_path,
+            catalog=catalog,
+        )
+    )
+
+
+def test_v2_manifest_validation_accepts_generated_manifest(tmp_path):
+    catalog = appearance_catalog_v2()
+    meta = appearance_meta()
+    frames_path = write_frames(tmp_path)
+    manifest = build_appearance_manifest(meta, frames_path, catalog)
+
+    assert validate_appearance_manifest(
+        manifest, meta=meta, frames_path=frames_path, catalog=catalog
+    ) == []
+
+
+@pytest.mark.parametrize("bad_number", [0, 100, True])
+def test_v2_manifest_validation_rejects_invalid_number_with_valid_fingerprint(
+    tmp_path, bad_number
+):
+    catalog = appearance_catalog_v2()
+    meta = appearance_meta()
+    frames_path = write_frames(tmp_path)
+    manifest = build_appearance_manifest(meta, frames_path, catalog)
+    manifest["entities"][0]["jersey_number"] = bad_number
+    fingerprint_payload = {
+        key: value for key, value in manifest.items() if key != "fingerprint"
+    }
+    manifest["fingerprint"] = hashlib.sha256(
+        json.dumps(
+            fingerprint_payload,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
+
+    errors = validate_appearance_manifest(
+        manifest, meta=meta, frames_path=frames_path, catalog=catalog
+    )
+
+    assert any("jersey_number" in error for error in errors)
+
+
+def test_v2_manifest_validation_rejects_duplicate_numbers_with_valid_fingerprint(
+    tmp_path,
+):
+    catalog = appearance_catalog_v2()
+    meta = appearance_meta()
+    frames_path = write_frames(tmp_path)
+    manifest = build_appearance_manifest(meta, frames_path, catalog)
+    manifest["entities"][1]["jersey_number"] = manifest["entities"][0]["jersey_number"]
+    fingerprint_payload = {
+        key: value for key, value in manifest.items() if key != "fingerprint"
+    }
+    manifest["fingerprint"] = hashlib.sha256(
+        json.dumps(
+            fingerprint_payload,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
+
+    errors = validate_appearance_manifest(
+        manifest, meta=meta, frames_path=frames_path, catalog=catalog
+    )
+
+    assert any("互不重复" in error for error in errors)
+
+
+def test_v1_manifest_validation_rejects_injected_jersey_numbers(tmp_path):
+    catalog = appearance_catalog()
+    meta = appearance_meta()
+    frames_path = write_frames(tmp_path)
+    manifest = build_appearance_manifest(meta, frames_path, catalog)
+    manifest["entities"][0]["jersey_number"] = 8
+    fingerprint_payload = {
+        key: value for key, value in manifest.items() if key != "fingerprint"
+    }
+    manifest["fingerprint"] = hashlib.sha256(
+        json.dumps(
+            fingerprint_payload,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
+
+    errors = validate_appearance_manifest(
+        manifest, meta=meta, frames_path=frames_path, catalog=catalog
+    )
+
+    assert any("jersey_number" in error for error in errors)
+
+
+def test_v1_manifest_builder_preserves_custom_legacy_catalog_id(tmp_path):
+    catalog = appearance_catalog()
+    catalog["catalog_id"] = "audit-appearance-v1"
+
+    manifest = build_appearance_manifest(
+        appearance_meta(), write_frames(tmp_path), catalog
+    )
+
+    assert manifest["catalog_id"] == "audit-appearance-v1"
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        lambda catalog: catalog.pop("numbering"),
+        lambda catalog: catalog["numbering"].update({"atlas": "Textures/Numbers"}),
+        lambda catalog: catalog["numbering"].update({"unique": False}),
+        lambda catalog: catalog["numbering"].update({"min": 90, "max": 95}),
+    ],
+)
+def test_v2_catalog_rejects_invalid_numbering_contract(tmp_path, mutate):
+    catalog = appearance_catalog_v2()
+    mutate(catalog)
+
+    with pytest.raises(ValueError):
+        build_appearance_manifest(appearance_meta(), write_frames(tmp_path), catalog)
+
+
 def test_manifest_is_deterministic_and_binds_exact_trajectory_bytes(tmp_path):
     catalog = appearance_catalog()
     meta = appearance_meta()
@@ -122,6 +389,15 @@ def test_manifest_is_deterministic_and_binds_exact_trajectory_bytes(tmp_path):
     second = build_appearance_manifest(meta, frames_path, copy.deepcopy(catalog))
 
     assert first == second
+    canonical_manifest = json.dumps(
+        first, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+    assert hashlib.sha256(canonical_manifest).hexdigest() == (
+        "f3630758ee2d071fdb5b27b79ae08d3eed48946efcad7c980e6e50c85574b0aa"
+    )
+    assert first["fingerprint"] == (
+        "58b01b8e2c7204aff8cf271bc241f25e739540de7e5fb9ca1da803fcfc7ca85d"
+    )
     assert first["schema"] == "futsalmot_episode_appearance"
     assert first["version"] == 1
     assert first["episode_id"] == meta["episode_id"]

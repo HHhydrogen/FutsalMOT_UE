@@ -15,6 +15,16 @@ from grf_ue_bridge.config import resolver
 from grf_ue_bridge.seeds import derive_episode_seeds
 
 
+@pytest.fixture(autouse=True)
+def isolate_runtime_machine_paths(monkeypatch, tmp_path):
+    """路径优先级测试只读取临时仓库，避免开发机 local.json 或环境变量污染。"""
+    from grf_ue_bridge.config import paths
+
+    monkeypatch.setattr(paths, "default_repo_root", lambda: tmp_path / "repo")
+    for name in ("FUTSALMOT_DATASET_ROOT", "FUTSALMOT_UE_ROOT", "FUTSALMOT_UE_PROJECT_ROOT"):
+        monkeypatch.delenv(name, raising=False)
+
+
 def _appearance_catalog() -> dict:
     return {
         "mode": "seeded",
@@ -46,6 +56,31 @@ def _appearance_catalog() -> dict:
         ],
         "body_texture_parameter": "SkinTexture",
     }
+
+
+def _appearance_catalog_v2() -> dict:
+    catalog = _appearance_catalog()
+    catalog.update(
+        {
+            "policy": "futsalmot_appearance_v2",
+            "catalog_id": "mpfb_players_003_009_v2",
+            "numbering": {
+                "min": 1,
+                "max": 99,
+                "unique": True,
+                "placement": "back",
+                "bone": "spine_03",
+                "atlas": "/Game/FutsalMOT/Characters/MPFB/Textures/JerseyNumbers/T_MPFB_JerseyNumbers_01_99",
+                "decal_material": "/Game/FutsalMOT/Characters/MPFB/Materials/M_MPFB_JerseyNumber_Decal",
+                "parameter": "NumberIndex",
+                "mask_proxy_mesh": "/Game/FutsalMOT/Characters/MPFB/Meshes/SM_MPFB_JerseyNumberMaskQuad",
+                "mask_proxy_material": "/Game/FutsalMOT/Characters/MPFB/Materials/M_MPFB_JerseyNumberMask",
+                "mask_post_process_material": "/Game/FutsalMOT/Materials/M_StencilToID",
+                "mask_stencil_start": 32,
+            },
+        }
+    )
+    return catalog
 
 
 def _appearance_meta(*, episode_id: str = "episode_portable_t1") -> dict:
@@ -418,6 +453,70 @@ def test_export_writes_appearance_manifest_after_provenance(monkeypatch, tmp_pat
     assert (episode_dir / "provenance" / "ue-profile.json").is_file()
 
 
+def test_export_writes_v2_appearance_manifest_with_number_assignments(monkeypatch, tmp_path):
+    import sys
+    from types import SimpleNamespace
+    from grf_ue_bridge.workflows import task_export
+
+    dataset_root = tmp_path / "appearance-v2-data"
+    ue = _make_ue_root(tmp_path)
+    task_file = _make_task(tmp_path, str(dataset_root), str(ue))
+    task_data = json.loads(task_file.read_text(encoding="utf-8"))
+    task_data["ue"]["appearance"] = _appearance_catalog_v2()
+    task_file.write_text(json.dumps(task_data), encoding="utf-8")
+    resolved = resolver.resolve_task(
+        task_file, dataset_root=str(dataset_root), ue_project_root=str(ue)
+    )
+
+    class FakeExportConfig:
+        seed = 42
+        scenario = "5_vs_5"
+        num_steps = 1
+        trajectory_time_scale = 1.0
+        render = False
+        game_duration = None
+        left_team_difficulty = 0
+        right_team_difficulty = 0
+        number_of_left_players_agent_controls = 0
+        number_of_right_players_agent_controls = 0
+
+    def fake_export(_config, _result, traj):
+        traj.mkdir(parents=True, exist_ok=True)
+        (traj / "meta.json").write_text(
+            json.dumps(_appearance_meta(episode_id=traj.name)), encoding="utf-8"
+        )
+        (traj / "frames.jsonl").write_text(
+            json.dumps(_appearance_frame()) + "\n", encoding="utf-8"
+        )
+
+    monkeypatch.setitem(
+        sys.modules,
+        "grf_ue_bridge.config.models",
+        SimpleNamespace(ExportConfig=lambda **kwargs: FakeExportConfig()),
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        "grf_ue_bridge.exporter",
+        SimpleNamespace(compute_source_steps=lambda cfg: 1, export_episode=fake_export),
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        "grf_ue_bridge.grf_runner",
+        SimpleNamespace(run_episode=lambda **kwargs: {}),
+    )
+
+    assert task_export.run_export(resolved, print_fn=lambda message: None) == 0
+    manifest = json.loads(
+        (Path(resolved.trajectory_output) / "provenance" / "appearance.json").read_text(
+            encoding="utf-8"
+        )
+    )
+
+    assert manifest["version"] == 2
+    assert manifest["policy"] == "futsalmot_appearance_v2"
+    assert len({entity["jersey_number"] for entity in manifest["entities"]}) == 10
+
+
 @pytest.mark.parametrize("failure", ["bad_roster", "missing_frames", "corrupt_frames"])
 def test_appearance_export_failure_removes_only_appearance_manifest(
     monkeypatch, tmp_path, failure
@@ -489,13 +588,3 @@ def test_appearance_export_failure_removes_only_appearance_manifest(
     provenance = Path(resolved.trajectory_output) / "provenance"
     assert not (provenance / "appearance.json").exists()
     assert (provenance / "keep.json").read_text(encoding="utf-8") == "keep"
-
-
-@pytest.fixture(autouse=True)
-def isolate_runtime_machine_paths(monkeypatch, tmp_path):
-    """路径优先级测试只读取临时仓库，避免开发机 local.json 或环境变量污染。"""
-    from grf_ue_bridge.config import paths
-
-    monkeypatch.setattr(paths, "default_repo_root", lambda: tmp_path / "repo")
-    for name in ("FUTSALMOT_DATASET_ROOT", "FUTSALMOT_UE_ROOT", "FUTSALMOT_UE_PROJECT_ROOT"):
-        monkeypatch.delenv(name, raising=False)

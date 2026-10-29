@@ -47,6 +47,132 @@ _BBOX_SOURCES = (
 
 # quick 验证级别下每相机最多重算的 mask 帧数（均匀抽样，保证确定性）
 _QUICK_MASK_SAMPLE = 10
+_NUMBER_MASK_START = 32
+_NUMBER_ENTITY_IDS = tuple(
+    [f"L{i}" for i in range(5)] + [f"R{i}" for i in range(5)]
+)
+
+
+def validate_jersey_number_record(
+    record: object,
+    *,
+    label: str,
+    expected_value: Optional[int] = None,
+) -> List[str]:
+    """严格验证 v2 canonical jersey_number 记录，不做 JSON 类型强转。"""
+    errors: List[str] = []
+    if not isinstance(record, dict):
+        return [f"{label} jersey_number 必须是对象: {record!r}"]
+
+    required_fields = (
+        "value",
+        "placement",
+        "bbox_source",
+        "in_frame",
+        "truncated",
+        "visible_pixel_count",
+        "bbox_xyxy",
+        "bbox_xywh",
+    )
+    for field in required_fields:
+        if field not in record:
+            errors.append(f"{label} jersey_number.{field} 缺失")
+
+    value = record.get("value")
+    if type(value) is not int or not 1 <= value <= 99:
+        errors.append(f"{label} jersey_number.value 必须是 1..99 整数: {value!r}")
+    elif expected_value is not None and value != expected_value:
+        errors.append(
+            f"{label} jersey_number.value actual={value!r}, expected={expected_value!r}"
+        )
+
+    if record.get("placement") != "back" or type(record.get("placement")) is not str:
+        errors.append(
+            f"{label} jersey_number.placement 必须是 'back': {record.get('placement')!r}"
+        )
+    if (
+        record.get("bbox_source") != "visible_number_mask"
+        or type(record.get("bbox_source")) is not str
+    ):
+        errors.append(
+            f"{label} jersey_number.bbox_source 必须是 'visible_number_mask': "
+            f"{record.get('bbox_source')!r}"
+        )
+
+    in_frame = record.get("in_frame")
+    if type(in_frame) is not bool:
+        errors.append(
+            f"{label} jersey_number.in_frame 必须是布尔: {in_frame!r}"
+        )
+    truncated = record.get("truncated")
+    if type(truncated) is not bool:
+        errors.append(
+            f"{label} jersey_number.truncated 必须是布尔: {truncated!r}"
+        )
+
+    visible_pixel_count = record.get("visible_pixel_count")
+    if type(visible_pixel_count) is not int or visible_pixel_count < 0:
+        errors.append(
+            f"{label} jersey_number.visible_pixel_count 必须是非负整数: "
+            f"{visible_pixel_count!r}"
+        )
+
+    bbox_values = {}
+    for key in ("bbox_xyxy", "bbox_xywh"):
+        box = record.get(key)
+        bbox_values[key] = box
+        if box is None:
+            continue
+        if not isinstance(box, list) or len(box) != 4:
+            errors.append(
+                f"{label} jersey_number.{key} 必须是 null 或四元素数字列表: {box!r}"
+            )
+            continue
+        if any(
+            type(value) not in (int, float)
+            or not math.isfinite(float(value))
+            for value in box
+        ):
+            errors.append(
+                f"{label} jersey_number.{key} 含非法数字类型: {box!r}"
+            )
+            continue
+
+    visible = type(in_frame) is bool and in_frame
+    count_positive = type(visible_pixel_count) is int and visible_pixel_count > 0
+    if visible != count_positive:
+        errors.append(
+            f"{label} jersey_number.in_frame 与 visible_pixel_count 语义不一致: "
+            f"in_frame={in_frame!r}, visible_pixel_count={visible_pixel_count!r}"
+        )
+    if visible:
+        if bbox_values["bbox_xyxy"] is None or bbox_values["bbox_xywh"] is None:
+            errors.append(
+                f"{label} 可见 jersey_number 必须同时包含 bbox_xyxy/bbox_xywh"
+            )
+        else:
+            xyxy = bbox_values["bbox_xyxy"]
+            xywh = bbox_values["bbox_xywh"]
+            if (
+                isinstance(xyxy, list) and len(xyxy) == 4
+                and isinstance(xywh, list) and len(xywh) == 4
+                and all(type(value) in (int, float) for value in xyxy + xywh)
+            ):
+                if xyxy[2] <= xyxy[0] or xyxy[3] <= xyxy[1]:
+                    errors.append(f"{label} jersey_number.bbox_xyxy 宽高必须为正: {xyxy!r}")
+                expected_xywh = [
+                    xyxy[0], xyxy[1], xyxy[2] - xyxy[0], xyxy[3] - xyxy[1]
+                ]
+                if xywh != expected_xywh:
+                    errors.append(
+                        f"{label} jersey_number.bbox_xywh 与 bbox_xyxy 不一致: "
+                        f"actual={xywh!r}, expected={expected_xywh!r}"
+                    )
+    elif bbox_values["bbox_xyxy"] is not None or bbox_values["bbox_xywh"] is not None:
+        errors.append(
+            f"{label} 不可见 jersey_number 的 bbox_xyxy/bbox_xywh 必须为 null"
+        )
+    return errors
 
 
 def _validate_camera(
@@ -56,6 +182,7 @@ def _validate_camera(
     require_mask: bool = True,
     require_yolo_det: bool = True,
     require_yolo_seg: bool = True,
+    require_jersey_number_mask: bool = False,
 ) -> List[str]:
     """验证单个 camera 子目录。返回错误列表（空表示通过）。
 
@@ -109,6 +236,7 @@ def _validate_camera(
     prev_frame = 0
     # frame_index → {track_id: obj}（供 MOT 交叉校验）；frame_index → (n_players, n_balls)
     frame_track_objects: Dict[int, Dict[int, dict]] = {}
+    annotation_frames: Dict[int, dict] = {}
     yolo_counts_by_frame: Dict[int, Tuple[int, int]] = {}
 
     with open(ann_path, encoding="utf-8") as f:
@@ -143,6 +271,7 @@ def _validate_camera(
 
             if isinstance(frame_index, int):
                 yolo_counts_by_frame[frame_index] = _frame_instance_counts(objects)
+                annotation_frames[frame_index] = frame
 
             for oi, obj in enumerate(objects):
                 label = f"[{cam_label}] 第 {line_no} 行 objects[{oi}]"
@@ -194,6 +323,9 @@ def _validate_camera(
     if require_mask and (cam_dir / "mask").exists():
         sample = None if validation_level != "quick" else _QUICK_MASK_SAMPLE
         _validate_mask_dir(errors, cam_label, cam_dir, width, height, sample_frames=sample)
+
+    if require_jersey_number_mask:
+        _validate_jersey_number_mask(errors, cam_dir, width, height, annotation_frames)
 
     # ── YOLO 标签校验（行数须与 instance_mask 可见对象一致，不可见对象不得进入）──
     if require_yolo_det:
@@ -278,6 +410,252 @@ def _validate_camera(
         errors.append(f"[{cam_label}] 缺少 seqinfo.ini")
 
     return errors
+
+
+def _appearance_manifest_for_camera(cam_dir: Path) -> Optional[dict]:
+    """向上查找 episode 级 appearance manifest。"""
+    for parent in (cam_dir, *cam_dir.parents):
+        manifest_path = parent / "provenance" / "appearance.json"
+        if manifest_path.is_file():
+            try:
+                value = json.loads(manifest_path.read_text(encoding="utf-8"))
+            except (OSError, UnicodeError, json.JSONDecodeError):
+                return None
+            return value if isinstance(value, dict) else None
+    return None
+
+
+def _validate_jersey_number_mask(
+    errors: List[str],
+    cam_dir: Path,
+    width: int,
+    height: int,
+    annotation_frames: Dict[int, dict],
+) -> None:
+    """校验 v2 号码 manifest、帧 mask、像素数量及 pixel-tight bbox。"""
+    from instance_mask import load_mask_array, mask_to_bbox
+
+    cam_label = cam_dir.name
+    manifest = _appearance_manifest_for_camera(cam_dir)
+    if not isinstance(manifest, dict):
+        errors.append(f"[{cam_label}] frame * entity * appearance v2 manifest 缺失或无法读取")
+        return
+    is_uv = False
+    if manifest.get("policy") == "futsalmot_appearance_v1":
+        for parent in (cam_dir, *cam_dir.parents):
+            uv_path = parent / "provenance" / "number_uv.json"
+            if uv_path.is_file():
+                try:
+                    uv = json.loads(uv_path.read_text(encoding="utf-8"))
+                    from grf_ue_bridge.jersey_number_annotator import _validate_manifest
+                    _, uv_errors = _validate_manifest(uv)
+                    if uv_errors or uv.get("appearance_fingerprint") != manifest.get("fingerprint"):
+                        raise ValueError("UV号码清单与原随机外观绑定无效: " + str(uv_errors))
+                    manifest, is_uv = uv, True
+                except (OSError, ValueError, KeyError, TypeError) as exc:
+                    errors.append(str(exc))
+                break
+    if manifest.get("policy") != "futsalmot_appearance_v2" and not is_uv:
+        errors.append(
+            f"[{cam_label}] frame * entity * manifest policy={manifest.get('policy')!r} "
+            "与 require_jersey_number_mask=True 不符"
+        )
+        return
+
+    entities = manifest.get("entities")
+    if not isinstance(entities, list):
+        errors.append(f"[{cam_label}] frame * entity * manifest entities 实际值={entities!r}")
+        return
+    expected_numbers: Dict[str, int] = {}
+    manifest_entity_ids = [
+        entity.get("entity_id") if isinstance(entity, dict) else entity
+        for entity in entities
+    ]
+    duplicate_manifest_ids = []
+    for index, entity_id in enumerate(manifest_entity_ids):
+        if any(entity_id == other for other in manifest_entity_ids[index + 1:]):
+            if not any(entity_id == previous for previous in duplicate_manifest_ids):
+                duplicate_manifest_ids.append(entity_id)
+    extra_manifest_ids = [
+        entity_id
+        for entity_id in manifest_entity_ids
+        if not isinstance(entity_id, str) or entity_id not in _NUMBER_ENTITY_IDS
+    ]
+    if duplicate_manifest_ids:
+        errors.append(
+            f"[{cam_label}] frame * entity * duplicate manifest entity IDs "
+            f"actual={manifest_entity_ids}, duplicates={duplicate_manifest_ids}"
+        )
+    if extra_manifest_ids:
+        errors.append(
+            f"[{cam_label}] frame * entity * extra manifest entity IDs "
+            f"actual={manifest_entity_ids}, extra={extra_manifest_ids}"
+        )
+    numbering = manifest.get("numbering")
+    if not is_uv and (not isinstance(numbering, dict) or numbering.get("mask_stencil_start") != _NUMBER_MASK_START):
+        errors.append(
+            f"[{cam_label}] frame * entity * manifest numbering.mask_stencil_start "
+            f"actual={numbering.get('mask_stencil_start') if isinstance(numbering, dict) else numbering!r}, "
+            f"expected={_NUMBER_MASK_START}"
+        )
+    for entity in entities:
+        if not isinstance(entity, dict):
+            errors.append(f"[{cam_label}] frame * entity * manifest entity 实际值={entity!r}")
+            continue
+        entity_id = entity.get("entity_id")
+        number = entity.get("jersey_number")
+        if entity_id not in _NUMBER_ENTITY_IDS or type(number) is not int or not 1 <= number <= 99:
+            errors.append(
+                f"[{cam_label}] frame * entity {entity_id!r} manifest jersey_number "
+                f"实际值={number!r}，要求 1..99 整数"
+            )
+            continue
+        expected_numbers[entity_id] = number
+    seen_numbers: Dict[int, str] = {}
+    for entity_id, number in expected_numbers.items():
+        if number in seen_numbers:
+            errors.append(
+                f"[{cam_label}] frame * entity {entity_id} 与 {seen_numbers[number]} "
+                f"jersey_number 冲突: 实际值={number}"
+            )
+        else:
+            seen_numbers[number] = entity_id
+    missing_entities = [
+        entity_id for entity_id in _NUMBER_ENTITY_IDS if entity_id not in expected_numbers
+    ]
+    if missing_entities:
+        errors.append(
+            f"[{cam_label}] frame * entity {missing_entities[0]} manifest 号码缺失; "
+            f"实际 entity IDs={sorted(expected_numbers)}"
+        )
+
+    mask_dir = cam_dir / "number_mask"
+    mask_frames = _frame_numbers(mask_dir)
+    annotation_numbers = set(annotation_frames)
+    if not mask_dir.is_dir():
+        errors.append(
+            f"[{cam_label}] frame * entity * 缺少 number_mask/; "
+            f"annotation frames={sorted(annotation_numbers)}"
+        )
+        return
+    if mask_frames != annotation_numbers:
+        errors.append(
+            f"[{cam_label}] frame * entity * number_mask 帧集合不匹配: "
+            f"actual={sorted(mask_frames)}, annotations={sorted(annotation_numbers)}"
+        )
+
+    valid_mask_ids = set(range(_NUMBER_MASK_START, _NUMBER_MASK_START + len(_NUMBER_ENTITY_IDS)))
+    for frame_index in sorted(annotation_numbers | set(mask_frames)):
+        mask_path = mask_dir / f"{frame_index:06d}.png"
+        if not mask_path.is_file():
+            errors.append(
+                f"[{cam_label}] frame {frame_index} entity * 缺少 number mask "
+                f"{mask_path.name}; actual exists=False"
+            )
+            continue
+        try:
+            mask = load_mask_array(mask_path, "r")
+        except Exception as exc:
+            errors.append(
+                f"[{cam_label}] frame {frame_index} entity * number mask "
+                f"{mask_path.name} 解码失败: actual={type(exc).__name__}: {exc}"
+            )
+            continue
+        actual_size = (int(mask.shape[1]), int(mask.shape[0]))
+        if actual_size != (width, height):
+            errors.append(
+                f"[{cam_label}] frame {frame_index} entity * number mask 尺寸 "
+                f"actual={actual_size[0]}x{actual_size[1]}, expected={width}x{height}"
+            )
+        actual_ids = {int(value) for value in set(mask.reshape(-1).tolist()) if int(value) != 0}
+        illegal_ids = sorted(actual_ids - valid_mask_ids)
+        if illegal_ids:
+            errors.append(
+                f"[{cam_label}] frame {frame_index} entity * number mask ID "
+                f"actual={sorted(actual_ids)}, illegal={illegal_ids}, "
+                f"expected subset={sorted(valid_mask_ids)}"
+            )
+
+        frame = annotation_frames.get(frame_index)
+        if not isinstance(frame, dict):
+            continue
+        objects = frame.get("objects", [])
+        by_entity = {
+            obj.get("entity_id"): obj
+            for obj in objects
+            if isinstance(obj, dict) and isinstance(obj.get("entity_id"), str)
+        } if isinstance(objects, list) else {}
+        if isinstance(objects, list):
+            duplicate_ids = sorted(
+                entity_id for entity_id in by_entity
+                if sum(
+                    isinstance(obj, dict) and obj.get("entity_id") == entity_id
+                    for obj in objects
+                ) > 1
+            )
+            for entity_id in duplicate_ids:
+                errors.append(
+                    f"[{cam_label}] frame {frame_index} entity {entity_id} appears more than once; "
+                    f"actual duplicate entity IDs={duplicate_ids}"
+                )
+        for index, entity_id in enumerate(_NUMBER_ENTITY_IDS):
+            obj = by_entity.get(entity_id)
+            expected_number = expected_numbers.get(entity_id)
+            if expected_number is None:
+                continue
+            if obj is None:
+                errors.append(
+                    f"[{cam_label}] frame {frame_index} entity {entity_id} jersey_number "
+                    f"actual=missing object, expected manifest value={expected_number}"
+                )
+                continue
+            number_annotation = obj.get("jersey_number")
+            record_label = f"[{cam_label}] frame {frame_index} entity {entity_id}"
+            record_errors = validate_jersey_number_record(
+                number_annotation,
+                label=record_label,
+                expected_value=expected_number,
+            )
+            if record_errors:
+                errors.extend(record_errors)
+                if not isinstance(number_annotation, dict):
+                    continue
+            actual_number = number_annotation.get("value")
+            mask_id = _NUMBER_MASK_START + index
+            selected = mask == mask_id
+            pixel_count = int(selected.sum())
+            actual_bbox = mask_to_bbox(selected)
+            actual_bbox_list = (
+                [float(value) for value in actual_bbox]
+                if actual_bbox is not None else None
+            )
+            annotation_count = number_annotation.get("visible_pixel_count")
+            annotation_bbox = number_annotation.get("bbox_xyxy")
+            if annotation_count != pixel_count:
+                errors.append(
+                    f"[{cam_label}] frame {frame_index} entity {entity_id} "
+                    f"mask ID={mask_id} visible_pixel_count actual={annotation_count!r}, "
+                    f"mask={pixel_count}"
+                )
+            if annotation_bbox != actual_bbox_list:
+                errors.append(
+                    f"[{cam_label}] frame {frame_index} entity {entity_id} "
+                    f"mask ID={mask_id} bbox_xyxy actual={annotation_bbox!r}, "
+                    f"mask min/max={actual_bbox_list!r}"
+                )
+            actual_xywh = (
+                [actual_bbox_list[0], actual_bbox_list[1],
+                 actual_bbox_list[2] - actual_bbox_list[0],
+                 actual_bbox_list[3] - actual_bbox_list[1]]
+                if actual_bbox_list is not None else None
+            )
+            annotation_xywh = number_annotation.get("bbox_xywh")
+            if annotation_xywh != actual_xywh:
+                errors.append(
+                    f"[{cam_label}] frame {frame_index} entity {entity_id} "
+                    f"mask ID={mask_id} bbox_xywh actual={annotation_xywh!r}, "
+                    f"mask-derived={actual_xywh!r}"
+                )
 
 
 def _check_bbox(errors: List[str], obj: dict, label: str, width: int, height: int) -> None:
@@ -635,6 +1013,7 @@ def _validate_camera_task(task: tuple) -> List[str]:
         require_mask,
         require_yolo_det,
         require_yolo_seg,
+        require_jersey_number_mask,
     ) = task
     cam_dir = Path(cam_str)
     errors = _validate_camera(
@@ -644,6 +1023,7 @@ def _validate_camera_task(task: tuple) -> List[str]:
         require_mask=require_mask,
         require_yolo_det=require_yolo_det,
         require_yolo_seg=require_yolo_seg,
+        require_jersey_number_mask=require_jersey_number_mask,
     )
     if validation_level != "quick":
         try:
@@ -675,6 +1055,7 @@ def validate_annotation_dir(
     require_mask: bool = True,
     require_yolo_det: bool = True,
     require_yolo_seg: bool = True,
+    require_jersey_number_mask: bool = False,
 ) -> int:
     """验证一个标注输出目录。
 
@@ -705,6 +1086,7 @@ def validate_annotation_dir(
         require_mask=require_mask,
         require_yolo_det=require_yolo_det,
         require_yolo_seg=require_yolo_seg,
+        require_jersey_number_mask=require_jersey_number_mask,
     ).exit_code
 
 
@@ -716,6 +1098,7 @@ def validate_annotation_result(
     require_mask: bool = True,
     require_yolo_det: bool = True,
     require_yolo_seg: bool = True,
+    require_jersey_number_mask: bool = False,
 ) -> ValidationResult:
     """验证标注目录并返回结构化结果，同时保留旧 CLI 的打印行为。"""
     if validation_level not in ("full", "quick"):
@@ -737,6 +1120,7 @@ def validate_annotation_result(
                     require_mask,
                     require_yolo_det,
                     require_yolo_seg,
+                    require_jersey_number_mask,
                 )
             )
             for cam_dir in camera_dirs
@@ -750,6 +1134,7 @@ def validate_annotation_result(
                 require_mask,
                 require_yolo_det,
                 require_yolo_seg,
+                require_jersey_number_mask,
             )
             for cam_dir in camera_dirs
         ]

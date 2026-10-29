@@ -11,6 +11,7 @@ from typer.testing import CliRunner
 
 from grf_ue_bridge.cli import app
 from grf_ue_bridge.appearance import APPEARANCE_POLICY, build_appearance_manifest
+import grf_ue_bridge.environment as environment_module
 from grf_ue_bridge.config.loader import load_task_config
 from grf_ue_bridge.seeds import derive_episode_seeds
 
@@ -55,6 +56,31 @@ def _appearance_catalog() -> dict:
         ],
         "body_texture_parameter": "SkinTexture",
     }
+
+
+def _appearance_catalog_v2() -> dict:
+    catalog = _appearance_catalog()
+    catalog.update(
+        {
+            "policy": "futsalmot_appearance_v2",
+            "catalog_id": "mpfb_players_003_009_v2",
+            "numbering": {
+                "min": 1,
+                "max": 99,
+                "unique": True,
+                "placement": "back",
+                "bone": "spine_03",
+                "atlas": "/Game/FutsalMOT/Characters/MPFB/Textures/JerseyNumbers/T_MPFB_JerseyNumbers_01_99",
+                "decal_material": "/Game/FutsalMOT/Characters/MPFB/Materials/M_MPFB_JerseyNumber_Decal",
+                "parameter": "NumberIndex",
+                "mask_proxy_mesh": "/Game/FutsalMOT/Characters/MPFB/Meshes/SM_MPFB_JerseyNumberMaskQuad",
+                "mask_proxy_material": "/Game/FutsalMOT/Characters/MPFB/Materials/M_MPFB_JerseyNumberMask",
+                "mask_post_process_material": "/Game/FutsalMOT/Materials/M_StencilToID",
+                "mask_stencil_start": 32,
+            },
+        }
+    )
+    return catalog
 
 
 def _appearance_meta(episode_id: str) -> dict:
@@ -141,7 +167,6 @@ def _make_task_dir(
         }
     (repo / "task.json").write_text(json.dumps(task), encoding="utf-8")
     return repo / "task.json"
-
 
 
 def _make_minimal_dataset(ds_root: Path, ep: str, cam_count: int = 1) -> Path:
@@ -265,6 +290,19 @@ class TestTaskValidateCLI:
         assert r.exit_code == 1
         assert "FAIL" in r.output
 
+    def test_validate_accepts_v2_appearance_catalog_without_switching_smoke_config(
+        self, tmp_path, pin_repo_root
+    ):
+        task_file = _make_task_dir(tmp_path, appearance=False)
+        task = json.loads(task_file.read_text(encoding="utf-8"))
+        task["ue"]["appearance"] = _appearance_catalog_v2()
+        task_file.write_text(json.dumps(task), encoding="utf-8")
+
+        result = runner.invoke(app, ["task", "validate", str(task_file)])
+
+        assert result.exit_code == 0, result.output
+        assert "PASS" in result.output
+
 
 class TestTaskResolveCLI:
     def test_resolve_writes_runtime(self, tmp_path, pin_repo_root):
@@ -289,214 +327,301 @@ class TestTaskResolveCLI:
 
 
 class TestTaskStatusAudit:
-
     def test_status_readonly(self, tmp_path, pin_repo_root):
         tf = _make_task_dir(tmp_path)
-        _make_minimal_dataset(tmp_path / 'ds', 'episode_cli_t1')
-        r = runner.invoke(app, ['task', 'status', str(tf)])
+        _make_minimal_dataset(tmp_path / "ds", "episode_cli_t1")
+        r = runner.invoke(app, ["task", "status", str(tf)])
         assert r.exit_code == 0, r.output
-        assert 'episode_cli_t1' in r.output
-        assert 'Pipeline State:' in r.output
-        assert 'export:' in r.output
-        assert 'Run Manifest:' in r.output
+        assert "episode_cli_t1" in r.output
+        assert "Pipeline State:" in r.output
+        assert "export:" in r.output
+        assert "Run Manifest:" in r.output
 
     def test_status_displays_audit_metrics(self, tmp_path, pin_repo_root):
         tf = _make_task_dir(tmp_path)
-        episode = _make_minimal_dataset(tmp_path / 'ds', 'episode_cli_t1')
-        audit = episode / 'audit'
+        episode = _make_minimal_dataset(tmp_path / "ds", "episode_cli_t1")
+        audit = episode / "audit"
         audit.mkdir()
-        (audit / 'soak_audit_report.json').write_text(json.dumps({'passed': True, 'exit_code': 0, 'errors': [], 'warnings': [], 'checks': {}, 'metrics': {'dataset': {'image_count': 1}}}), encoding='utf-8')
-        r = runner.invoke(app, ['task', 'status', str(tf)])
+        (audit / "soak_audit_report.json").write_text(json.dumps({
+            "passed": True,
+            "exit_code": 0,
+            "errors": [],
+            "warnings": [],
+            "checks": {},
+            "metrics": {"dataset": {"image_count": 1}},
+        }), encoding="utf-8")
+
+        r = runner.invoke(app, ["task", "status", str(tf)])
+
         assert r.exit_code == 0, r.output
-        assert 'Audit Metrics:' in r.output
-        assert 'image_count' in r.output
-        assert 'Schema version:' in r.output
-        assert 'Current step:' in r.output
+        assert "Audit Metrics:" in r.output
+        assert "image_count" in r.output
+        assert "Schema version:" in r.output
+        assert "Current step:" in r.output
 
     def test_audit_passes_minimal(self, tmp_path, pin_repo_root):
         tf = _make_task_dir(tmp_path)
-        _make_minimal_dataset(tmp_path / 'ds', 'episode_cli_t1')
-        r = runner.invoke(app, ['task', 'audit', str(tf), '--validation-level', 'none'])
+        _make_minimal_dataset(tmp_path / "ds", "episode_cli_t1")
+        r = runner.invoke(app, ["task", "audit", str(tf), "--validation-level", "none"])
         assert r.exit_code == 0, r.output
-        state_path = pin_repo_root / '.futsalmot' / 'runtime' / 'cli_t1' / 'pipeline_state.json'
-        state = json.loads(state_path.read_text(encoding='utf-8'))
-        assert state['steps']['audit']['status'] == 'COMPLETED'
-        run_manifest = pin_repo_root / '.futsalmot' / 'runtime' / 'cli_t1' / 'run_manifest.json'
-        manifest = json.loads(run_manifest.read_text(encoding='utf-8'))
-        assert manifest['validation']['passed'] is True
-        assert manifest['validation']['audit_report'].endswith('soak_audit_report.json')
-        assert not (tmp_path / 'ds' / 'episode_cli_t1' / 'dataset_manifest.json').exists()
+        state_path = pin_repo_root / ".futsalmot" / "runtime" / "cli_t1" / "pipeline_state.json"
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+        assert state["steps"]["audit"]["status"] == "COMPLETED"
+        run_manifest = pin_repo_root / ".futsalmot" / "runtime" / "cli_t1" / "run_manifest.json"
+        manifest = json.loads(run_manifest.read_text(encoding="utf-8"))
+        assert manifest["validation"]["passed"] is True
+        assert manifest["validation"]["audit_report"].endswith("soak_audit_report.json")
+        assert not (tmp_path / "ds" / "episode_cli_t1" / "dataset_manifest.json").exists()
 
     def test_cleanup_manifest_keeps_pre_delete_artifact_counts(self, tmp_path, pin_repo_root):
         tf = _make_task_dir(tmp_path)
-        episode = _make_minimal_dataset(tmp_path / 'ds', 'episode_cli_t1')
-        audit = episode / 'audit'
+        episode = _make_minimal_dataset(tmp_path / "ds", "episode_cli_t1")
+        audit = episode / "audit"
         audit.mkdir()
-        (audit / 'soak_audit_report.json').write_text(json.dumps({'passed': True, 'exit_code': 0, 'errors': [], 'warnings': [], 'checks': {}}), encoding='utf-8')
-        r = runner.invoke(app, ['task', 'cleanup', str(tf), '--apply'])
+        (audit / "soak_audit_report.json").write_text(json.dumps({
+            "passed": True,
+            "exit_code": 0,
+            "errors": [],
+            "warnings": [],
+            "checks": {},
+        }), encoding="utf-8")
+
+        r = runner.invoke(app, ["task", "cleanup", str(tf), "--apply"])
+
         assert r.exit_code == 0, r.output
-        manifest_path = pin_repo_root / '.futsalmot' / 'runtime' / 'cli_t1' / 'run_manifest.json'
-        manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
-        assert manifest['artifacts']['images']['count'] == 1
-        assert manifest['runtime']['finished_at']
+        manifest_path = pin_repo_root / ".futsalmot" / "runtime" / "cli_t1" / "run_manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        assert manifest["artifacts"]["images"]["count"] == 1
+        assert manifest["runtime"]["finished_at"]
 
     def test_postprocess_skip_all_noop(self, tmp_path, pin_repo_root):
         tf = _make_task_dir(tmp_path)
-        r = runner.invoke(app, ['task', 'postprocess', str(tf), '--skip-cryptomatte', '--skip-annotate', '--skip-validate'])
+        r = runner.invoke(app, ["task", "postprocess", str(tf),
+                                "--skip-cryptomatte", "--skip-annotate", "--skip-validate"])
         assert r.exit_code == 0, r.output
-        state_path = pin_repo_root / '.futsalmot' / 'runtime' / 'cli_t1' / 'pipeline_state.json'
-        state = json.loads(state_path.read_text(encoding='utf-8'))
-        assert state['steps']['postprocess']['status'] == 'COMPLETED'
+        state_path = pin_repo_root / ".futsalmot" / "runtime" / "cli_t1" / "pipeline_state.json"
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+        assert state["steps"]["postprocess"]["status"] == "COMPLETED"
 
     def test_resume_dry_run_does_not_execute_workflow(self, tmp_path, pin_repo_root, monkeypatch):
         tf = _make_task_dir(tmp_path)
         from grf_ue_bridge import pipeline_state
-        path = pipeline_state.state_path(pin_repo_root, 'cli_t1')
-        state = pipeline_state.create_state('cli_t1')
-        pipeline_state.update_step(state, 'export', pipeline_state.StepStatus.COMPLETED)
-        pipeline_state.update_step(state, 'render', pipeline_state.StepStatus.FAILED, error_message='render_summary missing')
+
+        path = pipeline_state.state_path(pin_repo_root, "cli_t1")
+        state = pipeline_state.create_state("cli_t1")
+        pipeline_state.update_step(state, "export", pipeline_state.StepStatus.COMPLETED)
+        pipeline_state.update_step(state, "render", pipeline_state.StepStatus.FAILED,
+                                   error_message="render_summary missing")
         pipeline_state.save_state(state, path)
         called = []
-        monkeypatch.setattr('grf_ue_bridge.workflows.task_export.run_export', lambda *args, **kwargs: called.append('export') or 0)
-        r = runner.invoke(app, ['task', 'resume', str(tf), '--dry-run'])
+        monkeypatch.setattr("grf_ue_bridge.workflows.task_export.run_export",
+                            lambda *args, **kwargs: called.append("export") or 0)
+
+        r = runner.invoke(app, ["task", "resume", str(tf), "--dry-run"])
+
         assert r.exit_code == 0, r.output
-        assert 'export: skip' in r.output
-        assert 'render: retry' in r.output
+        assert "export: skip" in r.output
+        assert "render: retry" in r.output
         assert called == []
 
     def test_resume_dry_run_does_not_create_state(self, tmp_path, pin_repo_root):
         tf = _make_task_dir(tmp_path)
-        state_path = pin_repo_root / '.futsalmot' / 'runtime' / 'cli_t1' / 'pipeline_state.json'
-        r = runner.invoke(app, ['task', 'resume', str(tf), '--dry-run'])
+        state_path = pin_repo_root / ".futsalmot" / "runtime" / "cli_t1" / "pipeline_state.json"
+
+        r = runner.invoke(app, ["task", "resume", str(tf), "--dry-run"])
+
         assert r.exit_code == 0, r.output
         assert not state_path.exists()
 
-    @pytest.mark.parametrize('invalid_artifact', ['missing_manifest', 'bad_schema', 'changed_frames', 'changed_meta', 'bad_meta', 'catalog', 'entity_binding', 'fingerprint', 'invalid_hashed_frames'])
-    def test_resume_retries_completed_appearance_export_with_invalid_manifest_inputs(self, tmp_path, pin_repo_root, invalid_artifact):
+    @pytest.mark.parametrize(
+        "invalid_artifact",
+        [
+            "missing_manifest", "bad_schema", "changed_frames", "changed_meta",
+            "bad_meta", "catalog", "entity_binding", "fingerprint",
+            "invalid_hashed_frames",
+        ],
+    )
+    def test_resume_retries_completed_appearance_export_with_invalid_manifest_inputs(
+        self, tmp_path, pin_repo_root, invalid_artifact
+    ):
         from grf_ue_bridge import pipeline_state
+
         tf = _make_task_dir(tmp_path, appearance=True)
         from grf_ue_bridge.config import resolver
+
         resolved = resolver.resolve_task(tf)
         episode = Path(resolved.trajectory_output)
         episode.mkdir(parents=True)
         meta = _appearance_meta(episode.name)
-        meta_path = episode / 'meta.json'
-        frames_path = episode / 'frames.jsonl'
-        meta_path.write_text(json.dumps(meta), encoding='utf-8')
-        frames_path.write_text(json.dumps(_appearance_frame()) + '\n', encoding='utf-8')
-        manifest = build_appearance_manifest(meta, frames_path, resolved.ue_profile['appearance'])
-        provenance = episode / 'provenance'
+        meta_path = episode / "meta.json"
+        frames_path = episode / "frames.jsonl"
+        meta_path.write_text(json.dumps(meta), encoding="utf-8")
+        frames_path.write_text(json.dumps(_appearance_frame()) + "\n", encoding="utf-8")
+        manifest = build_appearance_manifest(
+            meta, frames_path, resolved.ue_profile["appearance"]
+        )
+        provenance = episode / "provenance"
         provenance.mkdir()
-        manifest_path = provenance / 'appearance.json'
-        manifest_path.write_text(json.dumps(manifest), encoding='utf-8')
-        if invalid_artifact == 'missing_manifest':
+        manifest_path = provenance / "appearance.json"
+        manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+        if invalid_artifact == "missing_manifest":
             manifest_path.unlink()
-        elif invalid_artifact == 'bad_schema':
-            manifest['schema'] = 'wrong_schema'
-            manifest_path.write_text(json.dumps(manifest), encoding='utf-8')
-        elif invalid_artifact == 'changed_frames':
+        elif invalid_artifact == "bad_schema":
+            manifest["schema"] = "wrong_schema"
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+        elif invalid_artifact == "changed_frames":
             frames_path.write_bytes(b'{"step":0,"changed":true}\n')
-        elif invalid_artifact == 'changed_meta':
-            meta['randomness']['ue_visual_seed'] += 1
-            meta_path.write_text(json.dumps(meta), encoding='utf-8')
-        elif invalid_artifact == 'bad_meta':
-            meta_path.write_text('not json', encoding='utf-8')
-        elif invalid_artifact == 'catalog':
-            task_data = json.loads(tf.read_text(encoding='utf-8'))
-            task_data['ue']['appearance']['models'][0]['mesh'] = '/Game/Players/Changed'
-            tf.write_text(json.dumps(task_data), encoding='utf-8')
-        elif invalid_artifact == 'entity_binding':
-            meta['entities'][2]['is_goalkeeper'] = False
-            meta['entities'][3]['is_goalkeeper'] = True
-            meta_path.write_text(json.dumps(meta), encoding='utf-8')
-        elif invalid_artifact == 'fingerprint':
-            manifest['fingerprint'] = '0' * 64
-            manifest_path.write_text(json.dumps(manifest), encoding='utf-8')
-        elif invalid_artifact == 'invalid_hashed_frames':
-            frames_path.write_text('not json\n', encoding='utf-8')
-            manifest = build_appearance_manifest(meta, frames_path, resolved.ue_profile['appearance'])
-            manifest_path.write_text(json.dumps(manifest), encoding='utf-8')
-        state_path = pipeline_state.state_path(pin_repo_root, 'cli_t1')
-        state = pipeline_state.create_state('cli_t1')
-        pipeline_state.update_step(state, 'export', pipeline_state.StepStatus.COMPLETED)
+        elif invalid_artifact == "changed_meta":
+            meta["randomness"]["ue_visual_seed"] += 1
+            meta_path.write_text(json.dumps(meta), encoding="utf-8")
+        elif invalid_artifact == "bad_meta":
+            meta_path.write_text("not json", encoding="utf-8")
+        elif invalid_artifact == "catalog":
+            task_data = json.loads(tf.read_text(encoding="utf-8"))
+            task_data["ue"]["appearance"]["models"][0]["mesh"] = "/Game/Players/Changed"
+            tf.write_text(json.dumps(task_data), encoding="utf-8")
+        elif invalid_artifact == "entity_binding":
+            meta["entities"][2]["is_goalkeeper"] = False
+            meta["entities"][3]["is_goalkeeper"] = True
+            meta_path.write_text(json.dumps(meta), encoding="utf-8")
+        elif invalid_artifact == "fingerprint":
+            manifest["fingerprint"] = "0" * 64
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+        elif invalid_artifact == "invalid_hashed_frames":
+            frames_path.write_text("not json\n", encoding="utf-8")
+            manifest = build_appearance_manifest(
+                meta, frames_path, resolved.ue_profile["appearance"]
+            )
+            manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+        state_path = pipeline_state.state_path(pin_repo_root, "cli_t1")
+        state = pipeline_state.create_state("cli_t1")
+        pipeline_state.update_step(state, "export", pipeline_state.StepStatus.COMPLETED)
         pipeline_state.save_state(state, state_path)
-        result = runner.invoke(app, ['task', 'resume', str(tf), '--dry-run', '--dataset-root', str(tmp_path / 'ds'), '--ue-project-root', str(tf.parent)])
+
+        result = runner.invoke(app, [
+            "task", "resume", str(tf), "--dry-run",
+            "--dataset-root", str(tmp_path / "ds"),
+            "--ue-project-root", str(tf.parent),
+        ])
+
         assert result.exit_code == 0, result.output
-        assert 'export: retry' in result.output
+        assert "export: retry" in result.output
 
     def test_resume_accepts_valid_appearance_manifest(self, tmp_path, pin_repo_root):
         from grf_ue_bridge import pipeline_state
         from grf_ue_bridge.config import resolver
+
         tf = _make_task_dir(tmp_path, appearance=True)
         resolved = resolver.resolve_task(tf)
         episode = Path(resolved.trajectory_output)
         episode.mkdir(parents=True)
         meta = _appearance_meta(episode.name)
-        meta_path = episode / 'meta.json'
-        frames_path = episode / 'frames.jsonl'
-        meta_path.write_text(json.dumps(meta), encoding='utf-8')
-        frames_path.write_text(json.dumps(_appearance_frame()) + '\n', encoding='utf-8')
-        manifest = build_appearance_manifest(meta, frames_path, resolved.ue_profile['appearance'])
-        provenance = episode / 'provenance'
+        meta_path = episode / "meta.json"
+        frames_path = episode / "frames.jsonl"
+        meta_path.write_text(json.dumps(meta), encoding="utf-8")
+        frames_path.write_text(json.dumps(_appearance_frame()) + "\n", encoding="utf-8")
+        manifest = build_appearance_manifest(
+            meta, frames_path, resolved.ue_profile["appearance"]
+        )
+        provenance = episode / "provenance"
         provenance.mkdir()
-        (provenance / 'appearance.json').write_text(json.dumps(manifest), encoding='utf-8')
-        state_path = pipeline_state.state_path(pin_repo_root, 'cli_t1')
-        state = pipeline_state.create_state('cli_t1')
-        pipeline_state.update_step(state, 'export', pipeline_state.StepStatus.COMPLETED)
+        (provenance / "appearance.json").write_text(
+            json.dumps(manifest), encoding="utf-8"
+        )
+
+        state_path = pipeline_state.state_path(pin_repo_root, "cli_t1")
+        state = pipeline_state.create_state("cli_t1")
+        pipeline_state.update_step(state, "export", pipeline_state.StepStatus.COMPLETED)
         pipeline_state.save_state(state, state_path)
-        result = runner.invoke(app, ['task', 'resume', str(tf), '--dry-run', '--dataset-root', str(tmp_path / 'ds'), '--ue-project-root', str(tf.parent)])
+
+        result = runner.invoke(app, [
+            "task", "resume", str(tf), "--dry-run",
+            "--dataset-root", str(tmp_path / "ds"),
+            "--ue-project-root", str(tf.parent),
+        ])
+
         assert result.exit_code == 0, result.output
-        assert 'export: skip' in result.output
+        assert "export: skip" in result.output
 
-    def test_running_state_blocks_new_postprocess_without_force(self, tmp_path, pin_repo_root):
-        tf = _make_task_dir(tmp_path)
-        from grf_ue_bridge import pipeline_state
-        path = pipeline_state.state_path(pin_repo_root, 'cli_t1')
-        state = pipeline_state.create_state('cli_t1')
-        pipeline_state.update_step(state, 'postprocess', pipeline_state.StepStatus.RUNNING)
-        pipeline_state.save_state(state, path)
-        r = runner.invoke(app, ['task', 'postprocess', str(tf), '--skip-cryptomatte', '--skip-annotate', '--skip-validate'])
-        assert r.exit_code != 0
-        assert 'Existing running pipeline state detected' in r.output
-
-    def test_resume_retries_environment_export_when_manifest_is_missing(self, tmp_path, pin_repo_root):
+    def test_resume_retries_environment_export_when_manifest_is_missing(
+        self, tmp_path, pin_repo_root
+    ):
         from grf_ue_bridge import pipeline_state
         from grf_ue_bridge.config import resolver
+
         tf = _make_task_dir(tmp_path, environment=True)
         resolved = resolver.resolve_task(tf)
         episode = Path(resolved.trajectory_output)
         episode.mkdir(parents=True)
         meta = _appearance_meta(episode.name)
-        (episode / 'meta.json').write_text(json.dumps(meta), encoding='utf-8')
-        frames_path = episode / 'frames.jsonl'
-        frames_path.write_text(json.dumps(_appearance_frame()) + '\n', encoding='utf-8')
-        manifest = environment_module.build_environment_manifest(meta, frames_path, resolved.ue_profile['environment_profile'])
-        provenance = episode / 'provenance'
+        (episode / "meta.json").write_text(json.dumps(meta), encoding="utf-8")
+        frames_path = episode / "frames.jsonl"
+        frames_path.write_text(json.dumps(_appearance_frame()) + "\n", encoding="utf-8")
+        manifest = environment_module.build_environment_manifest(
+            meta, frames_path, resolved.ue_profile["environment_profile"]
+        )
+        provenance = episode / "provenance"
         provenance.mkdir()
-        (provenance / 'environment.json').write_text(json.dumps(manifest), encoding='utf-8')
-        (provenance / 'environment.json').unlink()
-        state_path = pipeline_state.state_path(pin_repo_root, 'cli_t1')
-        state = pipeline_state.create_state('cli_t1')
-        pipeline_state.update_step(state, 'export', pipeline_state.StepStatus.COMPLETED)
-        pipeline_state.save_state(state, state_path)
-        result = runner.invoke(app, ['task', 'resume', str(tf), '--dry-run', '--dataset-root', str(tmp_path / 'ds'), '--ue-project-root', str(tf.parent)])
-        assert result.exit_code == 0, result.output
-        assert 'export: retry' in result.output
+        (provenance / "environment.json").write_text(
+            json.dumps(manifest), encoding="utf-8"
+        )
+        (provenance / "environment.json").unlink()
 
-    def test_resume_keeps_legacy_no_environment_export_compatible(self, tmp_path, pin_repo_root):
-        from grf_ue_bridge import pipeline_state
-        tf = _make_task_dir(tmp_path, environment=False)
-        episode = tmp_path / 'ds' / 'episode_cli_t1'
-        episode.mkdir(parents=True)
-        (episode / 'meta.json').write_text(json.dumps({}), encoding='utf-8')
-        (episode / 'frames.jsonl').write_text('{}\n', encoding='utf-8')
-        state_path = pipeline_state.state_path(pin_repo_root, 'cli_t1')
-        state = pipeline_state.create_state('cli_t1')
-        pipeline_state.update_step(state, 'export', pipeline_state.StepStatus.COMPLETED)
+        state_path = pipeline_state.state_path(pin_repo_root, "cli_t1")
+        state = pipeline_state.create_state("cli_t1")
+        pipeline_state.update_step(state, "export", pipeline_state.StepStatus.COMPLETED)
         pipeline_state.save_state(state, state_path)
-        result = runner.invoke(app, ['task', 'resume', str(tf), '--dry-run', '--dataset-root', str(tmp_path / 'ds'), '--ue-project-root', str(tf.parent)])
+
+        result = runner.invoke(app, [
+            "task", "resume", str(tf), "--dry-run",
+            "--dataset-root", str(tmp_path / "ds"),
+            "--ue-project-root", str(tf.parent),
+        ])
+
         assert result.exit_code == 0, result.output
-        assert 'export: skip' in result.output
+        assert "export: retry" in result.output
+
+    def test_resume_keeps_legacy_no_environment_export_compatible(
+        self, tmp_path, pin_repo_root
+    ):
+        from grf_ue_bridge import pipeline_state
+
+        tf = _make_task_dir(tmp_path, environment=False)
+        episode = tmp_path / "ds" / "episode_cli_t1"
+        episode.mkdir(parents=True)
+        (episode / "meta.json").write_text(json.dumps({}), encoding="utf-8")
+        (episode / "frames.jsonl").write_text("{}\n", encoding="utf-8")
+
+        state_path = pipeline_state.state_path(pin_repo_root, "cli_t1")
+        state = pipeline_state.create_state("cli_t1")
+        pipeline_state.update_step(state, "export", pipeline_state.StepStatus.COMPLETED)
+        pipeline_state.save_state(state, state_path)
+
+        result = runner.invoke(app, [
+            "task", "resume", str(tf), "--dry-run",
+            "--dataset-root", str(tmp_path / "ds"),
+            "--ue-project-root", str(tf.parent),
+        ])
+
+        assert result.exit_code == 0, result.output
+        assert "export: skip" in result.output
+
+    def test_running_state_blocks_new_postprocess_without_force(self, tmp_path, pin_repo_root):
+        tf = _make_task_dir(tmp_path)
+        from grf_ue_bridge import pipeline_state
+
+        path = pipeline_state.state_path(pin_repo_root, "cli_t1")
+        state = pipeline_state.create_state("cli_t1")
+        pipeline_state.update_step(state, "postprocess", pipeline_state.StepStatus.RUNNING)
+        pipeline_state.save_state(state, path)
+
+        r = runner.invoke(app, ["task", "postprocess", str(tf), "--skip-cryptomatte",
+                                "--skip-annotate", "--skip-validate"])
+
+        assert r.exit_code != 0
+        assert "Existing running pipeline state detected" in r.output
 
 
 class TestActiveTask:
@@ -531,5 +656,3 @@ class TestActiveTask:
             assert resolver.load_active_task(pin_repo_root) is None
         finally:
             resolver.clear_active_task(pin_repo_root)
-
-import grf_ue_bridge.environment as environment_module
