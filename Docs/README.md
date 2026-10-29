@@ -1,5 +1,5 @@
-- [训练资格与弱标签诊断完整结果](research/STATE_LABEL_ALIGNMENT_A01_RESULTS.md)：3000R窗/42465候选/180118既有状态全部独立核验；29087个known候选在评分资格外，占原逐窗BCE质量83.528252%。只登记R候选资格mask为下一因素，未新训练；993个mask后无known窗口及全部描述区间保留。原strongmotion_RS保持主参照，测试封存。[事前方案](research/STATE_LABEL_ALIGNMENT_DIAGNOSIS_A01.md)。
-- [R候选资格mask唯一因素](research/R_CANDIDATE_ELIGIBILITY_MASK_A01.md)：方法/runtime/完整记录扩展候选及25项针对检查通过；合成CPU检查不替代真实输入/CUDA/AdamW一步或首1000门禁，目前未正式训练。
+- [训练资格与弱标签诊断完整结果](research/STATE_LABEL_ALIGNMENT_A01_RESULTS.md)：3000R窗/42465候选/180118既有状态全部独立核验；29087个known候选在评分资格外，占原逐窗BCE质量83.528252%。该诊断阶段零更新，后续R候选资格mask单因素现已完整闭合；993个mask后无known窗口及全部描述区间保留。原strongmotion_RS保持主参照，测试封存。[事前方案](research/STATE_LABEL_ALIGNMENT_DIAGNOSIS_A01.md)。
+- [R候选资格mask完整结果](research/R_CANDIDATE_ELIGIBILITY_A01_RESULTS.md)：真实输入/CPU与CUDA/首1000/十八臂378检查点/180追踪及独立终验全部闭合；新RS在12场逐场均值均低于原strongmotion_RS，保留全部75指标与15gap区间和负结果。[冻结方案](research/R_CANDIDATE_ELIGIBILITY_MASK_A01.md)及[实际执行](research/R_CANDIDATE_ELIGIBILITY_EXECUTION_A01.md)。
 - [有效决策机会核查](research/DECISION_OPPORTUNITY_A01_RESULTS.md)：12条既有训练域日志180118行、84区间及独立终验闭合；2835行正负双方Pose结构支持机会中可信错选0/未匹配21/unknown4，不等Pose无用或可纠错保证。后续3000窗口anchor审计与R集合监督也已闭合，当前入口见资格/弱标签诊断；原strongmotion_RS保持主参照。[事前协议](research/DECISION_OPPORTUNITY_A01.md)。
 - [自由状态R窗口来源验证完整结果](research/STATE_ALIGNED_R_TRAINING_A01_RESULTS.md)：十八臂18000更新/378检查点、180项自由追踪、360来源及60指标/12gap区间均已独立终验闭合；新RS三面板AssA低于原RS，本具体窗口政策未提高追踪能力。原始负结果保留，测试封存；[协议](research/STATE_ALIGNED_R_TRAINING_A01.md)与[事前分析](research/STATE_ALIGNED_R_ANALYSIS_A01.md)。
 # 技术文档索引

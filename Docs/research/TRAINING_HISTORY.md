@@ -587,3 +587,44 @@ a01成功后新增known UID/label记录并明确空集为`(loss_part*0).sum()`�
 新last1000 loader不调用训练prepare/audit、不读池/mask/标签，原GT隔离/候选/分配/阈值不改。真实96唯一帧/336诊断消费，cold/A→B→A/双spawn五比较的完整MOT/native/audit逐值相同，五worker/parent已退，准入收据b70164ae9601db84d97b767cefd1786c4987d0b263d71d8b5ba20c133a1760fd。runtime6/control8/analysis12/verifier13纯fixture通过；首次测试cwd错误导致两个ModuleNotFoundError在实际fixture前停止，0模型/帧/更新，小failed已保留，换正确cwd后通过、未装库改环境。
 
 唯一180 CPU追踪已按四文件62e9c969、正式协议a5bd1186启动；首R/RS两源完整TrackEval/GT计数/ID0/全预测门禁通过后，继续余178和自动分析。2track+1metric/线程1/输入LRU128MiB最多2源/模型256MiB最多3项，RAM8GiB/commit6GiB保留。原180strongmotion与180aligned基线仅读引用，合540绝对来源而非540新增评价；五族450指标/450gap配对、75指标/15gap CI/全负项及null保留，bootstrap10000 seed20261029、t95及LOO、三比赛面板分开。独立终验单文件636ec5c5已安装但未执行。尚无完整新追踪成绩；测试116/187/test持续封存。[完整绝对条件与证据](R_CANDIDATE_ELIGIBILITY_EXECUTION_A01.md)。
+
+## R资格mask完整追踪后独立终验预飞失败（2026-10-29）
+
+180追踪/180metric及自动完整分析均成功，三worker/controller/launcher实际退出；正式控制器墙钟930.7681466秒，不外推其他实验吞吐。独立终验a01在metadata预飞沿用了旧CE的嵌套bootstrap字段，真实冻结计划是bootstrap_seed/bootstrap_repeats平铺格式，触发KeyError；在intent/MOT/区间核查前停止，不能称已终验。原636ec5c5单文件、正式四文件62e9c969、配置a5bd1186/原分析计划及180成功结果不改，原日志与tracking_verifier_attempt_a01/failed.json（SHA2c30dfabffe16afe71024f6fa5e258d38e680162500fde7d68ac1ba0c877333d）保留。只修独立核查器并加真实flat元数据回归，再签独立a02终验，不重跑训练/模型/追踪/TrackEval/旧审计，测试继续封存。
+
+## R候选资格mask完整单因素闭合：没有超越原strongmotion_RS（2026-10-29）
+
+目的与训练对象：只让运动关联头的R BCE使用概率前active且enabled候选，减少训练监督与实际评分资格脱节；原R窗口/UID/历史/标签/norm/init/S保持。不是Pose训练或算法伪标签。完整结果见[R资格mask结果](R_CANDIDATE_ELIGIBILITY_A01_RESULTS.md)，原强motion_RS继续作为主参照，新18模型保留负结果。
+
+绝对条件：194→64→32→1 ReLU/14593可训练参数/FP32、后170归一Pose列0，无RGB/epoch增广；AdamW LR0.001/wd0.0001/betas(0.9,0.999)/eps1e-8。18=R/RS×fold4/6/9×seed20261024/25/26，每臂1000步/3R共3000R，RS另1原balancedS/步共1000S，资格内known逐窗mean再固定三窗mean、S系数1/3；空窗带图零仍更新AdamW，last1000无EMA/best。三fold各1000唯一R、两允许train来源各500，来自SNMOT060/097/151，未补采；原12评价来源均已观察开发，最终116/187/test未读。
+
+实际18000更新/54000R/9000S，R all-known764370/634320、S46287/25191，有效Rknown110754（正19656/负91098）、监督unknown0、资格unknown37458、排除known523566、空17874/非空36126窗。20诊断更新/60R/8S另列；357本次完整检查点读回+首21独立继承覆盖378、全lossLRgrad/UIDepoch/pair链、原init/norm/S与九R-RS同序实核，训练/auditor已退。
+
+180新追踪/TrackEval、原360基线只读复用、540绝对来源/450指标和450gap配对、60比赛对/72绝对比赛/18面板/75指标与15gap区间均完整独立终验通过，producer/worker/launcher/verifier真实全部退出。2track+1metric/线程1、输入128MiB两源/模型256MiB三项、RAM8GiB/commit6GiB预留；high0.25/low0.10/new0.25/buffer30/match0.80/lowassign0.50/unconfirmed0.70/fuseTrue，dt1.2秒/面积0.25至4/中心2/概率0.50不改，GT仅独立评价、ID0合法/DO_PREPROCFalse。正式追踪控制器墙钟930.7681466秒，仅该范围不称整管线/旧实验提速。
+
+本轮相关RS方法绝对成绩（百分制，完整六方法五指标见结果文档）：
+
+| 面板 | 方法 | AssA | HOTA | IDF1 |
+|---|---|---:|---:|---:|
+| 原三场 | 原strongmotion_RS | 31.864158 | 42.295962 | 47.477622 |
+| 原三场 | aligned-BCE_RS | 27.885724 | 39.604737 | 43.043551 |
+| 原三场 | 新资格mask_RS | 27.369318 | 39.236534 | 42.546521 |
+| 旧外部两场 | 原strongmotion_RS | 40.115976 | 50.204712 | 57.697181 |
+| 旧外部两场 | aligned-BCE_RS | 37.180649 | 48.267471 | 54.638138 |
+| 旧外部两场 | 新资格mask_RS | 38.255093 | 48.959405 | 55.226105 |
+| 七场已观察 | 原strongmotion_RS | 30.212884 | 40.891603 | 45.390919 |
+| 七场已观察 | aligned-BCE_RS | 27.855607 | 39.066704 | 43.056748 |
+| 七场已观察 | 新资格mask_RS | 27.773657 | 39.037479 | 42.727230 |
+
+新RS−原RS的AssA差/t95/比赛bootstrap95：
+- 原三场：-4.494840点，t95[-7.179558,-1.810123]，bootstrap95[-5.160920,-3.247874]。
+- 旧外部两场：-1.860883点，t95[-11.670083,+7.948317]，bootstrap95[-2.632884,-1.088882]。
+- 七场已观察：-2.439227点，t95[-4.336799,-0.541654]，bootstrap95[-3.909751,-1.135134]。
+
+12场各比赛fold/seed平均全部下降；原三场/七场t95和bootstrap均负，旧两场t95跨0而bootstrap负，两种原区间全部保留，不择有利区间、不称等效。新RS−aligned_RS原三/旧二/七场为−0.516406/+1.074445/−0.081950，三个t95跨0；七场gap新RS−aligned_RS为−0.762952点[-1.175721,-0.350182]、七场全负。正项亦保留：新RS−新R七场AssA+0.917542[0.189454,1.645631]、HOTA/IDF1/gap也为正；主AssA合成交互CI跨0，不能抵消对原RS的退化或证明mask/Pose/合成总体收益。次DetA正交互完整见未校正75区间。
+
+原因边界：83.528252%资格外loss质量不是错误标签或主瓶颈证明。mask改变监督构成（known候选正例计数比例3.16%→17.75%、993/3000空窗），固定窗均值/阈值下的约束和分数校准变化只是待核机制；未改weak-label/unknown、teacher历史或Kalman，不能从终局MOT宣称这些是已证主因。下一步先复用现有记录做标签/可达性/状态缺失的有界核对，另签协议再选唯一因素，本轮不启动第二训练因素。
+
+终验a01曾在metadata预飞误读旧nested bootstrap字段而失败，MOT/统计检查0，原636ec5c5/failed/日志保留；仅独立verifier修flat字段和实际spawn父子身份，15 pure fixtures过，另签a02执行d5cb8811/单文件fe028359（source bba18de8）在同一a5bd协议/62e9源码/原180结果上真实通过，未重训练/追踪/TrackEval/旧审计。首次SSH阶段推送被远端关闭，正常重试成功，未改凭据或force。
+
+完整完成根SHA675d07528839ff34d39013a419db35f12dc2560bc4fa4457341a88bf490f52f7；最终独立收据d3c15166a3dfe0c4bb809d136a1adb67801f49905d1b38234e772af7602ce2c8；全分析b646984183bd90a652ac3d813a27db76950d67499f74607702f7c74145971310。原始540绝对/450pair/全部75+15区间/LOO/负项/seed/null/失败在DResearch/pose/r_candidate_eligibility_a01留存，没有新检测/Pose图像推理或渲染。仅本因素闭合，不称整论文研究完成。

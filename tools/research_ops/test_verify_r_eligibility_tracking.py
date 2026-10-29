@@ -29,6 +29,37 @@ def records(zero=False):
 
 
 class REligibilityTerminal(unittest.TestCase):
+    def flat_plan(self):
+        return dict(schema='r_candidate_eligibility_tracking_analysis_plan_v1',status='frozen_before_numeric_admission_and_training',
+            comparison_ids=['new_RS_minus_original_strongmotion_RS','new_RS_minus_aligned_BCE_RS','new_R_minus_aligned_BCE_R','new_RS_minus_new_R','new_synthetic_increment_minus_aligned_synthetic_increment'],
+            comparison_families=5,metric_interval_count=75,gap_interval_count=15,bootstrap_seed=20261029,bootstrap_repeats=10000,
+            bootstrap_algorithm='Python_MT19937_randrange_match_resampling_linear_quantiles',Student_t_df=[2,1,6],panels=dict(old_heldout=3,old_external=2,seven_observed=7),
+            primary_metric='AssA',secondary_metrics=['HOTA','IDF1','DetA','MOTA'],main_reference='original_uncalibrated_strongmotion_RS',gap_event_ledger_total=3690,
+            leave_one_match_out=True,within_match_average_matched_fold_seed_then_equal_matches=True,unadjusted_descriptive_intervals=True,
+            all_negative_zero_null_seed_fold_preserved=True,first_report_absolute_scores_for_all_methods_and_panels=True,all12_are_observed_development=True,
+            gap_is_physical_occlusion=False,equivalence_or_noninferiority_delta=None,best_model_selection=False,test116187_sealed=True,
+            tracking_execution_requires_new_loader_numeric_full_record_admission=True)
+
+    def test_actual_flat_analysis_plan_contract_is_complete_without_nested_bootstrap(self):
+        plan=self.flat_plan();result=v.validate_analysis_plan(plan,old_fixture.panels())
+        self.assertEqual((result['bootstrap_seed'],result['bootstrap_repeats'],result['metric_interval_count'],result['gap_interval_count']),(20261029,10000,75,15))
+        self.assertTrue(result['old_heldout_explicitly_maps_to_original_heldout'])
+        for key in ('bootstrap_seed','bootstrap_repeats','comparison_ids','gap_interval_count','metric_interval_count'):
+            bad=deepcopy(plan);bad.pop(key)
+            with self.assertRaises(ValueError):v.validate_analysis_plan(bad,old_fixture.panels())
+
+    def test_old_nested_plan_wrong_seed_ids_counts_and_boundaries_refused(self):
+        changes=(lambda p:p.update(bootstrap=dict(seed=20261029,repeats=10000)),lambda p:p.update(bootstrap_seed=20261028),
+            lambda p:p.update(bootstrap_repeats=9999),lambda p:p.update(comparison_ids=list(reversed(p['comparison_ids']))),
+            lambda p:p.update(metric_interval_count=60),lambda p:p.update(gap_interval_count=12),lambda p:p.update(Student_t_df=[2,2,6]),
+            lambda p:p.update(panels=dict(original_heldout=3,old_external=2,seven_observed=7)),lambda p:p.update(leave_one_match_out=False),
+            lambda p:p.update(equivalence_or_noninferiority_delta=.1),lambda p:p.update(test116187_sealed=False))
+        for edit in changes:
+            bad=self.flat_plan();edit(bad)
+            with self.assertRaises(ValueError):v.validate_analysis_plan(bad,old_fixture.panels())
+        nested=self.flat_plan();nested.pop('bootstrap_seed');nested.pop('bootstrap_repeats');nested['bootstrap']=dict(seed=20261029,repeats=10000)
+        with self.assertRaises(ValueError):v.validate_analysis_plan(nested,old_fixture.panels())
+
     def test_terminal180_sources540_pairs450_and_no_active_process_claim(self):
         cfg=dict(jobs=[dict(job_id=str(i)) for i in range(180)]);protocol=dict(path='config',sha256='sha')
         state=dict(schema='r_eligibility_tracking_control_v1',status=v.DONE,protocol=protocol,active=[],
@@ -166,6 +197,12 @@ class REligibilityTerminal(unittest.TestCase):
         self.assertTrue(v.processes_absent([dict(ProcessId=10,Name='python.exe',CommandLine='python user_game.py')],state)['producer_processes_absent'])
         for command in ('python D:/code/r_eligibility_tracking_control.py --execute','powershell -Command python D:/code/control_r_eligibility_training.py --execute'):
             with self.assertRaises(ValueError):v.processes_absent([dict(ProcessId=20,Name='python.exe',CommandLine=command)],state)
+        own=dict(ProcessId=11,ParentProcessId=10,Name='python.exe',CommandLine='python -c "from multiprocessing.spawn import spawn_main; spawn_main(parent_pid=10, pipe_handle=24)"')
+        with self.assertRaises(ValueError):v.processes_absent([own],state)
+        for changed in (dict(own,ParentProcessId=99,CommandLine=own['CommandLine'].replace('parent_pid=10','parent_pid=99')),
+                        dict(own,ParentProcessId=99),dict(own,CommandLine=own['CommandLine'].replace('parent_pid=10','parent_pid=99'))):
+            result=v.processes_absent([changed],state)
+            self.assertTrue(result['producer_processes_absent']);self.assertEqual(result['historical_PIDs_present_with_different_identity'],[changed])
         with patch.object(v.subprocess,'run',return_value=SimpleNamespace(stdout='[]')) as command:
             self.assertEqual(v.process_snapshot(),[]);self.assertIn('powershell|pwsh',command.call_args[0][0][-1])
 

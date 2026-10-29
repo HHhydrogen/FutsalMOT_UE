@@ -391,11 +391,16 @@ def original_records(cfg,old,originals,totals,gt_rows):
 def processes_absent(rows,state):
     names=r'r_eligibility_tracking_control|r_eligibility_train|control_r_eligibility_training|validate_r_eligibility_numeric|state_aligned_tracking_control|pose_velocity_tracking_control|state_gap_control'
     pattern=re.compile(r'(?:^|[\\/\s"\x27])(?:'+names+r')[.]py(?=$|[\s"\x27])',re.I)
-    historical={state['controller_pid']}|{r['worker_pid'] for r in state['workers']}
+    worker_ids={r['worker_pid'] for r in state['workers']};historical={state['controller_pid']}|worker_ids
+    def experiment_spawn(row):
+        command=row.get('CommandLine') or '';parent=re.search(r'\bparent_pid\s*=\s*(\d+)\b',command)
+        return (row.get('ProcessId') in worker_ids and (row.get('Name') or '').lower().startswith('python')
+            and 'multiprocessing.spawn' in command and parent is not None and int(parent.group(1))==state['controller_pid']
+            and row.get('ParentProcessId')==state['controller_pid'])
     blocked=[r for r in rows if pattern.search(r.get('CommandLine') or '') or (r.get('Name') or '').lower().startswith('unrealeditor')
-        or (r.get('ProcessId') in historical and (r.get('Name') or '').lower().startswith('python') and 'multiprocessing.spawn' in (r.get('CommandLine') or ''))]
+        or experiment_spawn(r)]
     require(not blocked,'真实controller/worker/launcher或UE仍在：'+canonical(blocked))
-    return dict(actual_CIM_checked=True,producer_processes_absent=True,exact_Name_CommandLine_checked=True,PID_alone_not_used=True,
+    return dict(actual_CIM_checked=True,producer_processes_absent=True,exact_Name_CommandLine_checked=True,PID_alone_not_used=True,spawn_parent_pid_and_actual_CIM_parent_bound=True,
         historical_PIDs_present_with_different_identity=[r for r in rows if r.get('ProcessId') in historical])
 
 
@@ -419,6 +424,32 @@ def training_metadata(cfg):
     require(state['schema']=='R_candidate_eligibility18_training_control_v1' and state['status']=='complete18_R_candidate_eligibility_training_wait_independent_audit_tracking'
         and state['active'] is None and state['protocol_sha256']==LEARNING_SHA and len(state['completed_train'])==18,'预算/完成根必须共同绑定实际18训练终态，不读旧候选control路径')
     return dict(training_complete=cfg['training_complete'],training_budget=cfg['training_budget'],training_control_state=cfg['training_control_state'],checkpoint_or_training_budget_audit_reexecuted=False)
+
+
+def validate_analysis_plan(plan,panels):
+    """独立核本轮已冻结flat计划；不兼容旧CE nested bootstrap或默认补值。"""
+    required={'schema','status','comparison_ids','comparison_families','metric_interval_count','gap_interval_count','bootstrap_seed','bootstrap_repeats',
+        'bootstrap_algorithm','Student_t_df','panels','primary_metric','secondary_metrics','main_reference','gap_event_ledger_total','leave_one_match_out',
+        'within_match_average_matched_fold_seed_then_equal_matches','unadjusted_descriptive_intervals','all_negative_zero_null_seed_fold_preserved',
+        'first_report_absolute_scores_for_all_methods_and_panels','all12_are_observed_development','gap_is_physical_occlusion','equivalence_or_noninferiority_delta',
+        'best_model_selection','test116187_sealed','tracking_execution_requires_new_loader_numeric_full_record_admission'}
+    require(isinstance(plan,dict) and required<=set(plan) and 'bootstrap' not in plan,'本轮只接受完整flat分析计划，不接受缺失/nested旧schema')
+    require(plan['schema']=='r_candidate_eligibility_tracking_analysis_plan_v1' and plan['status']=='frozen_before_numeric_admission_and_training'
+        and plan['comparison_ids']==list(COMPARISONS) and plan['comparison_families']==5 and plan['metric_interval_count']==75 and plan['gap_interval_count']==15,
+        '已冻结五比较身份/75指标15gap区间不同')
+    require(type(plan['bootstrap_seed']) is int and plan['bootstrap_seed']==20261029 and type(plan['bootstrap_repeats']) is int and plan['bootstrap_repeats']==10000
+        and plan['bootstrap_algorithm']=='Python_MT19937_randrange_match_resampling_linear_quantiles' and plan['Student_t_df']==[2,1,6],
+        'flat计划bootstrap seed/次数/算法或比赛t自由度不同')
+    panels_map(panels)
+    require(plan['panels']==dict(old_heldout=3,old_external=2,seven_observed=7) and plan['primary_metric']=='AssA' and plan['secondary_metrics']==list(METRICS[1:])
+        and plan['main_reference']=='original_uncalibrated_strongmotion_RS' and plan['gap_event_ledger_total']==3690,'原三/旧二/七比赛面板、主参照或全gap分母不同')
+    true_fields=('leave_one_match_out','within_match_average_matched_fold_seed_then_equal_matches','unadjusted_descriptive_intervals',
+        'all_negative_zero_null_seed_fold_preserved','first_report_absolute_scores_for_all_methods_and_panels','all12_are_observed_development','test116187_sealed',
+        'tracking_execution_requires_new_loader_numeric_full_record_admission')
+    require(all(plan[k] is True for k in true_fields) and plan['gap_is_physical_occlusion'] is False and plan['best_model_selection'] is False
+        and plan['equivalence_or_noninferiority_delta'] is None,'完整负项/null/LOO/开发封存与无等效界限边界不同')
+    return dict(flat_analysis_plan_schema_verified=True,comparison_ids=list(COMPARISONS),bootstrap_seed=20261029,bootstrap_repeats=10000,
+        metric_interval_count=75,gap_interval_count=15,old_heldout_explicitly_maps_to_original_heldout=True)
 
 
 def metadata(cfg):
@@ -456,8 +487,8 @@ def metadata(cfg):
     manifest=read(cfg['bundle_manifest']);require(len(manifest['files'])==4 and hashlib.sha256(canonical(manifest['files']).encode()).hexdigest()==bundle.name,'四源码内容地址不同')
     for item in manifest['files']:checked(dict(path=str(bundle/item['path']),sha256=item['sha256']))
     for k in ('source_state_aligned_runtime','source_worker_framework','original_inputs_source','track_guard_source','worker_service','worker_support'):checked(cfg[k])
-    plan=read(cfg['analysis_plan']);require(plan['bootstrap']['seed']==20261029 and plan['bootstrap']['repeats']==10000
-        and plan['comparison_families']==5 and plan['metric_interval_count']==75 and read(cfg['learning_protocol'])['analysis_plan']==cfg['analysis_plan'],'训练前分析计划不同')
+    validate_analysis_plan(read(cfg['analysis_plan']),cfg['panels'])
+    require(same_signed_file(read(cfg['learning_protocol'])['analysis_plan'],cfg['analysis_plan']),'flat计划必须同已冻结学习协议实际引用，不倒签分析')
     aligned_cfg=read(cfg['aligned_tracking_protocol']);aligned_manifest=read(cfg['aligned_tracking_manifest']);aligned_analysis=read(cfg['aligned_analysis'])
     require(aligned_cfg['inventory']==cfg['aligned_inventory'] and same_signed_file(aligned_cfg['learning_protocol'],cfg['aligned_learning_protocol'])
         and aligned_manifest['schema']=='state_aligned_tracking_manifest_v1' and aligned_manifest['status']=='complete180_state_aligned_tracking_and_evaluation'
