@@ -628,3 +628,14 @@ a01成功后新增known UID/label记录并明确空集为`(loss_part*0).sum()`�
 终验a01曾在metadata预飞误读旧nested bootstrap字段而失败，MOT/统计检查0，原636ec5c5/failed/日志保留；仅独立verifier修flat字段和实际spawn父子身份，15 pure fixtures过，另签a02执行d5cb8811/单文件fe028359（source bba18de8）在同一a5bd协议/62e9源码/原180结果上真实通过，未重训练/追踪/TrackEval/旧审计。首次SSH阶段推送被远端关闭，正常重试成功，未改凭据或force。
 
 完整完成根SHA675d07528839ff34d39013a419db35f12dc2560bc4fa4457341a88bf490f52f7；最终独立收据d3c15166a3dfe0c4bb809d136a1adb67801f49905d1b38234e772af7602ce2c8；全分析b646984183bd90a652ac3d813a27db76950d67499f74607702f7c74145971310。原始540绝对/450pair/全部75+15区间/LOO/负项/seed/null/失败在DResearch/pose/r_candidate_eligibility_a01留存，没有新检测/Pose图像推理或渲染。仅本因素闭合，不称整论文研究完成。
+
+## 弱标签/可达性/历史传播：记录边界核查闭合与零更新方案（2026-10-29）
+
+用户要求保留原strongmotion_RS，先按已有记录诊断、不急加训。主智能体统筹，三子智能体独立核查标签来源、正式输出可用性和旧历史日志。[有界方案](WEAK_LABEL_REACHABILITY_REUSE_A01.md)已写：三组540小metric可做event_uid端点恢复/退化配对；旧6R单元3000窗口/42465候选可做弱标签风险与可达性新交叉；旧6RS最多12固定首事件/4500前缀旧job帧/372事件帧可观察错误raw历史暴露，独立核查第二次I/O同上界另列。新SGD/R-S曝光/模型前向/图像推理/追踪推进/solver/GT坐标/TrackEval/渲染均0，测试116/187/test未读。
+
+实证缺口：三组正式180没有持久化逐帧native/history/KF/assignment，新/旧aligned仅有native SHA与聚合audit；event_uid不含可解析帧号，不能借它展开新MOT上下文。候选只保留0/1/null，没有逐candidate原IoU或negative/unknown子原因，统一not_retained，不由聚合计数回填。1547无known正例+unknown、256anchor漂移与23资格外正例不当错标签证明；旧235事件eligible0/四支0/45CI null保持。旁观active/enabled是原规则重算资格，不当逐格实际MLP或错误因果。
+
+新整数诊断实现纯fixture：窗口7、历史14、gap5、驱动3通过；没有执行真实新诊断，尚无新计数或因素选择。计划540报告≤199260事件观察/三族≤99630配对，六R单元×五风险×每类2窗最多60案例槽、缺类不填。原90区间只引用不重算。下一步冻结最小SHA源码/具体输入清单，再执行及独立核查；现阶段不加训或引入Pose伪标签。两个预备只读查询曾因PowerShell错误使用Bash花括号和CSV BOM字段读取失败，均在数据产出前停止，纠正查询语法/UTF8sig后取得schema，未改原数据或安装库。
+
+
+阶段一实际冻结：协议frozen_a01/config.json SHA4ee32f9eb67a522ac1630ba0044b2afcd381b64c956d438a9fe85741e5e0e6bc，4文件最小bundle d94129bbd4e00e5b81fcdfcc1b7fb9fc54ee85835d6fbff67c98884b62ff2936，默认只读预飞通过。另只预览1条旧RS帧schema，确认tracks_after三列表/stage字段，与新诊断4500前缀读取预算分开；新增推进0。540报告/540receipt、199260观察/99630配对、3000窗/42465候选、60案例槽、6RS/12事件/4500前缀/372目标及独立核查第二次同界I/O均事前冻结。阶段二真实数据分析尚未执行，不预设原因或选择训练因素。

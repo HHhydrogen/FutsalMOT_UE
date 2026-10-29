@@ -2,7 +2,9 @@
 
 更新：2026-10-29。历史过程见Git及对应运行收据；本页不保留过期PID流水。
 
-## 当前：R候选资格mask完整单因素已闭合，继续保留原strongmotion_RS
+## 当前：原strongmotion_RS保持主参照，开始已有记录有界诊断
+
+新授权为[弱标签/可达性/历史暴露的记录复用诊断](Docs/research/WEAK_LABEL_REACHABILITY_REUSE_A01.md)，记录边界已由三子智能体分别核查；尚未执行真实新诊断，不加训。只读540既有metric、6R派生3000窗口/42465候选及旧6RS有界历史日志；新模型内部native/history未保存、label子原因未保存均明确not_retained，原235/eligible0不改。先冻结并完成新整数诊断/独立核查再制定下一方案，所有新模型/追踪/GT/TrackEval调用0，测试继续封存。
 
 [完整结果与全部区间](Docs/research/R_CANDIDATE_ELIGIBILITY_A01_RESULTS.md)；[绝对参数/执行与失败记录](Docs/research/R_CANDIDATE_ELIGIBILITY_EXECUTION_A01.md)。18臂18000更新/54000R/9000S、357新读+首21继承覆盖378检查点、180追踪/评价、540新旧来源/450指标与450gap配对、75指标/15gap描述区间和独立终验均已真实闭合，训练/worker/controller/launcher/auditor/verifier全部实际退出。原116/187/test继续封存，无活动研究训练或追踪后台。
 
