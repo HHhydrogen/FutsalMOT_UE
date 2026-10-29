@@ -2,15 +2,15 @@
 
 更新：2026-10-29。历史过程见Git及对应运行收据；本页不保留过期PID流水。
 
-## 当前：R资格mask真实数值与首千步门禁通过，十八臂正式训练继续
+## 当前：R资格mask十八臂已审计闭合，180自由追踪唯一后台运行
 
-本轮只改R候选资格loss mask，原strongmotion_RS为主参照，aligned-BCE18为已证明全true数值兼容的matched-control。[绝对参数与实际执行](Docs/research/R_CANDIDATE_ELIGIBILITY_EXECUTION_A01.md)；旧资格/弱标签诊断已闭合，不重跑。原3000R/42465pair侧表和九R表已冻结并独立逐行核验，输入完成根48e50a9a；科学协议d5880b07、八文件98293655不变。真实CPU/CUDA20诊断更新/60R/8S、step0/1完整记录、loss/梯度/model/AdamW/四RNG逐值门禁成功，学习准入根7c8dd9a6。
+[绝对参数/实际证据](Docs/research/R_CANDIDATE_ELIGIBILITY_EXECUTION_A01.md)。原strongmotion_RS仍为主参照，aligned-BCE18为全true逐值兼容matched-control。只改R资格内known-BCE mask，原pool/标签/UID/历史/norm/init/S/曝光/阈值不改；194→64→32→1 ReLU14593/FP32/后170Pose列0，AdamW LR0.001/wd0.0001，R/RS×fold4/6/9×seed20261024/25/26，各1000步/3R，RS另1S及系数1/3，last1000非EMA无best。
 
-首game4/20261024/R1000 CUDA及独立21完整checkpoint/1000步记录门禁已通过（28096dc3），之后才继续其余17臂。唯一权威状态DResearch/pose/r_candidate_eligibility_a01/training_control_a02/driver_state.json。a01控制器写入API遗漏在任何训练子进程前失败/正式0更新；现场保留，另签ee280488执行声明使用单文件f5614469控制器，只修调度不改训练科学协议、不重放成功数值组。禁止第二控制器、手工散跑、热改活动八文件或重训已完成臂。
+输入独立核验、真实CPU/CUDA20诊断更新/60R/8S、首1000与独立21检查点、全18正式预算均闭合。实际18000更新/54000R/9000S，有效Rknown110754/空17874；独立357新读+21继承覆盖378、全记录/九R-RS同序/原init-norm-S和真实退出通过，训练根894ac390、预算b4d206ee。不重训、重审或重建成功输入；原控制器a01预飞写入API失败0更新及独立a02执行声明全部保留，原科学协议d5880b07/八文件98293655不改。
 
-18臂R/RS×fold4/6/9×seed20261024/25/26，各1000步、每步3R、RS另1S，AdamW LR0.001/wd0.0001、FP3214593参数、last1000非EMA无best，完整记录0/每50/1000。目标18000更新/54000R/9000S；R有效known110754、空窗17874，不称有效标签预算相同。RAM8GiB/commit6GiB/VRAM2GiB预留，不启UE或抢用户应用。
+真实新loader cold/ABA/双spawn96唯一帧/336诊断消费与五worker/parent退出已过（b70164ae），默认只读180预飞已过，首R/RS两源完整TrackEval/GT计数/ID0/全预测门禁已过。唯一权威状态DResearch/pose/r_candidate_eligibility_a01/tracking_control_a01/driver_state.json，四文件62e9c969、正式协议a5bd1186，不热改/第二控制器/手工散跑。2track+1metric/线程1/输入128MiB两源/模型256MiB三项，RAM8GiB/commit6GiB保留；无GPU训练/检测Pose推理/UE竞争。
 
-下一步：全18齐/真实退出后独立预算审计，继承首21并实读357覆盖378；再冻结并准入新180追踪loader/worker，执行匹配自由追踪、75指标/15gap描述CI及独立终验。训练成功不等追踪能力改善，当前无新AssA/HOTA/IDF1。全部负结果/失败/unknown保存，原3/旧2/七场分面板，测试116/187/test持续封存；每阶段即时更新历史、精确提交推送和汇报，无每日历史定时任务。
+180新评价+原180strongmotion与180aligned只读引用，六方法各原3/旧2/七场先绝对成绩，五族450指标/450gap配对、75指标/15gap区间（t95/10000bootstrap seed20261029/LOO）全部保留。尚无完整新成绩，不看局部结果调参。全180/自动分析/真实退出后，才执行已安装独立终验636ec5c5，成功后根/报告/历史/精确push及阶段汇报。测试116/187/test持续封存，不恢复每日历史定时任务。
 
 ## 历史诊断已闭合：训练候选与自由状态差异
 

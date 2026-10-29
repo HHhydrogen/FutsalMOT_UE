@@ -577,3 +577,13 @@ a01成功后新增known UID/label记录并明确空集为`(loss_part*0).sum()`�
 控制器a01在写预飞收据时调用不存在的runtime.write_new，任何训练子进程前失败，正式更新0/空目录/日志与controller_attempt_a01/failed.json保留。独立单文件控制器f5614469f2c6a8821eb0e111110ea6473f5f5ba389737a51ffd7ac01eca35e6a只修journal写入API并显式绑定科学协议和0更新失败证据，8项针对检查通过；原八文件98293655与科学协议d5880b07不变，已成功20步不重放。a02唯一启动，实际首game4/20261024/R1000 CUDA完成且独立CPU21完整检查点/步链核查通过（首门禁SHA28096dc3f43cd4fc2749d1da439c13a98a5e318e9a85070bac6c0239f7148b64），之后才执行其余17臂。当前训练继续中，不称18全齐或新追踪改善。
 
 最终独立预算审计将复用首21证据、实读其余357覆盖378；之后新loader/worker真实门禁再执行180追踪，五族75指标/15gap全部区间和负项保留，测试116/187/test未读。阶段没有新AssA/HOTA/IDF1，不能把数值一致或训练loss当追踪收益。
+
+## R资格mask十八臂真实预算闭合与180追踪启动（2026-10-29）
+
+承接首1000/独立21门禁，18臂真实全部完成，训练/launcher/审计均实际退出。独立审计b4d206ee8d8d0f1e7f548273b3ab232f41bb2356fb3bfb110021b20b97908d52、完成根894ac3902ac862b3fc12411f2c33fc110f96a6e56b9d3bebc3975456f6b26ef8。实际18000更新/54000R/9000S，Rall-known764370/634320、S46287/25191；有效Rknown110754（正19656/负91098）、监督unknown0，资格unknown37458、排除known523566、非空36126/空17874窗。全loss/LR/梯度/UIDepoch/pair链、九组R-RS同序/原init-norm-S、0每50最终完整模型AdamW四RNG全部核验，357本次读回+首21继承覆盖378，不重读已验首21或旧模型。先前20诊断更新/60R/8S另列，重放0；原强motion_RS主参照不变。
+
+绝对参数仍194→64→32→1 ReLU14593/FP32/后170归一Pose列0，无RGB/增广；AdamW LR0.001/wd0.0001，每臂1000更新3R/step、RS另1S/step及S系数1/3，seed20261024/25/26、last1000非EMA无best。R资格mask为唯一训练因素；新有效监督下降、空窗带图零和AdamW状态更新均完整保留，不称标签修正成功或Pose能力提升。
+
+新last1000 loader不调用训练prepare/audit、不读池/mask/标签，原GT隔离/候选/分配/阈值不改。真实96唯一帧/336诊断消费，cold/A→B→A/双spawn五比较的完整MOT/native/audit逐值相同，五worker/parent已退，准入收据b70164ae9601db84d97b767cefd1786c4987d0b263d71d8b5ba20c133a1760fd。runtime6/control8/analysis12/verifier13纯fixture通过；首次测试cwd错误导致两个ModuleNotFoundError在实际fixture前停止，0模型/帧/更新，小failed已保留，换正确cwd后通过、未装库改环境。
+
+唯一180 CPU追踪已按四文件62e9c969、正式协议a5bd1186启动；首R/RS两源完整TrackEval/GT计数/ID0/全预测门禁通过后，继续余178和自动分析。2track+1metric/线程1/输入LRU128MiB最多2源/模型256MiB最多3项，RAM8GiB/commit6GiB保留。原180strongmotion与180aligned基线仅读引用，合540绝对来源而非540新增评价；五族450指标/450gap配对、75指标/15gap CI/全负项及null保留，bootstrap10000 seed20261029、t95及LOO、三比赛面板分开。独立终验单文件636ec5c5已安装但未执行。尚无完整新追踪成绩；测试116/187/test持续封存。[完整绝对条件与证据](R_CANDIDATE_ELIGIBILITY_EXECUTION_A01.md)。

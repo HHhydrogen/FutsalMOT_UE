@@ -20,9 +20,9 @@
 
 输入a02生成成功，独立a04逐条来源/资格/曝光核查通过，完成根SHA `48e50a9acb3f0d8e0afffc49b6f070e6ab2467af01e660e31aeca672ec0c1ffb`，独立收据SHA `40988c1a5ff2d9327ba9740d8d48744c4e4d8e30ccc8ce06e56835ab2adb4009`。科学训练协议SHA `d5880b07e97e1252852c7c70ee5b1961b04f5825838063f8e84b462559388daf`，八文件bundle `98293655dd3bd73d96909bff820876495776c2bf4518a92826cc8eb54ecefe2c`。
 
-真实CPU/CUDA十组共20诊断更新/60R/8S已完成：R/RS的全true原BCE兼容和实际mask独立手写对照，以及空窗且已有非零AdamW动量/weight decay的压力组。loss、每参数梯度、模型、AdamW和四类RNG逐值一致，完整step0/1记录读回。数值收据SHA `bccf1069d205288b45db4aeaa380fc202f75815601e791265e076581f76f514a`，学习准入根SHA `7c8dd9a62aaf9877462469f5a48d614645d3326d1d6b210b9b155e3c39af3f87`。matched-control数值兼容已实证，不重跑这些成功组。
+真实CPU/CUDA十组共20诊断更新/60R/8S已完成：R/RS的全true原BCE兼容和实际mask独立手写对照，以及空窗且已有非零AdamW动量/weight decay的压力组。loss、每参数梯度、模型、AdamW和四类RNG逐值一致，完整step0/1记录读回。各设备内部的手写与记录路径逐值核验，不将CPU与CUDA彼此数值相同作为要求。数值收据SHA `bccf1069d205288b45db4aeaa380fc202f75815601e791265e076581f76f514a`，学习准入根SHA `7c8dd9a62aaf9877462469f5a48d614645d3326d1d6b210b9b155e3c39af3f87`。matched-control数值兼容已实证，不重跑这些成功组。
 
-首game4/20261024/R完整1000 CUDA更新已完成，独立CPU核查21份完整检查点及1000步记录通过，收据SHA `28096dc3f43cd4fc2749d1da439c13a98a5e318e9a85070bac6c0239f7148b64`。其余17臂只在此门禁后启动；当前正式训练继续中，尚无新自由追踪成绩。
+首game4/20261024/R完整1000 CUDA更新已完成，独立CPU核查21份完整检查点及1000步记录通过，收据SHA `28096dc3f43cd4fc2749d1da439c13a98a5e318e9a85070bac6c0239f7148b64`。其余17臂只在此门禁后启动，现已全18完成并经独立预算审计，尚无完整新自由追踪成绩。
 
 ## 失败与独立执行修正
 
@@ -37,3 +37,13 @@
 结果前analysis已冻结：新RS−原strongmotion_RS为主，另新RS−aligned_RS、新R−aligned_R、新RS−新R及合成增量交互。六方法各原3/旧2/七场面板先列绝对AssA/HOTA/IDF1/DetA/MOTA，再保留450匹配指标/450gap配对、75指标和15gap未校正描述区间；540仅为三组各180绝对来源数。每场先均匹配fold/seed，再比赛等权，t95自由度2/1/6、10000次MT19937比赛bootstrap seed20261029及LOO。全部负项/零/null/seed保留，不设等效界限、不以CI含0称相同；gap沿原3690事件分母，不称物理遮挡。
 
 全部产物位于DResearch/pose/r_candidate_eligibility_a01；实际状态以training_control_a02/driver_state.json和之后的独立收据为准。RAM保留8GiB/commit6GiB/VRAM2GiB，不抢UE或用户应用。12来源均为已观察开发；SNMOT116/187/test封存，每阶段更新历史并汇报，完整追踪前不宣称改善或Pose收益。
+
+## 十八臂预算闭合与正式追踪启动（2026-10-29）
+
+独立审计实际成功，SHA `b4d206ee8d8d0f1e7f548273b3ab232f41bb2356fb3bfb110021b20b97908d52`；完成根SHA `894ac3902ac862b3fc12411f2c33fc110f96a6e56b9d3bebc3975456f6b26ef8`。18个训练子进程均exit0，18模型/18000更新/54000R/9000S、全步链/九R-RS同序、原init/norm/S、原始与八项有效监督计数均实核；357本次完整读回+首21独立继承覆盖378。R有效known110754、正19656、负91098、监督unknown0，资格unknown37458单列；523566known排除、17874空窗不冒称无效更新。训练/launcher/auditor真实全部退出，旧模型/审计未重放。
+
+新独立tracking loader只读新last1000及原normalizer小JSON，不调用训练prepare/audit、不打开训练池/mask/标签；GTguard先装。真实96唯一源帧/336诊断消费cold、A→B→A、双spawn五比较的完整MOT/native/audit逐值一致，5worker与parent全退，收据SHA `b70164ae9601db84d97b767cefd1786c4987d0b263d71d8b5ba20c133a1760fd`。四文件bundle `62e9c969da9547077aac7a63d51657a8a09e3eeec80bd1c8d48817a2b19ae33a`不可变；正式180协议SHA `a5bd1186ef7ab2238b8a73c098c23476e1df581409ee1f5570fa962885a36456`已通过默认只读预飞，唯一正式CPU后台已启动。首R/RS两源完整TrackEval/原GT计数/ID0/全预测门禁已过，继续余178与自动分析。
+
+2track+1metric、数值线程1，输入LRU128MiB最多2源、模型LRU256MiB最多3项，RAM8GiB/commit6GiB预留。180新追踪/评价，另外360原strongmotion/原aligned结果仅读引用；不等540项新评价。独立终验器已安装单文件bundle `636ec5c5b41fe3286cc85c8cc1981e20cd96c3ae7ca33940f85d2631eba1ee04`，只在180/自动分析/全部进程真实退出后执行，不重权重/模型/GT/TrackEval或训练预算。
+
+新增runtime6、control8、analysis12、独立verifier13项纯fixture及必要字段聚焦检查通过；首次control测试cwd错误导致ModuleNotFoundError发生于实际fixture前，模型/帧/更新0，小失败收据Saved/ResearchBuild/r_eligibility_tracking_fixture_invocation_failed_a01.json保留，正确cwd检查后通过，没有安装库或改环境。当前不得读取局部成绩调参数，也不宣称新方法优于任何参照。
