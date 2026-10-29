@@ -82,12 +82,20 @@ def memory():
  info=Info();info.cb=ctypes.sizeof(info);require(ctypes.windll.psapi.GetPerformanceInfo(ctypes.byref(info),info.cb),'Windows commit读取失败')
  return dict(available_RAM_bytes=v.available,available_commit_bytes=(info.CommitLimit-info.CommitTotal)*info.PageSize)
 
+def process_identity(rows,current_pid,script):
+ by={x['ProcessId']:x for x in rows};own={current_pid};node=by.get(current_pid);identity=str(script).replace('\\','/').lower()
+ while node and node['ParentProcessId'] in by:
+  parent=by[node['ParentProcessId']];cmd=(parent.get('CommandLine') or '').replace('\\','/').lower()
+  if not (parent.get('Name') or '').lower().startswith('python') or identity not in cmd:break
+  require(parent['ProcessId'] not in own,'CIM父链循环');own.add(parent['ProcessId']);node=parent
+ pattern=re.compile(r'(?:^|[\\/\s"\x27])(?:record_reuse_diagnosis|control_r_eligibility_training|r_eligibility_train|r_eligibility_tracking_control|state_gap_control|state_aligned_tracking_control|r_set_tracking_control)[.]py(?=$|[\s"\x27])',re.I)
+ blocked=[x for x in rows if x['ProcessId'] not in own and ((x['Name'] or '').lower().startswith('unrealeditor') or pattern.search(x.get('CommandLine') or ''))]
+ require(not blocked,'已有相关producer/UE，不重复启动：'+canonical(blocked));return dict(actual_Name_CommandLine_checked=True,no_related_producer=True,own_exact_script_launcher_chain=sorted(own))
+
 def producers_absent():
  value=subprocess.run(['powershell.exe','-NoProfile','-Command',"Get-CimInstance Win32_Process | Where-Object {$_.Name -match '^python|^UnrealEditor'} | Select-Object Name,ProcessId,ParentProcessId,CommandLine | ConvertTo-Json -Compress"],check=True,capture_output=True,text=True,encoding='utf-8').stdout
  rows=json.loads(value) if value.strip() else [];rows=[rows] if isinstance(rows,dict) else rows
- pattern=re.compile(r'(?:^|[\\/\s"\x27])(?:record_reuse_diagnosis|control_r_eligibility_training|r_eligibility_train|r_eligibility_tracking_control|state_gap_control|state_aligned_tracking_control|r_set_tracking_control)[.]py(?=$|[\s"\x27])',re.I)
- blocked=[x for x in rows if x['ProcessId']!=os.getpid() and ((x['Name'] or '').lower().startswith('unrealeditor') or pattern.search(x.get('CommandLine') or ''))]
- require(not blocked,'已有相关producer/UE，不重复启动：'+canonical(blocked));return dict(actual_Name_CommandLine_checked=True,no_related_producer=True)
+ return process_identity(rows,os.getpid(),__file__)
 
 def enough(snapshot,inflight):return snapshot['available_RAM_bytes']>=8589934592+3221225472*inflight and snapshot['available_commit_bytes']>=6442450944+3221225472*inflight
 
@@ -105,7 +113,10 @@ def validate(path):
  require(Path(cfg['bundle'])==ROOT and ROOT.parent==R/'code','只执行冻结源码')
  manifest=read_raw(cfg['bundle_manifest']['path']);require(sha(cfg['bundle_manifest']['path'])==cfg['bundle_manifest']['sha256'],'bundle manifest改变')
  for item in manifest['files']:require(sha(ROOT/item['path'])==item['sha256'],'执行源码变化')
- require(len(cfg['metric_sources'])==540 and len(cfg['window_units'])==6 and Path(cfg['output'])==E/'control_a01','输入/输出边界不同')
+ output=Path(cfg['output']);require(len(cfg['metric_sources'])==540 and len(cfg['window_units'])==6 and output.parent==E and re.fullmatch('control_a[0-9]{2}',output.name),'输入/输出边界不同')
+ if output!=E/'control_a01':
+  previous=cfg['recovery']['previous_failure'];require(sha(previous['path'])==previous['sha256'],'恢复失败证据SHA不同');failure=read_raw(previous['path'])
+  require(failure['diagnosis_data_tasks_started']==0 and failure['diagnosis_rows_read']==0 and cfg['recovery']['completed_data_tasks_inherited']==0,'不允许隐式重放成功数据任务')
  reader=Reader(cfg)
  root=reader(cfg['source_refs']['mask_complete']);require(root['status']=='complete_R_candidate_eligibility18_training180_tracking_independent_verification_and_all_intervals' and root['test_read'] is False,'前轮未闭合')
  require(root['tracking_analysis']==cfg['source_refs']['mask_analysis'],'前轮完整分析来源不同')

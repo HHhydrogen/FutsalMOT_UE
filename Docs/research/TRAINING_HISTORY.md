@@ -639,3 +639,32 @@ a01成功后新增known UID/label记录并明确空集为`(loss_part*0).sum()`�
 
 
 阶段一实际冻结：协议frozen_a01/config.json SHA4ee32f9eb67a522ac1630ba0044b2afcd381b64c956d438a9fe85741e5e0e6bc，4文件最小bundle d94129bbd4e00e5b81fcdfcc1b7fb9fc54ee85835d6fbff67c98884b62ff2936，默认只读预飞通过。另只预览1条旧RS帧schema，确认tracks_after三列表/stage字段，与新诊断4500前缀读取预算分开；新增推进0。540报告/540receipt、199260观察/99630配对、3000窗/42465候选、60案例槽、6RS/12事件/4500前缀/372目标及独立核查第二次同界I/O均事前冻结。阶段二真实数据分析尚未执行，不预设原因或选择训练因素。
+
+
+三轴诊断a01真实启动在CIM去重门禁误把当前venv Python同脚本父stub当第二producer，out目录/数据worker创建前退出1，诊断数据读取0/所有实验调用0；原d941 bundle/4ee3协议及日志、attempt_a01/failed.json（SHAb0c2bc853389b33eefbf66e959b5a9f7289eb742da7a5e5cbf6aa5e1a87d1e3f）保留。仅修执行门禁精确同脚本Python父链识别，5项针对检查过，异bundle/其他producer不豁免；另签frozen_a02协议09ccd3cf127ad89ca76918b14f987cac1a2a58c4dd241b8aee645e1cc8a36e25、4文件f0c32a494ca3a08ad23558b0276cb6671c1816d4d7f35f11398a88ea164c65b8、control_a02独立输出，输入/规则/边界不改，无成功数据任务重放。独立checker候选fixture曾缺window_uid在真实核查前失败，随后仅补合成夹具；真实新诊断/独立核查仍待完成。
+
+## 弱标签、可达性与历史暴露有界诊断完整闭合（2026-10-29，零训练）
+
+保留原未校准strongmotion_RS，完成[既有记录诊断与下一步方案](RECORD_REUSE_DIAGNOSIS_A01_RESULTS.md)。这是零更新诊断，不是新训练版号：优化更新、R/S训练曝光、模型加载/前向、检测Pose推理、追踪推进、solver、GT坐标读取、TrackEval和渲染均0，无新权重/AssA/HOTA/IDF1。原主参照既有原三/旧二/七场AssA31.864158/40.115976/30.212884，HOTA42.295962/50.204712/40.891603，IDF147.477622/57.697181/45.390919；属于原12开发面板的已验结果，不和本轮窗口/事件风险混作因果。最终116/187/test封存。
+
+观察历史模型条件仅作来源：原strongmotion194→64→32→1 ReLU/14593/FP32/后170Pose列0，旧RS首seed20261024、三fold各两train来源；旧每臂1000步/3R及RS1S、AdamW LR0.001/wd0.0001/系数S1/3/last1000没有重训。本轮训练batch0/LR不适用/更新0；原tracker high0.25/low0.10/new0.25/buffer30/match0.80/lowassign0.50/unconfirmed0.70/fuseTrue、motion dt1.2秒/面积0.25至4/中心2/概率0.50均未执行或改动。最多2只读CPU worker/线程1，RAM8589934592/commit6442450944/每在飞3221225472字节预留。
+
+弱标签轴只读原6R单元3000派生窗口/42465候选：693窗无known正例但有资格内unknown，455窗有严格成本可行unknown（680pair）；known负例77可行、known正例48概率拒绝；993窗有效known空、256anchor漂移代理。可达层为当前query GT不在场代理808/无可信正确raw742/同帧raw在stage外335/资格外23/概率拒绝48/可行1044，合3000；该优先漏斗与旧B_class条件不同，不拿808对旧191当数据变动。59固定案例槽/47窗口，不补满，所有subtype缺失not_retained。没有具体pair错标证明，不改标签。
+
+gap轴540既有metric+540receipt、164844重复事件观察/3690原UID；三族各27474，共82422配对。
+
+| 配对 | 恢复保持 | 改善 | 退化 | 持续失败 |
+|---|---:|---:|---:|---:|
+| mask_RS−原RS | 11425 | 754 | 1259 | 14036 |
+| mask_RS−alignedRS | 11719 | 460 | 680 | 14615 |
+| mask_R−alignedR | 11542 | 422 | 595 | 14915 |
+
+主比较1259条退化分为594不同ID/585端点缺失/80端点歧义；改善754亦全留。这里是事件×fold/seed重复，不能算独立比赛CI或物理遮挡。原75指标/15gap区间完整引用、不重算；新CI0。新mask/aligned和原strongmotion正式输出没有完整native/history/KF/assignment，native SHA不能恢复内容；event_uid不提供帧号，不据终局MOT补内部状态。
+
+历史轴固定6RS每unit首2既有switch共12上下文、6共享源描述组，全部priorunknown。12个wrong_uid实际写入；未来stage读取36次，旁观重算潜在资格14次/6上下文，不是已证实际MLP调用；11上下文连续确认offset3退出history，1歧义断链保持null，不当身份恢复/KF影响清除或错误因果。producer只读940旧job前缀/372事件帧，独立checker另读940/372，schema预览1另计；新增推进0。原235全部记录及eligible0/四支0/45null区间原样保留。
+
+原a01门禁venv父stub误识别失败在输出/数据worker创建前、数据任务0；独立a02只修精确父链并换control输出，原d941/4ee3/failed不改，不重放成功任务。最终producer4文件f0c32a49、协议09ccd3cf，独立核查单文件34f466c3/source61330135；producer窗口7/历史14/gap5/驱动5、独立checker12项纯fixture均通过。checker首次合成夹具少window_uid在真实核查前失败，只补夹具并保留Saved小failed。真实producer和核查均exit0，CIM确认worker/parent/launcher/verifier全退。producer墙钟22.999462秒，不外推旧实验加速。
+
+下一步仍不急加训：先另冻独立后验去坐标事件索引，连接3690UID与两端帧号/身份，涉及原含GT坐标registry的新白名单需单独隔离，本轮未读。之后仅按主mask_RS对原RS的12来源×四转移×每类2事件最多96案例槽（aligned-RS作同案例第三方法，不再扩抽），固定seed20261024/原heldoutfold或game4、UID排序缺类不补，两端±5帧×3方法最多6336已有方法帧引用。内部证据仍缺时才讨论两新RS×6train×前300最多3600逻辑推进的被动观测候选；须另签plain/observer原输出一致/coldABA/spawn及独立准入预算，不从无snapshot中间帧直接续跑。本轮未执行这些后续步骤、未选择新训练因素或Pose伪标签。
+
+完成根dfd837dad25df8ef7edd2221dfe7ee4db5d4a8ae7936b8aaeb817d7502f5e391；独立核查e317b171765033acd56356dc75b33454decad0f737f3ebffe32358bb03cec99e；producer d83d87010f611fa20c6edbdd829e66e888da861e0f6838d5153eeadaa0adbad3。完整540来源/新整数交叉/82422配对/59槽/235原事件与全部missing/失败保存在DResearch/pose/record_reuse_diagnosis_a01。每阶段历史已同步，整论文主线未宣称解决。

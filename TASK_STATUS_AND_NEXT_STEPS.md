@@ -2,23 +2,23 @@
 
 更新：2026-10-29。历史过程见Git及对应运行收据；本页不保留过期PID流水。
 
-## 当前：原strongmotion_RS保持主参照，开始已有记录有界诊断
+## 当前：弱标签/可达性/历史暴露诊断已独立核查闭合，原strongmotion_RS保持主参照
 
-新授权为[弱标签/可达性/历史暴露的记录复用诊断](Docs/research/WEAK_LABEL_REACHABILITY_REUSE_A01.md)，记录边界已由三子智能体分别核查；尚未执行真实新诊断，不加训。只读540既有metric、6R派生3000窗口/42465候选及旧6RS有界历史日志；新模型内部native/history未保存、label子原因未保存均明确not_retained，原235/eligible0不改。先冻结并完成新整数诊断/独立核查再制定下一方案，所有新模型/追踪/GT/TrackEval调用0，测试继续封存。
+[完整证据与下一步方案](Docs/research/RECORD_REUSE_DIAGNOSIS_A01_RESULTS.md)；[冻结有界协议](Docs/research/WEAK_LABEL_REACHABILITY_REUSE_A01.md)。本轮新增优化/R-S曝光/模型前向/图像推理/追踪推进/solver/GT坐标/TrackEval/渲染均0，producer/两个worker/verifier/launcher实际全退。原116/187/test封存，无本轮研究后台。
 
-[完整结果与全部区间](Docs/research/R_CANDIDATE_ELIGIBILITY_A01_RESULTS.md)；[绝对参数/执行与失败记录](Docs/research/R_CANDIDATE_ELIGIBILITY_EXECUTION_A01.md)。18臂18000更新/54000R/9000S、357新读+首21继承覆盖378检查点、180追踪/评价、540新旧来源/450指标与450gap配对、75指标/15gap描述区间和独立终验均已真实闭合，训练/worker/controller/launcher/auditor/verifier全部实际退出。原116/187/test继续封存，无活动研究训练或追踪后台。
+已复用540小metric及receipt、164844事件观察/3690原UID、82422配对；原6R单元3000窗/42465候选新交叉：693无正例且资格内unknown、455窗unknown成本可行、993空有效known，均不叫错标签证明。59案例槽/47窗，缺类不补。主gap比较maskRS−原RS改善754/退化1259，其中594为不同ID、585端点缺失、80歧义；这是fold/seed重复观察，不是独立比赛或物理遮挡。旧90CI原样引用不重算，无新模型成绩。
 
-新RS在12场各比赛fold/seed平均AssA全部低于原strongmotion_RS。原三场绝对31.864158→27.369318，差−4.494840点/t95[-7.179558,-1.810123]；旧两场40.115976→38.255093，差−1.860883/[-11.670083,7.948317]；七场30.212884→27.773657，差−2.439227/[-4.336799,-0.541654]。同来源aligned-RS控制的三面板差−0.516406/+1.074445/−0.081950，t95全跨0，没有稳定mask改善。七场组内RS比R有正增量，不能替代主参照比较或证明Pose收益；全部正/负/零/null与bootstrap/LOO完整保留。
+旧6RS固定12事件/6共享源描述组，全部priorunknown；12实际写入、36未来stage读取、14潜在资格stage，11连续exitoffset3/1断链null。仅证明wrong_uid暴露，不证明实际MLP或历史/KF因果。producer/独立checker各940旧前缀/372事件帧，预览1另列，新推进0。原235/eligible0/四支0/45null不改。
 
-正式科学协议d5880b07/训练八文件98293655、追踪协议a5bd1186/四文件62e9c969不改。已知输入/控制器/核查器失败保留且不重放成功项；最终独立a02用fe028359单文件，flat计划及实际spawn父子身份修正15合同通过。完成根675d0752、训练根894ac390、预算b4d206ee、最终收据d3c15166、分析b6469841，根目录DResearch/pose/r_candidate_eligibility_a01。
+完成根dfd837da、独立核查e317b171、producer d83d8701；协议09ccd3cf/最小4文件f0c32a49，独立单文件34f466c3。原a01父stub误识别0数据任务失败及所有失败/缺失保留，只改执行门禁无成功任务重放。原三组正式180无逐帧native/history/KF/assignment，候选label子类型未存，不能拿SHA/聚合计数补造。
 
-下一步先核对已有MOT/native/公开后验/gap的标签可靠性、正确候选可达性及内部状态记录缺口；缺失不补造，候选资格诊断不当错误标签或历史/KF因果证据。另签有界诊断和结果前决策协议后只选一个新因素，本轮不自动加训或改默认部署配置。主参照继续原未校准strongmotion_RS；18新模型保留负结果。每轮结束即时历史/精确提交推送/汇报，无每日历史定时任务，整论文目标未取消。
+此前R资格mask18臂18000步/378检查点/180追踪及75+15区间仍完整闭合：新RS的12比赛均值全部低于原RS；[上轮绝对结果](Docs/research/R_CANDIDATE_ELIGIBILITY_A01_RESULTS.md)。主参照与默认部署配置本轮未改。
 
 ## 下一步与尚未解决的问题
 
 - 研究主线仍是固定检测下合成Pose相关监督对身份关联的边际作用；本轮为motion训练资格对齐验证，未证明Pose收益，也没有解决整条论文主线。
-- 先登记现有MOT/native/公开后验/gap能回答哪些问题，再冻结有边界的零更新诊断。未知标签、正确候选缺失、内部历史缺失分别保留；不把低分或终局错误直接归因为标签错误/Kalman传播。
-- 根据完整诊断只选一个下一因素，重新列绝对参数/输入/有效监督/预算/结果前分析与必要准入。原strongmotion_RS始终保留；本轮未安排新训练、检测Pose推理或渲染，不自动扩大模型/合成数据/轮数。
+- 下一协议优先独立后验去坐标事件索引（原3690UID→两端帧号/身份），单独冻结含GT原registry的读取/隔离范围；本轮未执行。再仅按主mask_RS对原RS的12来源×四转移×每类2最多96案例（aligned-RS仅作相同案例第三方法）、两端±5×三方法最多6336已有方法帧核对，固定seed20261024/原heldoutfold或game4，不挑seed或补满。
+- 若内部状态仍缺，另签必要的小被动观测与plain/observer/coldABA/spawn数值准入，再据完整证据只选一个训练因素。原RS已有日志优先引用；两新模型×6train×固定前300最多3600推进仅候选上限，准入预算另冻，当前不执行，不从无snapshot中途续跑。
 - Pose算法监督如需实施，须单独约束可靠身份锚点/unknown处理和split隔离，不把自身预测ID当GT。原120样本人工Pose项目已归档，不等待该项、不报PCK/OKS。
 
 ## 固定工作边界
