@@ -509,3 +509,7 @@ OC绝对成绩直接读取既有两份12行结果CSV，再在各面板比赛等�
 正式tracking_frozen_a01/config.json SHA2b16f8c7d7ffe9ef974825122abaeec17291fe606b7539ded2bf2e400f99aa9a，4文件bundle598df7569b5e4fb5dcbff1c84a8bd875c78d05ce449507723ab1292ef33d9d35。唯一后台2track+1metric常驻CPU、数值线程1、输入128MiB/最多2源、模型256MiB/最多3模型；保留RAM8GiB/commit6GiB。首R/RS两源完整TrackEval/GT计数/合法ID0/全预测保留门禁已通过，正在继续其余178项及自动五族分析。权威state位于tracking_control_a01/driver_state.json，日志_launch_tracking_a01与control/logs。不热改/重复启动，不提前按局部成绩选模型或阈值。
 
 全部180新追踪+aligned180+原strongmotion180的绝对成绩、450指标配对与450gap配对、75指标/15gap描述区间待完整闭合/真实退出/独立终验后报告。新AssA/HOTA/IDF1尚未闭合，不称已提高。原3/旧2/七场分面板、先绝对成绩再差值/CI，全负/零/null/fold/seed保留，测试116/187/test封存。
+
+### 独立追踪终验器已安装待用（2026-10-29）
+
+终验单文件bundle code/b8a9ebe1436f0f13b6578786c0fcc6d3c4f21076d02e1723a9ea0aab9c99e994/tools/research_ops/verify_r_set_tracking.py，SHA2a266df89873d7876092a2f0ae47bb32b417a889fe5985850861bf4bbf27dd72。10项定向CPU夹具通过，独立核540来源/双baseline/全部MOT与GT计数/ID0/450配对/六CSV/75指标15gap区间和真实退出，不导入producer分析或重算模型/GT/TrackEval。实际终验尚未执行，只有全180、自动分析与真实进程退出后才可运行，输出另用tracking_final_verification_a01/receipt.json；未知partial/失败保留。当前估时只用完成清单与源帧元数据，未提前看局部成绩。
