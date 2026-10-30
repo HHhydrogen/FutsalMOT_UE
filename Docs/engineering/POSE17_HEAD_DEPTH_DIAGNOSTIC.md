@@ -1,5 +1,7 @@
 # 头部5表面点深度残差诊断
 
+> 历史研究记录：仅解释原数据、协议与共享实现，不是当前生成操作手册。新数据只使用[当前single_seed入口](../production/SINGLE_SEED_BASELINE_V1.md)，不运行下文旧候选脚本或据此重建旧管线；历史源码及收据保持各自冻结版本。
+
 独立工具 `src/grf_ue_bridge/tools/inspect_pose17_head_depth.py` 仅消费已经结构配对通过的小样；不改runner、C++、既有配对器、COCO标注或任何正式数据。所有点的visibility仍为unknown，MRQ_sync_verified仍为false。
 
 ```powershell

@@ -85,28 +85,3 @@ def from_source_input(path):
         original_appearance=dict(path=str(manifest_path), sha256=sha(manifest_path)),
         original_ue_profile=dict(path=str(profile_path), sha256=sha(profile_path)),
         split=source["split"], source_frame_range=source["selected_source_frame_range"], binding=binding)
-
-
-def main():
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--source-input", type=Path, action="append", required=True)
-    parser.add_argument("--output", type=Path, required=True)
-    args = parser.parse_args()
-    groups = [from_source_input(path) for path in args.source_input]
-    if len({g["binding"]["root_seed"] for g in groups}) != len(groups):
-        raise ValueError("源seed重复")
-    result = dict(schema="futsalmot_pose_seeded_kit_recovery_candidate_v1",
-        status="existing_seeded_manifest_reused_not_rendered", groups=groups,
-        variants=["A_new_default_baseline", "B_original_seeded_kits"],
-        runtime_integration_pending=True, current_v9_modified=False,
-        start_gate="v9_all78_analysis_budget_and_process_exit_complete", test_read=False)
-    result["fingerprint"] = fingerprint(result)
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    with args.output.open("x", encoding="utf-8") as output:
-        json.dump(result, output, ensure_ascii=False, indent=2)
-        output.write("\n")
-    print(json.dumps(dict(status=result["status"], groups=len(groups), fingerprint=result["fingerprint"])))
-
-
-if __name__ == "__main__":
-    main()

@@ -112,7 +112,7 @@ def test_cross_view_changed_pose_requires_diagnosis():
 
 def gpu_bundle():
     """纯CPU toy；并非实际Player004渲染收据。"""
-    from test_pose17_smoke_runner import gpu_lbs_receipt
+    from pose17_receipt_fixtures import gpu_lbs_receipt
     data = bundle()
     data[0].update(pose_sampling_path="gpu_render_cpu_lbs",allow_gpu_render_cpu_lbs_diagnostic=True,
         diagnostic_scope="pose17_gpu_render_cpu_lbs_character_calibration",allow_pie_cpu_preparation=False,gpu_lbs_warmup_frames=8,

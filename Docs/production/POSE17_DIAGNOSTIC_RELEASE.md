@@ -1,5 +1,7 @@
 # 已验联合小样的CPU诊断导出
 
+> 历史研究记录：仅解释原数据、协议与共享实现，不是当前生成操作手册。新数据只使用[当前single_seed入口](../production/SINGLE_SEED_BASELINE_V1.md)，不运行下文旧候选脚本或据此重建旧管线；历史源码及收据保持各自冻结版本。
+
 `src/grf_ue_bridge/tools/export_pose17_diagnostic.py`接收联合通路已经完成的四机位×十帧；仅在显式`location_pilot_contract=true`且共享`validate_location_pilot_contract`通过时，接收冻结四seed之一的120帧。普通诊断仍只允许十帧，不能靠修改frame_count扩容。它不是生产publisher，不修改现有v1，也不把unknown升级成COCO可见性或训练准入。真实导出由主agent显式执行；CPU tests只使用16×8自绘图和假EXR解码器，不能代替真实输出验收。
 
 2026-10-23主agent已实际执行CLI，完成`Saved/Pose17Development/diagnostic_pose17_export_a01`：40张原生4K RGB复制、40张mask、400条人物记录，每份EXR解码一次。随后独立只读CPU核对通过：四相机全部400份world17与本次原始native逐值完全相同；400人物各有独立17bool位置mask，6800点均为unknown且location_valid=true，没有升级可见性；40RGB/40mask相对0..9文件名集合完整。仅抽读每相机相对5（源105）的四张mask，uint8、3840×2160及合法0..10实例ID通过；没有重解码EXR或扫描媒体hash。新鲜收据为`Saved/Pose17Development/diagnostic_pose17_export_a01_cpu_acceptance_a01.json`。这些结果证明本次诊断导出保真，`not_training=true`和正式可见性/训练准入限制均不变。

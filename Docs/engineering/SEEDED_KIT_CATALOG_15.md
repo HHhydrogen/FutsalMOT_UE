@@ -5,8 +5,8 @@
 ## 当前入口与兼容
 
 - 完整外观目录：`python/configs/player_appearance_catalog_15kits.json`，catalog_id=`mpfb_players_003_009_kits15_v1`。
-- 单机位诊断task示例：`python/configs/player_appearance_15kits_smoke_10frames_1cam.json`，包含已确认号码配置与标准GreenV2；这里只做模型/配置检查，未运行该示例的MRQ，不作为完整seed任务。
-- 新预览准备入口默认读取十五套目录及`number_typography_v2.json`；正式新单seed入口同样应显式绑定这两个目录和已确认camera_rig。
+- 当前生成配置为`python/configs/single_seed_generation_v1.json`，由single_seed入口加载`single_seed_task_base.json`内部模板；旧单机位smoke已删除，不直接提交模板。
+- 当前single_seed显式绑定十五套目录、`number_typography_v2.json`及已确认camera_rig；采集/导出入口见[固化说明](../production/SINGLE_SEED_BASELINE_V1.md)。
 - 原`mpfb_players_003_009_v1`五套及旧decal v2目录保留原严格集合。既有task/冻结recipe不改，Pose研究中显式五套协议也不替换。
 
 P1、Pydantic配置与UE adapter使用同一个`kit_ids_for_catalog`识别5/15套。模型、肤色、球衣及号码继续原seed派生与hash排名；只扩大新目录的kit候选。每seed取排名前四个互异套装，依次分给左右外场及左右门将；同队外场共用套装，球衣/短裤按同一个Set配对。新候选可能改变新目录的kit选择，其他独立随机流不变；不另造抽样器或引入颜色筛选。
@@ -55,4 +55,4 @@ P1、Pydantic配置与UE adapter使用同一个`kit_ids_for_catalog`识别5/15�
 - `G:/FutsalMOT_Dataset/test/kit_catalog_15_a01/source_textures/`：实际源贴图导出及总览。
 - 同attempt的`raw/`、`review/`：新增球衣穿着、RGB/号码mask与标注。成功24小时清理，关键小收据保留Saved。
 
-当前完成球衣库扩展，按逐项要求停下供用户检查；后续才继续完整单seed收口，不执行总数据集导出。
+球衣库扩展已获用户确认，并完成a09六机位各30帧联合动态导出；完整3001帧尚未执行。上述扩库过程是历史证据，不再等待旧逐项验收，也不因此启动总数据集导出。

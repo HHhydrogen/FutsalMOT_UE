@@ -1,5 +1,7 @@
 # 十二关节局部表面支持：真实像素候选诊断
 
+> 历史研究记录：仅解释原数据、协议与共享实现，不是当前生成操作手册。新数据只使用[当前single_seed入口](../production/SINGLE_SEED_BASELINE_V1.md)，不运行下文旧候选脚本或据此重建旧管线；历史源码及收据保持各自冻结版本。
+
 本工具保持十二个COCO肢体点的native骨中心3D和投影2D位置不变，只为其构造解剖表面支持代理。输出`candidate_state`与覆盖失败原因；每一点`visibility_state`恒为`unknown`、`visibility_method=not_measured`，不写COCO或公开标注。它不是已验收的关节可见性真值。
 
 入口为`src/grf_ue_bridge/joint_surface_support_v2.py`及`python -m grf_ue_bridge.tools.inspect_joint_surface_support`。只做P1 CPU计算，不调用UE/GPU、不改原数据、不生成逐角色图。四张既有中间帧EXR各打开一次，其他输入为小JSON和已重建NPZ。

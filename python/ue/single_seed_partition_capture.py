@@ -14,6 +14,9 @@ def submit(local,camera,short=False):
         raise ValueError('冻结分任务配置不符')
     if not short and read(local/'short/verification_complete.json')['status']!='single_seed_check_passed':
         raise ValueError('先完成本版本分任务短样')
+    from grf_ue_bridge.storage_policy import require_single_seed_capacity
+    # 真实UE入口同样执行整seed容量准入，不能通过直接MCP调用绕过控制器。
+    require_single_seed_capacity(p,read(unit/'resolved.json'))
     preflight(local)
     execution=p['request']['render_execution'];task=read(part/'resolved.json')
     raw=Path(task['dataset_root'])/task['episode_name']

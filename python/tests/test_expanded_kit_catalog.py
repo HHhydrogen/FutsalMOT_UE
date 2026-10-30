@@ -43,6 +43,6 @@ def test_real_catalog_task_and_number_material_paths():
     root=Path(__file__).resolve().parents[1]
     c=json.loads((root/'configs/player_appearance_catalog_15kits.json').read_text(encoding='utf-8'))
     assert len(AppearanceCatalog.model_validate(c).kits)==15
-    task=json.loads((root/'configs/player_appearance_15kits_smoke_10frames_1cam.json').read_text(encoding='utf-8'))
+    task=json.loads((root/'configs/single_seed_task_base.json').read_text(encoding='utf-8'))
     DatasetTaskConfig.model_validate(task)
     assert task['ue']['appearance']==c

@@ -1,5 +1,7 @@
 # 逐角色PIE动态校准接口
 
+> 历史研究记录：仅解释原数据、协议与共享实现，不是当前生成操作手册。新数据只使用[当前single_seed入口](../production/SINGLE_SEED_BASELINE_V1.md)，不运行下文旧候选脚本或据此重建旧管线；历史源码及收据保持各自冻结版本。
+
 最新结果：新GPU-LBS组合`player004_closeup_a02_gpu_lbs`已完成真实三近景及头点/恢复验收，随后`joint_seed1048_a01_gpu_lbs`一次覆盖003–009七模型、十实体、四机位十帧。按用户要求不再逐005–009重复近景；仍不代表正式Pose/visibility准入。下段“尚未通过”仅描述旧CPU失败时点，不是当前GPU-LBS状态；当前入口见[联合诊断](POSE17_JOINT_DIAGNOSTIC.md)。
 
 状态：旧CPU角色override C++已实际构建，Player004首次a01在8-frame warmup中发生真实RHI LocalVF/View uniform buffer不匹配崩溃，没有媒体或native收据；随后003无override、相同8warmup也真实复现，角色切换不是必要条件。角色切换**尚未**真实验收通过，禁止去掉warmup/屏蔽校验/关闭Lumen假装修复。原003的[保留GPU渲染的独立CPU LBS路径](POSE17_GPU_RENDER_CPU_LBS.md) a07已实际完成；新增GPU-LBS单004组合scope已完成203项相关CPU回归，尚待主agent统一构建及真实小样。组合scope不会自动批量推广003–009。

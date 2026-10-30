@@ -1,66 +1,50 @@
 # AGENTS.md
 
+## 当前任务与唯一生成入口
+
+- 先读[根README](README.md)、[任务状态](TASK_STATUS_AND_NEXT_STEPS.md)、[单seed基线](Docs/production/SINGLE_SEED_BASELINE_V1.md)；技术资料见[文档索引](Docs/README.md)，Python局部规则见[python/AGENTS.md](python/AGENTS.md)。任务状态只保留当前进度，历史指令不覆盖最新用户要求。
+- **新数据集只使用`tools/dataset/single_seed_task.py`和`tools/dataset/run_single_seed_partitions.py`，配置固定入口为`python/configs/single_seed_generation_v1.json`。** 前者准备/冻结/导出/验证，后者控制分机位采集。旧task/production、旧批量/活跃窗口/旧smoke脚本和1080p配置退出新生成流程；不从Git或Saved恢复旧入口来绕过当前配置。
+- `python/ue/run_task.py`及保留的底层库只服务当前管线的内部调用，不直接提交任意resolved JSON。共享模块保留不等于保留第二条生成管线。
+- 用户最新要求先清理旧入口/文档，再补容量门禁与完整导出生命周期，**完整3001帧单seed暂不执行**。新代码检查通过不自动授权长渲染；单seed人工验收后才进入正式多seed清单、split、总导出与发布。
+- 当前基线为4K（3840×2160）、10 FPS、8/8写出、每机位独立UE串行。C5/C1/C2/C3/C4必选，加P01–P04独立seed选1–2个；每seed相机集合按其事前冻结清单验证，不要求不同seed完全相同。
+- 草地用GreenV2 a02（UV60、Normal Flatness0.90、条带±18%、深/标准/浅增益0.60/1.00/1.50）；十五套球衣、号码v2/黑白墨色、天气视觉v2均已确认。不得回退旧蓝/红棕、旧号码默认或旧相机配置。统一随机入口复用原独立namespace与算法，不另造选择器。
+
 ## 协作与版本管理
 
-- 项目只有一个Git根：`D:/projects/FutsalMOT_UEDataset`，分支`master`，远端`HHhydrogen/FutsalMOT_UE`。Python目录不再是submodule，不初始化嵌套Git。
-- 使用命令行Git精确暂存；不使用`git add -A`、force-push或跳过hooks。提交说明、注释及技术文档使用简体中文。
-- 用户已授权四阶段仓库整理和已验阶段成果提交推送；不重复申请同一授权。号码WIP与其他无关改动保留且不混入提交。
-- 用户2026-10-29已人工验收号码profile `back_size115_down002_v1`并明确授权固化和提交GitHub；本次可提交对应UV号码系统及必要依赖，其他未验数据生成草案、临时Sequence和无关WIP仍保留，不混入提交。
-- 用户2026-10-29进一步授权固化并提交已验单seed配置及必要依赖：4K、8/8写出、分机位独立UE、相机/绿色草地/十五套球衣/号码v2/天气视觉v2、body12与精简标注导出；本机运行数据、临时Sequence及无关研究WIP不混入。
-- 用户主动删除融合备份，并明确授权删除补建副本；不再自动重建备份。旧历史在统一仓库可达，未提交内容仍是本机WIP。
-- 以实现、导出和实验为主。已验方法直接复用，每个新功能做一次必要针对检查；不逐模型重复近景、不重复媒体hash/全像素审计、不为无变化反复报告。
-
-## 当前入口
-
-- 根README负责快速入口；[文档索引](Docs/README.md)负责技术说明；[任务状态](TASK_STATUS_AND_NEXT_STEPS.md)只记当前进度和下一步。
-- Python代码位于`python/`，研究脚本位于根`experiments/sim2real/`。先读Python README及[数据契约](Docs/engineering/DATA_CONTRACT.md)、[验证限制](Docs/engineering/VALIDATION_AND_LIMITATIONS.md)。
-- 工程规则集中在本文件；Python局部规则不重复Git、存储及运行状态。旧版本的流水和候选计划不覆盖当前状态。
+- 唯一Git根`D:/projects/FutsalMOT_UEDataset`，分支`master`，远端`HHhydrogen/FutsalMOT_UE`；Python不是submodule，不初始化嵌套Git。
+- 使用命令行精确暂存；不`git add -A`、force-push或跳过hooks。提交说明、注释与技术文档用简体中文。用户已授权的提交推送无需重复确认；已验号码/单seed基线已固化，无关研究WIP、临时Sequence与本机收据不混入。
+- 用户已授权移除旧生成管线与过时操作文档。共享依赖、历史冻结证据和不相关WIP保留；不因文件名老旧而删除当前管线依赖。历史由Git追溯，不另建可运行archive或自动重建用户已删除的备份。
+- 以实现、导出和实验为主，已验方法直接复用。新增功能只做必要针对检查，不逐模型重复近景、不重复媒体hash/全像素审计，不为无变化反复报告。
 
 ## 存储与生命周期
 
-- 用户2026-10-29要求临时测试渲染媒体统一写`G:/FutsalMOT_Dataset/test/<attempt>/raw`，不写项目目录。已完成测试媒体保留24小时，失败诊断明确用途并最长保留7天；每天04:00按`_test_lifecycle.json`清理已结束且过期的独立test attempt，不跟随junction，不清理活动任务或正式数据。项目Saved仅保留必要小型配置、日志、轨迹/native及关键收据。
+- 临时媒体只写`G:/FutsalMOT_Dataset/test/<attempt>/raw`及该attempt的`export`，不写D项目。UE配置、日志、轨迹/native、冻结协议和关键小收据仍在原`Saved/`物理目录。
+- 单seed配置预算1TiB，最低剩余100GiB。容量准入与生命周期的实际实现状态见任务状态；不能仅因JSON存在阈值就声称入口已执行。采集、后处理、验证及EXR清理属于同一活动attempt，不能在每机位MRQ结束就开始整个attempt的清理倒计时。
+- 成功媒体在全流程结束后保留24小时；失败诊断须写明用途且最长7天。每天04:00只清理生命周期收据标明已结束且过期的独立test attempt，不清理活动任务或正式数据，不跟随junction。
+- EXR后处理成功且所有EXR消费者结束后立即按精确清单清理；保留RGB、整数mask、Pose/world、轨迹、标定和成功收据。深度/Cryptomatte若需保留，须登记具体用途/范围；历史已删EXR不能由RGB/mask倒推为仍有物理遮挡证据。
+- 正式生成在单seed验收后建设：raw在G盘`_work/<attempt>/raw`，候选导出在`_staging/<attempt>`，验证后同卷发布新版本。禁止直接覆盖成品。完整规则见[存储规范](Docs/operations/STORAGE_POLICY.md)。
+- D恢复迁移已结束，不重放旧迁移驱动。研究输入、最小不可变`code/<SHA>`、权重和结果位于实际`D:/projects/FutsalMOT_Research`；G媒体只引用，不复制4K或环境。冻结协议、源码、轨迹/native与收据保留原bytes/SHA，路径迁移另记relocation，不能伪造旧路径可运行。
+- G盘或D项目外写删按具体范围申请工具自动审批，不通过junction绕过；拒绝须报告实际动作和原因。统计/复制/清理不跟随junction；不对DataSet目标递归删搬，Windows文件操作先核实绝对目标范围。
+- AutoSave保持False。Git不能恢复未保存Editor内存。`Saved/`、`Intermediate/`、`DerivedDataCache/`、媒体、环境、权重和本机收据不提交Git。
 
-- 所有渲染媒体（包括临时EXR/RGB/mask）仅写入`G:/FutsalMOT_Dataset`；新raw放`_work/<attempt>/raw`，导出放`_staging/<attempt>`，验收后同卷发布。禁止渲染写D Saved或直接覆盖成品。UE的配置、日志、轨迹、native及运行收据仍在项目原`Saved/`物理目录。
-- EXR后处理成功且所有EXR消费结束后立即按精确清单清理，不等不消费EXR的GPU训练结束；未完成/失败任务只保留明确诊断期限与用途。保留RGB、实例mask、Pose/world、轨迹、校准及成功收据。深度研究若需保留，必须在收据中登记用途与范围，不能长期默认堆积。入口与规则见[存储规范](Docs/operations/STORAGE_POLICY.md)。
-- 研究输入、不可变执行代码`code/<SHA>`、权重、检查点和结果位于实际`D:/projects/FutsalMOT_Research`。生成图像只引用G成品，不复制4K到研究目录；执行bundle只装必要源码，不另建Git或复制环境。
-- D恢复迁移已完整结束，G盘旧Research/Workspace根已移除；不重放旧迁移驱动。P1运行数据位于`Saved/P1/`，运行收据位于`Saved/`，历史协议原路径通过独立relocation解释。
-- 统计、复制和清理不跟随junction；不对DataSet目标递归删/搬。冻结协议、源码绑定、轨迹、native、校准和关键收据保留原bytes/SHA，另记relocation映射，不伪造历史路径可运行。
-- G盘或D项目外写删按具体范围申请工具自动审批，不能通过junction绕过；拒绝时说明实际动作与原因。
-- 23013份冗余媒体已删除638.191GiB，其中7961份EXR的深度/Cryptomatte不再保留；不能据已发布RGB/mask/Pose声称原EXR或物理遮挡证据仍存在。
-- AutoSave在项目和本机配置均为False。Git只管理磁盘中的文件，不能恢复尚未保存的Editor内存。
-- `Saved/`、`Intermediate/`、`DerivedDataCache/`、虚拟环境、权重和本机运行收据不提交Git。
+## 数据、研究与证据边界
 
-## 研究与数据边界
+- 新seed输出遵循[数据契约](Docs/engineering/DATA_CONTRACT.md)与[验证限制](Docs/engineering/VALIDATION_AND_LIMITATIONS.md)：每帧十人，bbox来自实例mask，号码与所属人物像素同步；body12取实际可见MPFBVisual，不能用隐藏driver替代。
+- Pose unknown不冒充visible，位置有效性不等于物理遮挡；号码非零像素不等于人可读。新body12、历史12点和Pose17保持各自schema，不改名转换历史数据；独立机位world差异保留原值，不平均或用容差称exact。同运动配对保持同split。
+- 原v1八组及所有已冻结研究数据保持不变。最终SNMOT116/187/test封存，不调测试、不筛seed/best/比例，不将已观察比赛新clip称独立比赛。当前生成任务不自动授权真实数据下载、split选择或训练。
+- 论文主线为固定检测下合成Pose相关监督对身份关联的边际作用，见[论文计划](Docs/research/CVPR_2027_PAPER_PLAN.md)。既有[v8](Docs/research/LEARNED_ASSOCIATION_V8.md)、[v9](Docs/research/POSE_QUALITY_RESIDUAL_V9.md)、[v10](Docs/research/MULTISEED_HARD_ASSOCIATION_V10.md)的预算、数据边界和负结果保持；旧计划不作为恢复已退役生成管线的命令。不能把颜色可分直接当作当前无RGB关联器退化的原因。
+- 后续研究协议写完整绝对参数：模型/可训练层、优化器、LR、输入、batch、更新次数、每步及累计R/S、损失系数、seed、阈值和检查点终点。各方法/面板先列绝对AssA/HOTA/IDF1，再列配对差和CI；缺失明确标缺失，不从delta反推，不跨数据/检测/评价范围比较。
+- 同3000R窗口、混合另1000S的协议不称图像曝光；[真实资源替代方案](Docs/research/REAL_SUPERVISION_SUBSTITUTION_A01.md)中额外1000R的C组必须独立schema和实际记录，不冒充同预算。用户未设非劣效/等效界限，不能自行补设通过标志。
+- 遵守[全过程记录](Docs/operations/TRAINING_RECORDS.md)：逐步loss/LR/梯度、R/S UID/epoch/pair、来源/曝光、0/每50/最终模型+优化器+RNG、stdout/stderr和全部失败评价留DResearch。历史缺失不补造，不从检查点挑best。
+- 每轮训练、校准、诊断或评价结束及失败/中断，由主智能体即时更新[训练历史](Docs/research/TRAINING_HISTORY.md)，作为阶段收尾和提交必做项。登记真实状态、对象/动机、数据来源/数量、绝对参数/预算/结果、全部负结果、局限和证据；零更新与未执行分列。自动跟进只读既有文档/小收据，有新增才更新，不重训/推理/评价/哈媒体或读封存测试。
+- 已验吞吐策略按[训练性能规则](Docs/operations/TRAINING_PERFORMANCE.md)复用：有界并行/缓存、CPU线程与GPU同步以端到端耗时验证，保持曝光/损失/初始化/完整记录不变。AMP、前向合并、编译、同卡多臂或验证频率变化另立数值协议；不能热改活动冻结实验或用少更新/少记录称加速。
+- UE渲染与GPU训练串行。本轮8/8渲染授权不恢复EXR解码优化、渲染导出重叠或GPU训练并行。人工取消不当作软件故障自行重启；`started_not_committed`是正常事务，真实退出/报错才诊断。硬崩溃后不猜测重放未持久更新，不按旧PID盲目kill。
 
-- 用户2026-10-28要求后续实验参数使用明确绝对值：完整写出模型/可训练层、优化器、学习率、输入尺寸、batch、更新次数、每步及累计R/S数量、损失系数、seed、阈值及检查点终点，不能仅写“沿用上一轮/增大若干倍/相同预算”。结果主表列出各方法各面板的绝对AssA/HOTA/IDF1等成绩，再附配对差值和置信区间；不同数据/检测/评价范围不得跨表比较。缺失标缺失，不从delta反推绝对成绩，不改历史冻结协议。
-- 维护[训练历史总览](Docs/research/TRAINING_HISTORY.md)：每轮训练、校准、诊断或评价结束后，由该轮主智能体自动更新历史，作为阶段收尾、提交推送和汇报的必做步骤；失败/中断也即时登记，不等每日定时任务且无需用户提醒。同步登记版本/实际状态、训练的对象及通俗解释、动机、真实/合成/开发验证/封存测试的数据来源与数量、绝对参数与预算、绝对结果和全部负结果、局限及原始证据入口。失败/中断/未执行与零更新诊断单列；历史缺失不补造。自动跟进仅核已有文档/小元数据与完成收据，有实质新增才更新和通知，不重训/重推理/重算TrackEval/重哈媒体，不读取封存测试或按成绩挑best。
+## UE与MCP
 
-- 论文主线为合成Pose相关监督在固定检测下对身份关联的边际作用，见[论文计划](Docs/research/CVPR_2027_PAPER_PLAN.md)。v5–v7位置微调/覆盖/静态时序未证明稳定增益；当前[v8](Docs/research/LEARNED_ASSOCIATION_V8.md)固定共享预训练Pose，单独学习困难候选身份连续性，采用三比赛留一开发和motion/pose×R/RS四单元。预算明确为同3000R窗口、混合另1000S，不冒充图像曝光。最终SNMOT116/187封存，不调测试集、不筛seed/best/比例，不预设提升。
-- 用户已授权[v9](Docs/research/POSE_QUALITY_RESIDUAL_V9.md)：分析Pose拖累和外观域差，随后同3000R/额外1000S的质量残差、缺点/噪声消融，重点比较同容量motion分支及v8 motion_RS。主对照三seed，探索消融仅事前登记首seed，不根据结果挑seed或把探索当三seed结论。当前关联器没有RGB输入，颜色/纹理可分不等于拟真不足造成退化；新球衣/成像配对另立数据版本，不改冻结数据。运行状态以任务状态和Saved/ProjectStatus为准。
-- 用户已授权下一轮[独立运动与困难事件v10](Docs/research/MULTISEED_HARD_ASSOCIATION_V10.md)：强motion_RS是主要参照，各组同3000R窗口、混合另1000S；新比赛须确认真实比赛身份不与已观察三场重复，不能把同场新clip称独立比赛。先完成来源/短样/完整采集与预测再冻结训练准入，最终116/187及test包封存。
-- 所有后续训练遵守[全过程记录](Docs/operations/TRAINING_RECORDS.md)：逐步loss/LR/梯度、R/S UID/epoch/全部及已知pair、来源/环境/曝光链、0/每50/最终完整模型+优化器+RNG、原stdout/stderr、失败和全部评价必须保留在DResearch。历史缺失字段明确标缺失，不补造；检查点不用于挑best。记录工具通过不等新实验端到端训练通过。
-- 用户2026-10-27对真实资源替代实验选择“暂不设界限，只报告配对差值和置信区间”。遵守[七比赛方案](Docs/research/REAL_SUPERVISION_SUBSTITUTION_A01.md)，不擅设非劣效/等效界限或通过标志。C为另立的4000R（3000基础R+1000额外R），不伪装S或混入同3000R的Pose结论；新C必须独立schema/实际数值与完整记录门禁。
-- 球衣已有appearance v1的独立seed可复现系统；优先[接回原系统](Docs/engineering/POSE_SEEDED_KIT_INTEGRATION.md)，不再另造随机选择器。Pose固定roster只复用其Jersey/Shorts分配，不套原随机模型/肤色；native模型替换会清空材质，必须随后应用并读回。用户已授权v9闭合后开展同运动/相机配对，但CPU候选不等动态通过，不改当前冻结数据或接号码WIP。
-- v1八组数据保持不变。Pose试产独立输出；不能将历史12点重命名成17点或事后伪造同帧采样。
-- 鼻眼耳按实际渲染mesh校准；可见MPFBVisual与隐藏驱动mesh必须区分。unknown不冒充COCO visible，限定位置准入不等于正式遮挡监督。
-- 独立机位world差异保留原值，不平均或用容差冒充逐值exact。地板随机流独立于运动/天气/外观，同运动配对保持同split。
-- 用户最新要求后续主训练以原版绿色草地及小幅色调/明暗变化为主；蓝/红保留作诊断，不改旧冻结数据。按[绿色变体方案](Docs/engineering/GREEN_FLOOR_VARIATION.md)复用既有floor seed/catalog算法，序列内固定；纹理、粗糙度先独立研究。原实例无颜色参数，不能猜调`Param`或使用旧蓝RGB冒充绿场；新派生材质和短样必须真实读回验收。
-- 用户2026-10-29已确认GreenV2 a02：UV平铺60、Normal Flatness=0.90、条带±18%、深/标准/浅线性增益0.60/1.00/1.50；后续新生成只用绿色候选，旧蓝/红棕仅历史兼容。后续已授权七项功能连续实现、只做轻量审核，不再逐项等待验收；完整单seed通过后才开展总数据集导出。当前具体阶段见任务状态。
-- 用户2026-10-26已取消专门的渲染/导出加速任务；不再开发或接入解码优化、运行性能基准或尝试渲染/导出重叠。沿用已验串行单机位采集、正常退出、后处理及EXR清理，专注绿色/球衣配对和公平实验。现有训练预取继续使用，内存与存储安全门禁保留。
-- 用户2026-10-29针对4K内存崩溃重新明确授权调整渲染策略、比较写出并发/队列（包括8/8）、拆分单seed并定位渲染阻塞以加速。当前采用[32GB主机4K策略](Docs/operations/RENDER_POLICY_4K_32GB.md)：每机位独立UE、8/8写出、提交内存门禁及正常退出；保留全seed机位和同源运动/随机分配。此新授权限本轮渲染侧，不自动恢复EXR解码优化、渲染导出重叠或GPU训练并行。
-- UE渲染与GPU训练串行；本轮渲染、发布和本次安全退出真正完成后才训练。人工取消遵循最新用户要求，不当软件故障自行重启。
-- 活动`started_not_committed`是正常事务；只有真实退出/报错才诊断。硬崩溃超过last的数学更新不猜测重放，不把PID复用误判为旧训练，绝不按旧PID盲目kill。
-- 后续训练优先提高实际吞吐和硬件利用率：使用有界解码预取/缓存、控制CPU线程、减少不必要GPU同步；以端到端耗时验证，不仅看占用率。任何活动冻结实验不热改。AMP、批量、同卡并行或验证频率等变化另立明确协议，保持真实曝光公平及测试封存；额外GPU基准不能抢占当前任务。
-- 用户2026-10-27再次明确要求按本机i5-14600KF（14核20线程）/RTX4070Ti SUPER（16GiB）/32GB RAM提高后续训练及推理效率。新执行协议优先复用适用的已验吞吐配置，实质变更时补做必要小规模准入：优先有界独立任务并行、长期worker/模型及只读输入缓存，不能默认照搬单进程单计算线程串行。CPU追踪与GT评价用独立进程池，候选先2个track+1个metric，再按真实RAM/commit余量评估4+2；重置每任务轨迹/全局ID，验证冷启动与A→B→A完整输出一致。训练保持原R/S曝光/损失/初始化及完整持久化记录，先优化重复特征、CPU→GPU传输和同步；前向合并、AMP/编译/多臂同卡等须另签数值协议。性能验收包含启动/准备/记录/检查点/评价的总耗时、任务或图像吞吐、CPU/GPU/RAM/VRAM峰值，不以占用率接近100%或少记录/少更新作为成功。具体策略见[训练性能规则](Docs/operations/TRAINING_PERFORMANCE.md)，不恢复已取消的渲染/EXR导出优化。
-
-## UE与MCP必须遵守
-
-- UE5.8，默认地图`/Game/FutsalMOT/Maps/L_FutsalCourt`；实际操作前核验当前Level、PIE/MRQ和dirty包。
-- 新增运行时行为、动画采样及稳定数据契约优先C++；适合资产表达的AnimGraph、Control Rig和材质配置不强行重写。
-- UE操作先读[完整自动化工作流](Docs/operations/UNREAL_MCP_WORKFLOW.md)，优先真实Unreal MCP，先describe完整toolset再用短tool_name。完整脚本必须在真实UE Python执行，不用sandbox冒充`import unreal`。
-- 切图只用原生SceneTools.load_level；切换期间不加载或保留UWorld引用。原生工具不可用或同类API连续失败两次时停止并报告具体限制，不猜测反射回退。
-- appearance apply/restore前只读确认规范地图、十人唯一、资产class与package clean。资产移动/删除通过UE API，不从文件系统剪切或删除uasset。
-- 重启/退出前核验dirty、PIE/MRQ、关键资产与自有回调。未知未保存改动或活动MRQ不得强杀；安全时自行正常quit、编译、启动、重连并用新鲜日志闭环。
-- 旧CPU-render/Lumen蒙皮路径保持submit禁用，使用已验GPU-render/CPU-LBS。native在teardown前落盘，回调只读文件；MCP PRIVATE/独立globals保留，不reload Toolset UClass。
-- 历史Py_FinalizeEx→PyGC_Collect退出崩溃具体坏对象仍未知；一次正常退出不称根治，不危险复现。
-- 维护MPFB角色先读[生产SOP](Docs/production/MPFB_PLAYER_PRODUCTION_SOP.md)；未验证导入参数不凭经验猜测。Fab目录不提交，资产转入项目须通过UE内容工具修引用。
+- UE5.8，默认地图`/Game/FutsalMOT/Maps/L_FutsalCourt`。操作前读[完整自动化工作流](Docs/operations/UNREAL_MCP_WORKFLOW.md)，核当前Level、PIE/MRQ、dirty包；优先真实Unreal MCP，先describe完整toolset再用短tool_name。
+- 完整脚本在真实UE Python执行，不以sandbox冒充`import unreal`。切图只用原生SceneTools.load_level，切换期间不持有UWorld引用；原生工具不可用或同类API连续失败两次时报告具体限制，不猜反射回退。
+- appearance apply/restore前只读确认规范地图、十人唯一、资产class和package clean。uasset移动/删除用UE内容工具修引用，不从文件系统剪切删除；Fab目录不提交。
+- 退出/重启前核dirty、PIE/MRQ、关键资产和自有回调。未知未保存改动或活动MRQ不得强杀；安全时正常quit、编译、启动、重连，用新鲜日志闭环。历史Py_FinalizeEx/PyGC_Collect坏对象仍未知，一次正常退出不称根治，不危险复现。
+- 使用已验GPU-render/CPU-LBS；旧CPU-render/Lumen蒙皮submit保持禁用。native在teardown前落盘，回调只读文件；保留MCP PRIVATE/独立globals，不reload Toolset UClass。
+- 新运行时行为、动画采样和稳定数据契约优先C++；AnimGraph、Control Rig和材质配置按资产职责处理。维护MPFB先读[生产SOP](Docs/production/MPFB_PLAYER_PRODUCTION_SOP.md)，不凭经验猜未验证导入参数。

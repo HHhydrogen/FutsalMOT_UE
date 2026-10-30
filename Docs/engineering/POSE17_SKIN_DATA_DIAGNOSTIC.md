@@ -1,5 +1,7 @@
 # Pose17基础蒙皮数据只读导出
 
+> 历史研究记录：仅解释原数据、协议与共享实现，不是当前生成操作手册。新数据只使用[当前single_seed入口](../production/SINGLE_SEED_BASELINE_V1.md)，不运行下文旧候选脚本或据此重建旧管线；历史源码及收据保持各自冻结版本。
+
 新增独立`UFutsalPose17SkinDataLibrary`，不修改已发布的`FutsalPose17Library`或MRQ pass。已通过UE5.8构建、真实反射和`SkinDataReadOnlyContract`测试，七角色实际基础权重均与历史native SHA精确匹配、场景前后不变、dirty为空，输出`Saved/Pose17Development/asset_skin_data_a02`。首次构建误用private资产Nanite方法，已改为公开RenderData查询；失败日志保留。随后四机位400条历史RefToLocal SHA完全重建一致，200头锚点与native数值最大差0m，见内层`docs/POSE17_OFFLINE_LBS_DIAGNOSTIC.md`。这是几何数值重建证据，不是最终渲染表面、遮挡或正式数据准入。
 
 ## 入口和用途

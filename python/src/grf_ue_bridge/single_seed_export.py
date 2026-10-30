@@ -8,7 +8,8 @@ import shutil
 
 from .single_seed import (ENTITY_IDS,POINT_NAMES,SCHEMA_NAMES,read,rows,dump,sha,canonical_sha,
                          identities,frame_annotation,projection,bounds_state)
-from .storage_policy import DATASET_ROOT,physical_child,record_test_render
+from .storage_policy import (DATASET_ROOT,physical_child,record_test_render,
+                             test_render_activity,require_single_seed_capacity)
 
 
 def context(project,local,short):
@@ -120,14 +121,22 @@ def link(source,destination):
 
 
 def export_seed(project,local,short=False):
+    values=context(project,local,short)
+    project,local,unit,protocol,task,source,raw,destination,count=values
+    if destination.exists():
+        raise FileExistsError('不覆盖seed导出: '+str(destination))
+    assert_bindings(project,local,protocol)
+    with test_render_activity(raw,'exporting',storage=protocol['request']['storage']):
+        dump(unit/'export_storage_admission.json',require_single_seed_capacity(protocol,task))
+        return _export_seed(values,short)
+
+
+def _export_seed(values,short):
     import numpy as np
     from PIL import Image
     from .cryptomatte import convert_render_mask_dir
     from .number_mask_exr import export_number_masks
-    project,local,unit,protocol,task,source,raw,destination,count=context(project,local,short)
-    if destination.exists():
-        raise FileExistsError('不覆盖seed导出: '+str(destination))
-    assert_bindings(project,local,protocol)
+    project,local,unit,protocol,task,source,raw,destination,count=values
     validators=schema_validators(project,protocol)
     receipt=capture_receipt(project,local,unit,protocol,task,source,raw,count)
     meta=read(source/'meta.json');recipe=read(source/'provenance/seeded_episode.json')
@@ -138,6 +147,7 @@ def export_seed(project,local,short=False):
     number_report=export_number_masks(camera_dirs)
     mapping=read(project/'python/ue/actor_mapping.example.json')
     for entry,camera in zip(cameras,camera_dirs):
+        require_single_seed_capacity(protocol,task,reserve_peak=False)
         status,frames=convert_render_mask_dir(camera/'render_mask',mapping,camera/'mask',count,.1,10,workers=2,chunk_size=2)
         if status!='success' or len(frames)!=count:
             raise ValueError('实例mask帧数不完整: '+entry['camera_id'])
@@ -157,12 +167,15 @@ def export_seed(project,local,short=False):
             stream.write(json.dumps(trajectory,ensure_ascii=False,allow_nan=False)+'\n')
     total_visible_numbers=0
     for entry,camera in zip(cameras,camera_dirs):
+        require_single_seed_capacity(protocol,task,reserve_peak=False)
         camera_id=entry['camera_id'];output=destination/camera_id
         output.mkdir();(output/'img1').mkdir();(output/'mask').mkdir();(output/'number_mask').mkdir()
         native_path=Path(task['ue_profile']['annotation_export']['body12_capture']['output_dir'])/(entry['camera_actor']+'.jsonl')
         actual_count=0
         with (output/'annotations.jsonl').open('w',encoding='utf-8') as stream:
             for index,native in enumerate(rows(native_path),1):
+                if index%64==1:
+                    require_single_seed_capacity(protocol,task,reserve_peak=False,inspect_media=False)
                 if native['output_frame']!=index-1 or native['source_frame']!=index-1 or len(native['players'])!=10:
                     raise ValueError('native/source/RGB帧映射不符')
                 name='%06d.png'%index
@@ -210,14 +223,23 @@ def export_seed(project,local,short=False):
 
 
 def verify_seed(project,local,short=False):
+    values=context(project,local,short)
+    project,local,unit,protocol,task,source,raw,destination,count=values
+    if (unit/'verification_complete.json').exists():
+        raise FileExistsError('本seed已完成校验，不重复扫描')
+    assert_bindings(project,local,protocol)
+    with test_render_activity(raw,'verifying',storage=protocol['request']['storage']):
+        require_single_seed_capacity(protocol,task,reserve_peak=False)
+        return _verify_seed(values,short)
+
+
+def _verify_seed(values,short):
     """对本轮seed做一次完整结构和mask核对；不重哈RGB或伪造物理遮挡。"""
     import numpy as np
     from PIL import Image
     from instance_mask import compute_instance_stats
-    project,local,unit,protocol,task,source,raw,destination,count=context(project,local,short)
-    if (unit/'verification_complete.json').exists():
-        raise FileExistsError('本seed已完成校验，不重复扫描')
-    assert_bindings(project,local,protocol);validators=schema_validators(project,protocol)
+    project,local,unit,protocol,task,source,raw,destination,count=values
+    validators=schema_validators(project,protocol)
     manifest=read(destination/'seed_manifest.json');validators['seed_manifest.schema.json'].validate(manifest)
     entities=identities(read(source/'meta.json'),read(source/'provenance/number_uv.json'))
     if manifest['entities']!=entities or manifest['frame_count']!=count or manifest['generation']['receipt_sha256']!=sha(unit/'capture_receipt.json'):
@@ -250,6 +272,7 @@ def verify_seed(project,local,short=False):
         raise ValueError('轨迹帧数不符')
     visible_numbers=0;truncated_count=0;out_count=0
     for entry in camera_entries:
+        require_single_seed_capacity(protocol,task,reserve_peak=False)
         camera_id=entry['camera_id'];camera=destination/camera_id
         metadata=read(camera/'camera.json');validators['camera_metadata.schema.json'].validate(metadata)
         if metadata['profile_sha256']!=canonical_sha(entry['profile']):
@@ -319,9 +342,10 @@ def verify_seed(project,local,short=False):
         'files':len(actual),'bytes':total_bytes,'protocol_sha256':sha(local/'protocol.json'),
         'seed_manifest_sha256':sha(destination/'seed_manifest.json'),'trajectory_sha256':sha(destination/'trajectory.jsonl'),
         'global_dataset_export_performed':False,'rgb_media_sha_audit_performed':False}
-    dump(unit/'verification_complete.json',report)
+    dump(unit/'validation_passed_pending_cleanup.json',report)
     retire_exr(unit,raw)
-    record_test_render(raw,'complete')
+    dump(unit/'verification_complete.json',report)
+    record_test_render(raw,'complete',storage=protocol['request']['storage'])
     return report
 
 

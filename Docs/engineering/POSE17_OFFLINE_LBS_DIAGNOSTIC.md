@@ -1,5 +1,7 @@
 # 离线RefToLocal与动态表面重建：严格SHA诊断
 
+> 历史研究记录：仅解释原数据、协议与共享实现，不是当前生成操作手册。新数据只使用[当前single_seed入口](../production/SINGLE_SEED_BASELINE_V1.md)，不运行下文旧候选脚本或据此重建旧管线；历史源码及收据保持各自冻结版本。
+
 入口为`src/grf_ue_bridge/pose17_offline_lbs_v2.py`和独立CLI `python -m grf_ue_bridge.tools.reconstruct_pose17_lbs`。只使用P1固定Python3.9/NumPy，不导入unreal，不读RGB/EXR、训练数据或最终test，不启动GPU，也不修改旧native/资产/计划。输出仅限新诊断目录，已有目录拒绝覆盖。
 
 ## 已有真实证据

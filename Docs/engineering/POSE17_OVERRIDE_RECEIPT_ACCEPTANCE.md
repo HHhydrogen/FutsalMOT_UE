@@ -1,5 +1,7 @@
 # Player003→004原生事务收据验收
 
+> 历史研究记录：仅解释原数据、协议与共享实现，不是当前生成操作手册。新数据只使用[当前single_seed入口](../production/SINGLE_SEED_BASELINE_V1.md)，不运行下文旧候选脚本或据此重建旧管线；历史源码及收据保持各自冻结版本。
+
 `ue/pose17_override_receipt.py` 是独立纯CPU验收器，不导入unreal、不改runner/C++、不触发渲染或修复。已覆盖旧CPU scope及新增GPU-LBS组合/联合scope的反例。Player004首次a01在warmup阶段RHI崩溃，没有native收据，失败attempt保持原样；后续独立`player004_closeup_a02_gpu_lbs`已通过真实三近景切换/采样/恢复与头点配对，`joint_seed1048_a01_gpu_lbs`又完成七模型十实体四机位短诊断。后两者不回写旧a01，也不提升正式生产准入。
 
 完整attempt完成且独立postflight成功后，在内层Python3.9环境执行：

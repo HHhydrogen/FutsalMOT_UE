@@ -3,7 +3,7 @@ import copy
 import pytest
 
 from pose17_location_pilot_contract import PILOT_WINDOWS, validate_location_pilot_contract
-from pose17_smoke_runner import validate_plan
+from pose17_receipt_contract import validate_plan
 from test_pose17_joint_receipt import joint_plan
 
 

@@ -1,48 +1,31 @@
-# 验证和当前限制
+# 验证与当前限制
 
-## 当前正式批次
+新数据唯一入口为[单seed管线](../production/SINGLE_SEED_BASELINE_V1.md)，参数固定4K、10FPS、8/8写出与每机位独立UE。当前具体状态和下一步见[任务状态](../../TASK_STATUS_AND_NEXT_STEPS.md)，不以旧生产、Pose17候选或静态测试代替本次运行证据。
 
-2026-10-22已完成8个seed、八天气、32视角序列，20,116对原生3840×2160 RGB/mask，含逐帧bbox；生产与平铺迁移记录见PRODUCTION_V1.md及SEED_DATASET.md。
+## 已有动态证据
 
-基准组为full，后续按用户授权采用quick/basic。clip保留真实准入等级、场景生命周期和full基准引用。全部生成mask/bbox不等于全部逐帧像素审计，structure检查也不能发现媒体内部字节损坏。
+a09已完成六机位各30帧，共180组RGB/人物mask/号码mask、1800个人物记录、905条可见号码、21600个body12点；六次恢复和正常退出通过，EXR已消费清理。完整3001帧×6机位尚未生成，短样结果不代表整场已经通过。后续代码或入口变更采用新attempt/源码绑定，原收据保留原值。
 
-## 测试与两环境边界
+新功能仅做必要针对检查。CPU单元测试只证明纯代码行为，不能证明UE资产、材质保存恢复、动画、光照、相机或实际mask同步。默认pytest不运行真实GRF集成；P1固定Python3.9，UE脚本仅在真实UE5.8 Editor执行，研究Torch环境独立。
 
-默认pytest跳过7项GRF集成，真实GRF可显式使用-m grf_integration。P1固定Python3.9；UE脚本只能在Editor Python中执行，不在P1导入unreal或在UE导入NumPy/OpenEXR。
+## 标注和运动边界
 
-无号码发布工作树完整回归1710 passed、7 deselected。测试证明纯代码契约，不替代UE资产、动画、相机、实际渲染或视觉验收。新GPU实验的103项结构/协议回归不等于训练结果已经改善。
+- 当前输出body12，不是COCO17。visibility保留unknown=0；号码readable未人工认证时为false，不能冒充物理遮挡或OCR真值。
+- bbox是可见实例像素tight box，不是amodal人体框；不可见仍保留身份和轨迹。
+- GRF运动由双方内置AI产生，按首次done结束完整episode；不再选择旧活跃窗口，也不补静止尾帧或拼接reset。
+- 同seed所有机位和帧属于一个split；当前1048诊断不自动进入正式train/dev。随机局部机位按各seed冻结清单核对。
+- 不同UE/GPU的RGB不保证逐字节一致；独立机位native world差异保留原值，不平均成exact。
 
-## 数据与运动限制
+## 执行、恢复和存储
 
-- GRF轨迹来自双方内置AI，不是人类球员采集；源坐标与40×20m场地映射固定。
-- 按固定seed采集完整1800帧，运动QC选最长连续活跃窗口；不同seed不强制900帧，不补静止尾段或拼接片段。
-- 活跃QC只证明轨迹运动指标，不证明所有足球战术真实、所有肢体动画或碰撞合理。
-- 可见像素bbox不同于amodal人体框；完全遮挡时bbox为空，未知visibility不伪造成1。
-- 同seed全部相机同split；不能随机分邻帧或机位制造独立验证集。本轮8组均train，真实数据按比赛隔离。
+每机位独立UE、串行派发，使用已确认GPU渲染/CPU-LBS；内存门槛与写出配置消费冻结协议。MRQ提交不等于成功，必须收齐实际帧集、恢复和正常退出收据。未知dirty包或活动MRQ不得强杀。
 
-## UE与生命周期
+控制器可以跳过有正常退出收据的完整机位；未闭合的机位保留现场停止，不支持机位内逐帧续跑或半导出自动续跑。新attempt不能覆盖已有输出或套用旧成功收据。
 
-- 当前UE5.8与正式地图L_FutsalCourt；原生MCP优先，真实脚本使用FutsalMOTTools。
-- 地图切换仅通过原生SceneTools.load_level，不在切图时持有UWorld引用。
-- MRQ异步，提交不等于成功；必须读取真实终态与完整帧集。PNG过滤只保留FinalImage，多层Object-ID EXR走原生路径。
-- 通用task要求appearance/environment恢复；持久生产使用独立retain收据，绑定真实文件SHA和checkpoint，不能伪造restored。
-- 逐机位释放executor及delegate，活动MRQ期间不重建线程池。写队列目标12/12，实际依提交内存回退并跨seed继承，6GiB最终保护保留。
-- 未知dirty包或checkpoint变化时停止写操作，不强制结束Editor；只可放弃经核对的任务自有场景状态。
-- FootIK、Retarget和动画几何无法由静态测试证明；角色资产仍需SOP及真实UE验收。
-- 不同UE/GPU的PNG不保证逐字节一致。
+媒体只写G盘独立test attempt。分机位入口已接入1TiB预算、100GiB最低余量和7byte/px估算；渲染、导出、验证及EXR清理期间保持活动，成功保留计时从最终闭合开始，UE停止未确认时保持attention_required。具体轮询与失败处理见[存储规范](../operations/STORAGE_POLICY.md)。这些接线已做代码检查，尚未执行真实长样。原深度/Cryptomatte删除后不能由RGB/mask恢复或声称仍保留遮挡证据。
 
-## 发布、清理与归档
+## 历史数据与研究
 
-verify_clip默认full重读SHA；metadata读文本SHA和图像头；structure读文本和文件覆盖，显式复用已有发布证据。发布完整SHA只生成一次，用户授权的快速清理不重复扫描媒体。
+旧v1_no_numbers_4k的8seed/20116对RGB-mask和Pose17位置试产保持原版本、原split与原证据；不改旧数据、不把12点重命名为17点，也不靠新代码补造历史采样。旧生成操作手册已移除，可经Git历史追溯。
 
-layout迁移只允许每seed单片段，同卷移动目录、修改引用和文本SHA，媒体不复制或编码。旧生产回执保留其原布局；迁移回执单独记录，不能改写历史来源。
-
-临时uasset通过UE资产API删除，先确认没有范围外引用，不能用文件系统强删。正式地图、共享模型、骨架和材质不因零引用自动删。Windows递归删除严格校验边界，不跟随研究目录junction到G盘源图像。
-
-Git不包含生产媒体、原始轨迹、权重或本机Saved。清理缓存和测试产物时保留源轨迹、冻结运行代码、关键回执及号码开发证据。AutoSave默认关闭，重要修改先主动保存再提交版本。
-
-## GPU实验限制
-
-本轮只检验固定真实标注/计算预算下，合成数据对公开足球检测和固定追踪器效果的影响。无真实五人制标注，不能外推目标场景收益；单个小样本val和单训练seed不足以支持稳健论文结论。真实final test保持封存。训练启动或完成不等于证明合成数据有效，必须报告实际指标及下降项。
-
-号码系统未完成，不属于本轮发布或训练输入；其贴合、遮挡、mask同步和身份恢复收益以后独立验收。
+单seed完整验收前不开始总数据集发布。任何数据生成通过都不等于证明模型收益；真实最终测试封存、研究曝光与全部负结果遵守根AGENTS及[训练历史](../research/TRAINING_HISTORY.md)。

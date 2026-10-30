@@ -6,9 +6,9 @@ import pytest
 
 from pose17_calibration_assets import JOINT_VISUAL_IDS, ORIGINAL_VISUAL_MESH, production_visual_mesh
 from pose17_override_receipt import validate_joint_bundle
-from pose17_smoke_runner import validate_plan
+from pose17_receipt_contract import validate_plan
 from test_pose17_override_receipt import gpu_bundle
-from test_pose17_smoke_runner import gpu_override_plan
+from pose17_receipt_fixtures import gpu_override_plan
 
 
 def joint_plan():

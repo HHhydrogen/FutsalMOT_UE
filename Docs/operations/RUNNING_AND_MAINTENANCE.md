@@ -1,30 +1,28 @@
-# 运行入口与日常维护
+# 当前运行入口与维护
 
-从项目根执行，先查看当前路径：
+所有新数据生成统一从项目根调用`tools/dataset/single_seed_task.py`和`tools/dataset/run_single_seed_partitions.py`；参数与完整顺序见[单seed固化说明](../production/SINGLE_SEED_BASELINE_V1.md)。旧grf-ue task、旧生产driver、活跃窗口与Pose17试产不是当前可用生成入口。
 
 ```powershell
+python/.venv/Scripts/python.exe tools/dataset/single_seed_task.py --help
+python/.venv/Scripts/python.exe tools/dataset/run_single_seed_partitions.py --help
 ./tools/run.ps1 paths
-./tools/run.ps1 p1 task validate python/configs/weather_seeded_smoke_3frames_4cam.json
-./tools/run.ps1 p1 task ue-command python/configs/weather_seeded_smoke_3frames_4cam.json
-./tools/run.ps1 research experiments/sim2real/train_pose_location_separate_v4.py --help
 ./tools/run.ps1 mcp --help
 ```
 
-P1固定`python/.venv`的Python3.9；研究仍使用独立Python3.10环境。本机研究解释器可在`Saved/Local/paths.json`设置，模板为[paths.example.json](../../Config/paths.example.json)。实际GPU研究运行前必须退出Editor；研究启动器会拒绝活动Editor，纯`--help`除外。它不会修改协议或自动生成新的训练准入。
+本轮已清理旧入口并接通容量与生命周期控制，用户要求完整单seed暂不运行。纯代码检查不替代真实长样；不得因为文档列出后续命令而自动开始采集、渲染或训练。
 
-P1本机配置为`Saved/P1/.futsalmot/local.json`，默认工作输出指向`Saved/Render/Tasks`；正式发布工具才将完整数据放到`G:/FutsalMOT_Dataset`。不要把成品数据、权重或实验输入复制回源码目录。
+P1固定`python/.venv`的Python3.9；UE运行UE5.8 Editor Python，研究环境独立Python3.10。当前生成器自行准备冻结协议与resolved配置；`run_task.py`只作为内部UE适配层，不手工投递旧JSON绕过当前入口。
 
-## MCP
+UE配置、轨迹/native和收据在`Saved/SingleSeed/<attempt>`；RGB/EXR/mask在`G:/FutsalMOT_Dataset/test/<attempt>`。Saved、环境、媒体和权重不入Git，不把数据复制回源码目录。更改代码或DLL后使用新attempt，不改旧冻结协议。
 
-UE运行时使用`tools/mcp_cli.py`或启动器的mcp模式。`--list`发现工具，`--describe <toolset>`读取schema；完整请求使用`--request Saved/<请求>.json --receipt Saved/<新返回>.json`，请求operation为`call`。每次调用先describe，写操作不自动重放；执行脚本仍限真实项目路径，没有放宽Toolset范围。
+## MCP与退出
 
-MCP请求与收据只允许实际位于本项目Saved，旧GWorkspace规则不再是当前入口。历史驱动在`tools/legacy/`，禁止因旧文档存在而直接重启。
+UE操作遵守[完整MCP工作流](UNREAL_MCP_WORKFLOW.md)：先describe真实toolset，短tool_name调用；先核对地图、PIE/MRQ和dirty。完整脚本在真实UE Python执行，不能在P1或sandbox冒充`import unreal`。
+
+分机位控制器使用正式启动/退出脚本；未知未保存改动或活动MRQ不强杀。正常退出需新鲜日志闭环。MCP请求与小收据保留项目Saved，历史脚本和日志不作为自动重启授权。
 
 ## 清理与历史
 
-- 原始执行证据保留在Saved和研究根；原清单/协议bytes不改写，目录变化另记映射。
-- 本轮收尾将37项一次性清单/入口归档，逐个文件SHA核对，未删除源码或正式数据；收据为`Saved/ProjectStatus/phase4_archive.json`。
-- Saved日志保留当前退出、失败定位与关键回执；只删除明确过期的日志、测试夹具和缓存。不沿junction递归清理，不对正式Dataset批量删除。
-- UE资产只能通过UE API移动/删除；17个兼容重定向器仍有引用，不能当作空壳文件强删。
-- AutoSave关闭；编辑器中重要修改需主动保存，再精确提交。Git不备份未保存内存。
-- 单仓库master，一次提交已验成果；未完成号码、其他WIP、Saved、权重、虚拟环境和Fab缓存均不混入。
+临时媒体按[存储规范](STORAGE_POLICY.md)精确清理；活动任务、失败现场和关键源码/协议/轨迹收据不误删，不跟随junction。UE资产通过Editor API移动/删除，不能从文件系统删除uasset。AutoSave关闭，重要Editor修改先保存。
+
+当前源码只有根Git、master；精确暂存相关已验改动，保留无关WIP。旧生成文档和入口由Git历史追溯，不再维护可误调用的本地旧管线副本。研究已发布数据与冻结实验仍使用其原版本和独立环境。

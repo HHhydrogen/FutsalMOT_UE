@@ -40,6 +40,7 @@
   "storage": {
     "stage_limit_bytes": 1099511627776,
     "min_free_bytes": 107374182400,
+    "estimated_peak_bytes_per_pixel": 7,
     "success_retention_hours": 24,
     "failure_retention_days": 7
   },

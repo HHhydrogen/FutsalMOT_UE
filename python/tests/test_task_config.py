@@ -119,21 +119,6 @@ def _environment_config(**overrides):
     return config
 
 
-def test_player_environment_smoke_config_is_v1_5_without_jersey_number_requirement():
-    config_path = (
-        Path(__file__).resolve().parents[1]
-        / "configs"
-        / "player_environment_smoke_3frames_4cam.json"
-    )
-    task = loader.load_task_config(config_path)
-
-    assert task.ue.environment.policy == "futsalmot_environment_v1_5"
-    assert task.ue.environment.environment_seed == 42
-    assert task.ue.environment.preset == "daylight_clear_v1"
-    assert task.ue.appearance is None
-    assert "jersey_number" not in json.dumps(
-        json.loads(config_path.read_text(encoding="utf-8"))
-    )
 
 
 def _camera_task_fields():

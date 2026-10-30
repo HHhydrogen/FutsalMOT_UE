@@ -1,5 +1,7 @@
 # 保留COCO预训练Pose容量的仅xy适配
 
+> 历史研究记录：仅解释原数据、协议与共享实现，不是当前生成操作手册。新数据只使用[当前single_seed入口](../production/SINGLE_SEED_BASELINE_V1.md)，不运行下文旧候选脚本或据此重建旧管线；历史源码及收据保持各自冻结版本。
+
 独立工具 `src/grf_ue_bridge/pose_xy_head_transfer.py`，仅验证Ultralytics8.4.60普通三尺度、非end2end、未融合Pose/PoseModel，不支持Pose26、DDP或任意版本。P1不安装Torch，模块按调用延迟导入研究依赖。
 
 ## 原问题与实际失败

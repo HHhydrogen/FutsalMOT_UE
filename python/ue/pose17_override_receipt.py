@@ -8,7 +8,7 @@ from pathlib import Path
 import re
 
 from pose17_native_receipt import normalize_native_receipt
-from pose17_smoke_runner import _assert_gpu_lbs_receipt, _assert_override_receipt, validate_plan
+from pose17_receipt_contract import _assert_gpu_lbs_receipt, _assert_override_receipt, validate_plan
 from pose17_calibration_assets import calibration_visual_mesh, production_visual_mesh
 
 

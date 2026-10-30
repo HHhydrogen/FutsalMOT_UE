@@ -412,58 +412,6 @@ def test_audit_standalone_ignores_residual_enabled_profile_without_task_config(t
     assert report["checks"]["appearance"]["status"] == "skipped"
 
 
-@pytest.mark.parametrize("appearance_enabled", [False, True])
-def test_task_audit_cli_passes_current_resolved_appearance_config(
-    monkeypatch, tmp_path, appearance_enabled
-):
-    from types import SimpleNamespace
-
-    from grf_ue_bridge import cli as cli_module
-
-    root = tmp_path / "episode"
-    root.mkdir()
-    task_file = tmp_path / "task.json"
-    catalog = _appearance_catalog() if appearance_enabled else None
-    resolved = SimpleNamespace(
-        audit={"expected_cameras": 1, "expected_frames_per_camera": 1},
-        artifact_policy={"profile": "full"},
-        dataset_episode_dir=str(root),
-        trajectory_output=str(root),
-        ue_profile={"appearance": catalog} if appearance_enabled else {},
-        repo_root=str(tmp_path),
-        task_id="audit-cli-test",
-    )
-    captured = {}
-
-    monkeypatch.setattr(cli_module, "_resolve_runtime", lambda *args: (task_file, resolved))
-    monkeypatch.setattr(cli_module, "_run_manifest", lambda *args: ({}, tmp_path / "run.json"))
-    monkeypatch.setattr(cli_module, "_save_run_manifest_best_effort", lambda *args: None)
-    monkeypatch.setattr(cli_module, "_start_pipeline_step", lambda *args, **kwargs: (object(), tmp_path / "state.json"))
-    monkeypatch.setattr(cli_module, "_finish_pipeline_step", lambda *args, **kwargs: None)
-    monkeypatch.setattr(cli_module, "_sync_render_state_from_audit", lambda *args: None)
-    monkeypatch.setattr(cli_module, "update_validation", lambda *args: None)
-    monkeypatch.setattr(cli_module, "_finish_run_manifest", lambda *args: None)
-
-    def fake_audit_main(argv, **kwargs):
-        captured["argv"] = argv
-        captured.update(kwargs)
-        return 0
-
-    monkeypatch.setattr(
-        "grf_ue_bridge.workflows.task_audit.main", fake_audit_main
-    )
-
-    cli_module.task_audit(
-        task=task_file,
-        validation_level="none",
-        dataset_root=None,
-        ue_project_root=None,
-        local_config=None,
-        force=False,
-    )
-
-    assert captured["appearance_catalog"] == catalog
-    assert captured["episode_dir"] == root
 
 
 def test_audit_enabled_appearance_accepts_matching_restored_report(tmp_path):
@@ -2589,6 +2537,7 @@ def test_postprocess_required_pose_skip_is_failure(monkeypatch, tmp_path):
         lambda resolved: task_requirements.TaskRequirements(requires_pose=True),
     )
     resolved = SimpleNamespace(
+        ue_profile={},
         task_id="pose-skip",
         dataset_episode_dir=str(tmp_path),
         trajectory_output=str(tmp_path),
@@ -2636,6 +2585,7 @@ def test_postprocess_forwards_resolved_requirements_to_validator(monkeypatch, tm
         "grf_ue_bridge.annotation_validator.validate_annotation_dir", fake_validate
     )
     resolved = SimpleNamespace(
+        ue_profile={},
         task_id="forwarding",
         dataset_episode_dir=str(tmp_path),
         trajectory_output=str(tmp_path),
@@ -2668,45 +2618,8 @@ def test_postprocess_forwards_resolved_requirements_to_validator(monkeypatch, tm
     }
 
 
-def test_cleanup_cli_apply_returns_nonzero_when_gate_blocks(tmp_path, pin_repo_root):
-    from typer.testing import CliRunner
-    from test_task_cli import _make_task_dir
-    from grf_ue_bridge.cli import app
-
-    task_file = _make_task_dir(tmp_path, cam_count=1, frames=1)
-    episode = tmp_path / "ds" / "episode_cli_t1"
-    episode.mkdir(parents=True)
-    audit = episode / "audit"
-    audit.mkdir()
-    (audit / "soak_audit_report.json").write_text(json.dumps({
-        "passed": False, "exit_code": 1, "errors": ["blocked"],
-        "warnings": [], "checks": {},
-    }), encoding="utf-8")
-
-    result = CliRunner().invoke(app, ["task", "cleanup", str(task_file), "--apply"])
-
-    assert result.exit_code == 1
-    assert "blocked" in result.output
 
 
-def test_cleanup_cli_without_audit_blocks_required_mot(tmp_path, pin_repo_root):
-    from typer.testing import CliRunner
-    from test_task_cli import _make_task_dir
-    from grf_ue_bridge.cli import app
-
-    task_file = _make_task_dir(tmp_path, cam_count=1, frames=1)
-    task = json.loads(task_file.read_text(encoding="utf-8"))
-    task["ue"]["annotation_export"]["export_mot"] = True
-    task["postprocess"]["formats"] = ["json", "mot"]
-    task_file.write_text(json.dumps(task), encoding="utf-8")
-    (tmp_path / "ds" / "episode_cli_t1").mkdir(parents=True)
-
-    result = CliRunner().invoke(app, [
-        "task", "cleanup", str(task_file), "--apply"
-    ])
-
-    assert result.exit_code == 1
-    assert "canonical audit" in result.output
 
 
 def test_json_only_task_does_not_require_mot():

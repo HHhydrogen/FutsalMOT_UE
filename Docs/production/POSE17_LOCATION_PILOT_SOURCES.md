@@ -1,5 +1,7 @@
 # 四seed位置监督候选的源Sequence
 
+> 历史研究记录：仅解释原数据、协议与共享实现，不是当前生成操作手册。新数据只使用[当前single_seed入口](../production/SINGLE_SEED_BASELINE_V1.md)，不运行下文旧候选脚本或据此重建旧管线；历史源码及收据保持各自冻结版本。
+
 `ue/pose17_location_pilot_sources.py`只创建新的源Sequence，不准备队列、不提交MRQ，也不启动训练。它消费本机Saved中的冻结候选；候选本身不随Git分发，也不是正式Pose数据发布契约。
 
 | seed | 原冻结活动源窗 | 候选渲染源窗 | 导入前缀 | 本批split |

@@ -921,10 +921,10 @@ def _add_job_console_variables(config, cvar_map: dict) -> None:
     resolution = output.get_editor_property("output_resolution")
     if resolution.x * resolution.y >= 3840 * 2160:
         import os
-        writers = int(os.environ.get('FUTSAL_4K_WRITE_CONCURRENCY', '1'))
-        pending = int(os.environ.get('FUTSAL_4K_WRITE_QUEUE', '1'))
-        if writers not in (1, 2, 8) or pending not in (1, 2, 8):
-            raise ValueError('本机4K写出只接受协议登记的1、2或8，不允许无界队列')
+        writers = int(os.environ.get('FUTSAL_4K_WRITE_CONCURRENCY', '8'))
+        pending = int(os.environ.get('FUTSAL_4K_WRITE_QUEUE', '8'))
+        if writers != 8 or pending != 8:
+            raise ValueError('当前4K管线固定写出并发8、等待队列8')
         cvar_map = dict(cvar_map, **{"ImageWriteQueue.MaxConcurrency": writers,
                                    "ImageWriteQueue.MaxQueueSize": pending})
     if not cvar_map:
@@ -2728,8 +2728,9 @@ class _AsyncRenderPipeline:
         print(f"  完成标记: {self.summary_path()}")
         if failed:
             print(f"  原因: {reason}")
-        print(f"  后续步骤（P1）：uv run grf-ue validate-annotations {self.output_dir}")
-        record_test_render(self.output_dir, "complete" if status == "success" else "failed_stopped")
+        print("  后续步骤（P1）：使用tools/dataset/single_seed_task.py export完成本attempt导出和校验")
+        # MRQ结束仍可能有其他机位、后处理或恢复工作，不能开始成功保留计时。
+        record_test_render(self.output_dir, "awaiting_export" if status == "success" else "attention_required")
         if callable(self.on_complete) and not defer_callback:
             try:
                 self.on_complete(self.terminal_result)

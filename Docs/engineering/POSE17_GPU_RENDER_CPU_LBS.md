@@ -1,5 +1,7 @@
 # 保留GPU渲染的CPU LBS诊断路径
 
+> 历史研究记录：仅解释原数据、协议与共享实现，不是当前生成操作手册。新数据只使用[当前single_seed入口](../production/SINGLE_SEED_BASELINE_V1.md)，不运行下文旧候选脚本或据此重建旧管线；历史源码及收据保持各自冻结版本。
+
 状态：2026-10-23，原Player003新路径已实际完成a07三近景×3帧原生4K，native采样/恢复、Editor独立postflight及session release均通过，streaming_restart_required=false，配对报告errors为空。它仍是短诊断动作，不是正式GRF连续序列或完整可见性验收。新增单004角色组合路径的七个CPU测试文件当前共203 passed；该组合尚待新的C++构建和真实小样。
 
 ## 故障证据与目的

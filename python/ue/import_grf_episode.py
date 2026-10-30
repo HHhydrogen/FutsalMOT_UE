@@ -1,30 +1,4 @@
-"""
-Unreal Engine Python 脚本 —— 把 GRF-UE episode 导入到 Level Sequence。
-
-模式（默认 both）：
-  --preview    直接在关卡中设置 actor 变换（编辑器预览）。
-  --sequence   创建 / 覆盖带关键帧变换的 Level Sequence 资产。
-  --both       先 preview 后 sequence。
-  --annotations 导出 CV Ground-Truth 标注（见 ue/annotation_exporter.py）。
-  --render     用 MRQ 渲染已有 Sequence 的 RGB 帧到各 Camera 的 img1/（见 ue/render_episode.py）。
-  --full       一键全流程：创建 Sequence + 导出标注 + 渲染 RGB。
-
-用法（在 Unreal Editor Python Console 中执行）：
-    # 最简单（推荐用 ue/run_task.py + resolved task）
-    py "D:/path/to/code/ue/import_grf_episode.py"
-
-    # 临时覆盖部分参数
-    py "D:/path/to/code/ue/import_grf_episode.py" --episode "D:/path/to/other_episode" --replace-existing
-
-    # 只导出 CV 标注
-    py "D:/path/to/code/ue/import_grf_episode.py" --mode annotations
-
-依赖：
-    - unreal（UE 内置模块）
-    - json、math、pathlib（标准库）
-
-本脚本不依赖 gfootball、GRF_MARL 或 .venv。
-"""
+"""单seed内部Sequence构建库；公开生成入口见tools/dataset。"""
 
 import argparse
 import importlib
@@ -42,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 _UE_MODULE_NAMES = (
     "camera_projection", "annotation_utils", "dataset_export",
     "scene_apply", "annotation_exporter", "render_preset", "render_episode",
-    "pose_bones", "pose_export", "player_motion",
+    "pose_bones", "player_motion",
 )
 for _name in _UE_MODULE_NAMES:
     if _name in sys.modules:
@@ -77,32 +51,6 @@ EXPECTED_CHANNEL_NAMES = [
 
 # ── 参数解析 ────────────────────────────────────────────────────────────
 
-def _parse_args():
-    parser = argparse.ArgumentParser(
-        description="把 GRF-UE episode 导入到 Unreal Engine"
-    )
-    parser.add_argument(
-        "--episode", default=None,
-        help="episode 目录路径（包含 meta.json、frames.jsonl）"
-    )
-    parser.add_argument(
-        "--mapping", default=None,
-        help="actor 映射 JSON 文件路径"
-    )
-    parser.add_argument(
-        "--mode", choices=["preview", "sequence", "both", "annotations", "render", "full"], default="both",
-        help="执行模式"
-    )
-    parser.add_argument(
-        "--replace-existing", action="store_true", default=False,
-        help="删除并重建已存在的 Level Sequence，不弹出覆盖确认对话框"
-    )
-    parser.add_argument(
-        "--config", type=str, default=None,
-        help="（已弃用）legacy 配置文件路径；推荐 ue/run_task.py --resolved-task。"
-    )
-    parsed = parser.parse_args()
-    return parsed
 
 
 # ── Sequence 关键帧辅助函数 ─────────────────────────────────────────────
@@ -794,120 +742,7 @@ def _build_entity_binding(sequence, entity_id, actor, total_output_frames):
 
 # ── 入口 ───────────────────────────────────────────────────────────────
 
-def main():
-    args = _parse_args()
-
-    # 加载配置。旧流程（--config / 根目录 ue_import_config.json）已弃用：
-    # 推荐 ue/run_task.py --resolved-task <resolved-task.json>。
-    cfg_defaults = {}
-    if args.config:
-        cfg_path = Path(args.config)
-        # 相对路径按脚本目录（仓库根）解析，避免依赖 UE Python 的 CWD
-        if not cfg_path.is_absolute():
-            cfg_path = Path(__file__).resolve().parent.parent / args.config
-        print(
-            "WARNING: Legacy UE config mode (--config) is deprecated. "
-            "Use ue/run_task.py with a resolved task.",
-            file=sys.stderr,
-        )
-    else:
-        cfg_path = Path(__file__).resolve().parent.parent / "ue_import_config.json"
-    if cfg_path.exists():
-        with open(cfg_path) as f:
-            raw = json.load(f)
-        for k, v in raw.items():
-            if not k.startswith("comment_"):
-                cfg_defaults[k] = v
-    else:
-        print(
-            f"ERROR: 配置文件不存在: {cfg_path}\n"
-            "根目录隐式配置已移除。请改用：\n"
-            '  py ".../ue/run_task.py" --resolved-task ".../.futsalmot/runtime/<task>/resolved-task.json"\n'
-            "（先运行 uv run grf-ue task ue-command <task> 获取该命令）",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-
-    episode_dir = Path(
-        args.episode if args.episode
-        else cfg_defaults.get("episode")
-    )
-    mapping_path = Path(
-        args.mapping if args.mapping
-        else cfg_defaults.get("mapping")
-    )
-    mode = (
-        args.mode if args.mode != "both"
-        else cfg_defaults.get("mode", "both")
-    )
-    replace_existing = (
-        args.replace_existing if args.replace_existing
-        else cfg_defaults.get("replace_existing", False)
-    )
-    if not episode_dir or not episode_dir.exists():
-        print(f"ERROR: Episode directory not found: {episode_dir}", file=sys.stderr)
-        sys.exit(1)
-    if not mapping_path or not mapping_path.exists():
-        print(f"ERROR: Mapping file not found: {mapping_path}", file=sys.stderr)
-        sys.exit(1)
-
-    # annotations 模式：只导出 CV 标注，不做 preview / sequence
-    if mode == "annotations":
-        ann_cfg = cfg_defaults.get("annotation_export") or {}
-        if ann_cfg.get("enabled", True) is False:
-            print("annotation_export.enabled = false，跳过标注导出")
-            return
-        output_dir = Path(
-            ann_cfg.get("output_dir") or (episode_dir.parent / "dataset")
-        )
-        export_annotations(episode_dir, mapping_path, output_dir, ann_cfg)
-        print("\nDone.")
-        return
-
-    # full / render 模式：一键全流程（sequence + annotations + render）或仅渲染
-    if mode in ("full", "render"):
-        ann_cfg = cfg_defaults.get("annotation_export") or {}
-        ann_out = Path(ann_cfg.get("output_dir") or (episode_dir.parent / "dataset"))
-        seq_pkg = cfg_defaults.get("sequence_package_path") or DEFAULT_SEQUENCE_PACKAGE_PATH
-        seq_list = cfg_defaults.get("sequences") or None
-        if mode == "full":
-            meta, frames = load_episode(episode_dir)
-            mapping = load_mapping(mapping_path)
-            ball_rolling_cfg = cfg_defaults.get("ball_rolling", None)
-            print("\n--- 全流程：创建 Level Sequence ---")
-            create_sequence(meta, frames, mapping, replace_existing, seq_pkg, seq_list, ball_rolling_cfg)
-            if ann_cfg.get("enabled", True) is not False:
-                export_annotations(episode_dir, mapping_path, ann_out, ann_cfg)
-            else:
-                print("annotation_export.enabled = false，跳过标注导出")
-        render_sequences(seq_list, ann_cfg, seq_pkg, episode_dir, ann_out, mapping_path)
-        print("\n已提交。MRQ 渲染为异步执行（不阻塞编辑器），完成后自动复制 RGB 到 img1/（"
-              "及 Instance-ID Mask 到 mask/）并写 render_summary.json。")
-        return
-
-    meta, frames = load_episode(episode_dir)
-    mapping = load_mapping(mapping_path)
-
-    num_steps = meta["timing"]["num_steps"]
-    source_step = meta["timing"]["source_step_seconds"]
-    print(f"Episode: {meta.get('episode_id', 'unknown')}")
-    print(f"  Frames: {num_steps}")
-    print(f"  Source step: {source_step}s")
-    print(f"  Field: {meta['field']['length_m']}m x {meta['field']['width_m']}m")
-
-    if mode in ("preview", "both"):
-        print("\n--- Preview mode: setting actor transforms ---")
-        apply_preview(meta, frames, mapping)
-
-    if mode in ("sequence", "both"):
-        print("\n--- Sequence mode: creating Level Sequence ---")
-        seq_pkg = cfg_defaults.get("sequence_package_path") or DEFAULT_SEQUENCE_PACKAGE_PATH
-        seq_list = cfg_defaults.get("sequences") or None
-        ball_rolling_cfg = cfg_defaults.get("ball_rolling", None)
-        create_sequence(meta, frames, mapping, replace_existing, seq_pkg, seq_list, ball_rolling_cfg)
-
-    print("\nDone.")
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit("旧独立导入/渲染入口已移除；使用 tools/dataset/run_single_seed_partitions.py")

@@ -1,27 +1,33 @@
 # 数据存储与EXR生命周期
 
-## 唯一落点
+## 物理落点
 
-| 内容 | 物理目录 | 规则 |
+| 内容 | 目录 | 规则 |
 | --- | --- | --- |
-| 原始MRQ RGB/EXR | `G:/FutsalMOT_Dataset/_work/<attempt>/raw` | 新attempt，不覆盖失败或成品 |
-| 临时测试RGB/EXR/mask/预览 | `G:/FutsalMOT_Dataset/test/<attempt>/raw` | 用户2026-10-29指定；成功24小时，失败明确诊断用途最长7天 |
-| mask/Pose及待发布RGB | `G:/FutsalMOT_Dataset/_staging/<attempt>` | 成功后同卷移到版本目录，避免大文件复制 |
-| 正式数据 | `G:/FutsalMOT_Dataset/<version>/groups/...` | 发布索引为入口，保留旧版本不覆盖 |
-| UE配置、日志、轨迹、native、校准和运行收据 | UE项目`Saved/` | 物理D盘；不存大批渲染媒体，不提交Git |
-| 研究输入、模型、运行日志和结果 | `D:/projects/FutsalMOT_Research/pose/<experiment>/...` | 按协议与attempt分目录，不覆盖旧实验 |
-| 研究执行源码 | `D:/projects/FutsalMOT_Research/code/<manifest_SHA>/` | 从统一Git源码按清单安装，一份复用，不建第二个Git |
+| 当前临时测试RGB/EXR/mask | `G:/FutsalMOT_Dataset/test/<attempt>/raw` | 新attempt，不覆盖旧输出；导出在同attempt的export |
+| 后续正式生成raw | `G:/FutsalMOT_Dataset/_work/<attempt>/raw` | 单seed验收通过后才实现批量发布流程 |
+| 后续正式候选导出 | `G:/FutsalMOT_Dataset/_staging/<attempt>` | 验收后同卷发布到新版本 |
+| 既有正式数据 | `G:/FutsalMOT_Dataset/<version>/...` | 原布局、split和来源不变；不覆盖或补造历史产物 |
+| UE配置、日志、轨迹/native、校准和运行收据 | 项目`Saved/SingleSeed/<attempt>` | D盘只保留小文件与必要原始来源，不写渲染媒体 |
+| 研究输入、模型、日志和结果 | `D:/projects/FutsalMOT_Research/pose/<experiment>/...` | 按协议与attempt隔离；图像引用G成品 |
+| 研究执行源码 | `D:/projects/FutsalMOT_Research/code/<manifest_SHA>/` | 必要源码按SHA安装，不建第二个Git |
 
-MRQ实际写入使用`grf_ue_bridge.storage_policy.require_render_destination`检查物理G边界、联接和80GiB最低余量；统一渲染及11个历史直接MRQ入口均接入。默认P1媒体根已改为G的`_work`，旧task内部机位`render/`布局兼容保留。开始批次前另用`tools/storage/dataset_storage_policy.py preflight`估算EXR峰值、RGB/mask和stage空间，G在预算外保留80GiB，D研究预算外保留40GiB；每新相机再检查余量。不能通过链接把数据写回D，也不能把旧产物挪入临时区绕过清理边界。
+新生成只使用single_seed入口。容量与生命周期由该管线控制，不依赖旧生产driver中的默认值。物理路径核查不能跟随junction，也不能绕过G盘写删权限。
 
-`tools/run.ps1 research`的源码入口只开放`--help`；正式执行使用已安装的DResearch代码bundle，具体训练器再验证清单SHA和独立准入。旧冻结实验仅保存历史，不自动获得新路径的运行授权。
+## 容量与活动状态
 
-## EXR及时清理
+协议冻结媒体预算1TiB、最低剩余100GiB，`estimated_peak_bytes_per_pixel=7`。分机位准入已接入：按本次实际帧数、全seed选定机位及4K像素估算并存峰值，扣除该attempt现有用量后预留尚需空间，另留100GiB；短样只估算短样规模，不强制空出完整1TiB。运行每2秒检查空闲余量、每30秒统计媒体元数据用量；导出/验证也使用同一容量约束。
 
-后处理成功必须生成真实成功收据，列出实际完整RGB/mask数量、Pose/world索引SHA、成功解码帧数和raw路径。消费登记区分EXR消费与RGB/位置训练：后者不需要等训练结束才删EXR。未来仍需深度研究时，显式登记消费者、范围和保留理由；不能从模板把状态改成成功。
+每机位独立UE能降低内存积累，但当前EXR统一在全机位消费后清理，因此整个seed的磁盘峰值仍需预算。7byte/px是明确估算参数，不能称为已证明的完整长序列峰值上界；完整3001帧暂未执行。
 
-清理由`tools/storage/dataset_storage_policy.py cleanup-exr`执行：先dryrun生成精确文件清单，再用清单SHA明确apply。只删除列出的EXR，不递归删目录、不跟随联接，不删除PNG、Pose、world、native、轨迹和校准。固定事务日志保存逐项结果；partial保留现场，不自动重放。需要实际成功后处理和EXR消费者结束证据，活动MRQ不清理。
+`_test_lifecycle.json`已接入整个attempt：采集、相机间等待、后处理、校验及EXR清理期间保持active，不因某个机位MRQ结束提前开始保留倒计时。仅在最终验证收据与EXR清理闭合后标记complete，登记成功完成时间并保留24小时；失败停下并保留明确用途及最长7天期限。UE尚未确认停止时使用attention_required并保持活动，避免清理器误删；不伪造成功或自动重放。
 
-清理完成后记录真实删除数量和字节数，发布版本中的来源记录指向清理收据；旧来源协议保持原bytes，另记文件已退休。EXR删除不可逆失去原深度/Cryptomatte通道；不能将mask和unknown位置标注冒充物理遮挡证据。
+每日04:00的`tools/ue_ops/cleanup_test_render.ps1 -Apply`只处理已结束且到期的普通test子目录；跳过active、缺收据和包含reparse point的目录。正式数据、Saved协议/源码/轨迹/native和关键收据不在定时清理范围。
 
-测试小夹具和号码联调媒体按用户2026-10-29的新规则进入`test/<attempt>`，以`_test_lifecycle.json`登记结束与到期。每日04:00自动执行`tools/ue_ops/cleanup_test_render.ps1 -Apply`，只清已结束/到期的普通test子目录；成功保留24小时、失败诊断最长7天。活动任务、缺收据目录及含junction/reparse point的目录跳过，正式数据和项目关键收据不在定时清理范围。空间盘点只遍历物理目录/stat，不跟联接、不重复读媒体像素或计算全量媒体hash。Git管理源码、资产和规范，不管理Saved、渲染媒体、模型或环境。
+## EXR消费与清理
+
+当前single_seed导出统一完成各机位EXR解码、双mask和标注，经过实际validator成功后按精确清单清理EXR，并记录真实数量/字节。任何仍在消费EXR的阶段都不得提前删除；不必等待不消费EXR的研究训练结束。失败收据保留原值，不把模板标为成功。
+
+清理不跟随联接、不递归删除正式Dataset、不删除RGB、双mask、Pose/world、native、轨迹和校准。需要深度研究时须显式登记消费者、范围和保留期限；EXR退休后原深度/Cryptomatte已丢失，不能从RGB/mask或unknown位置标签声称仍有物理遮挡证据。
+
+空间盘点只使用文件stat和运行收据，不为日常清理重读全部媒体或重新计算全量hash。Git只管理源码、资产和规范，不管理Saved、媒体、权重或虚拟环境。实际功能完成和准入状态以[任务状态](../../TASK_STATUS_AND_NEXT_STEPS.md)为准。

@@ -125,20 +125,3 @@ def run_candidates(
         "results": results,
         "cohort": selection,
     }
-
-
-def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--out-root", type=Path, required=True)
-    parser.add_argument("--report", type=Path, required=True)
-    parser.add_argument("--target-size", type=int, default=5)
-    args = parser.parse_args()
-    report = run_candidates(args.out_root, target_size=args.target_size)
-    args.report.parent.mkdir(parents=True, exist_ok=True)
-    args.report.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    print(args.report)
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

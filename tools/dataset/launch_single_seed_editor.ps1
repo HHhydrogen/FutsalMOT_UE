@@ -1,6 +1,6 @@
 param([Parameter(Mandatory=$true)][string]$RunName,
- [ValidateRange(1,12)][int]$WriteConcurrency = 8,
- [ValidateRange(1,12)][int]$WriteQueueSize = 8)
+ [ValidateSet(8)][int]$WriteConcurrency = 8,
+ [ValidateSet(8)][int]$WriteQueueSize = 8)
 $ErrorActionPreference = 'Stop'
 if ($RunName -notmatch '^[a-z0-9_]+$') { throw 'Invalid run name' }
 $poseProject = 'D:/projects/FutsalMOT_UEDataset'

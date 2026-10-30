@@ -1,5 +1,7 @@
 # Pose17五个头部表面锚点：诊断校准快照
 
+> 历史研究记录：仅解释原数据、协议与共享实现，不是当前生成操作手册。新数据只使用[当前single_seed入口](../production/SINGLE_SEED_BASELINE_V1.md)，不运行下文旧候选脚本或据此重建旧管线；历史源码及收据保持各自冻结版本。
+
 本目录只保存Player003–009当前静态候选，不是正式生产校准或COCO可见性真值。七份`manifests/*.json`从项目`Saved/ResearchDiagnostics`按原始字节复制；内容、换行、SHA、实际UE mesh身份和全部candidate/static字段保持不变。003的逐锚点`candidate_unreviewed`也原样保留，不能用顶层静态审查状态覆盖它。
 
 `registry.json`是新的相对路径入口，所有`candidate_path`及`bundled_evidence[].path`相对于本目录。计划生成器应先核对registry SHA，再把相对路径解析为本机完整路径；不要修改manifest正文去替换历史绝对路径，否则其SHA就会变化。本次没有修改任何runner或正式计划。

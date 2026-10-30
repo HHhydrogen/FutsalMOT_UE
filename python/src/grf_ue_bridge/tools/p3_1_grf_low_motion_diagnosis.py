@@ -182,33 +182,3 @@ def analyze_snapshots(
         "actions": actions,
         "game_state": game_state,
     }
-
-
-def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--out", type=Path, required=True)
-    parser.add_argument("--seed", type=int, required=True)
-    parser.add_argument("--frames", type=int, default=300)
-    args = parser.parse_args()
-
-    from grf_ue_bridge.grf_runner import run_episode
-
-    result = run_episode("5_vs_5", seed=args.seed, num_steps=args.frames, render=False)
-    report = analyze_snapshots(
-        [
-            {"step": snapshot.step, "observation": snapshot.observation, "done": snapshot.done}
-            for snapshot in result.snapshots
-        ],
-        fps=10.0,
-        external_action_name="builtin_ai",
-        external_action_index=19,
-    )
-    report["seed"] = args.seed
-    args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    print(args.out)
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

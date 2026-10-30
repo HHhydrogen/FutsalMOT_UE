@@ -1,5 +1,7 @@
 # GPU渲染/CPU-LBS诊断分析门禁
 
+> 历史研究记录：仅解释原数据、协议与共享实现，不是当前生成操作手册。新数据只使用[当前single_seed入口](../production/SINGLE_SEED_BASELINE_V1.md)，不运行下文旧候选脚本或据此重建旧管线；历史源码及收据保持各自冻结版本。
+
 2026-10-23新增独立opt-in路径。`inspect_pose17_smoke.py`保留旧CPU分支的共同帧/EXR相机/fence/revision检查，新增`pose_sampling_path=gpu_render_cpu_lbs`严格分支。初版先完成CPU契约测试；随后003 a07已有独立实际配对/头深度报告，但仍不是全表面等价或COCO可见性验收。004组合scope的CPU契约另行记录在下文，不能继承003的角色验收。
 
 ## 显式计划与真实收据

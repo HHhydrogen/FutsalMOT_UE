@@ -505,30 +505,3 @@ def _run_repeat(args: argparse.Namespace) -> int:
     report_path.write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(report_path)
     return 0
-
-
-def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    subparsers = parser.add_subparsers(dest="command", required=True)
-    baseline = subparsers.add_parser("baseline")
-    baseline.add_argument("--candidate", choices=("grf_builtin_ai", "project_owned_prototype"), required=True)
-    baseline.add_argument("--out-root", type=Path, required=True)
-    baseline.add_argument("--seeds", type=int, nargs="+", required=True)
-    baseline.add_argument("--frames", type=int, required=True)
-    baseline.add_argument("--fps", type=float, required=True)
-    baseline.set_defaults(handler=_run_baseline)
-    repeat = subparsers.add_parser("repeat")
-    repeat.add_argument("--candidate", choices=("grf_builtin_ai", "project_owned_prototype"), required=True)
-    repeat.add_argument("--seed", type=int, required=True)
-    repeat.add_argument("--frames", type=int, required=True)
-    repeat.add_argument("--fps", type=float, required=True)
-    repeat.add_argument("--out-root", type=Path, required=True)
-    baseline.add_argument("--scenario", default=BOUNDED_SCENARIO)
-    repeat.add_argument("--scenario", default=BOUNDED_SCENARIO)
-    repeat.set_defaults(handler=_run_repeat)
-    args = parser.parse_args()
-    return args.handler(args)
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

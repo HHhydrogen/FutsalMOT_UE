@@ -12,7 +12,7 @@ def main():
     from grf_ue_bridge.single_seed import prepare_source,freeze_inputs
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action',choices=('prepare','freeze','export','verify'))
-    parser.add_argument('--attempt',default='single_seed_s1048_a01')
+    parser.add_argument('--attempt',required=True)
     parser.add_argument('--request',type=Path,default=PROJECT/'python/configs/single_seed_generation_v1.json')
     parser.add_argument('--short',action='store_true')
     args=parser.parse_args();local=PROJECT/'Saved/SingleSeed'/args.attempt

@@ -64,7 +64,7 @@ def prepare_source(project, attempt, request_path):
     if request['resolution'] != [3840,2160] or rig['resolution'] != request['resolution']:
         raise ValueError('新单seed生成及相机必须统一3840x2160')
     camera_plan=build_camera_plan(request['root_seed'],rig)
-    task=read(project/'python/configs/player_appearance_15kits_smoke_10frames_1cam.json')
+    task=read(project/'python/configs/single_seed_task_base.json')
     media='G:/FutsalMOT_Dataset/test/'+attempt+'/raw'
     task.update(task_id=attempt,episode_name=attempt,dataset_root=media,ue_project_root=str(project))
     task['export'].update(seed=request['root_seed'],scenario=request['scenario'],num_steps=request['source_step_limit'],

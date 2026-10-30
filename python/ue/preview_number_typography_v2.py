@@ -45,7 +45,7 @@ def capture(entity_id):
     from jersey_number_uv_build_preview import TEXTURE_PATH
     from jersey_number_uv_build_catalog import DESTINATION
     from jersey_number_uv_build_mask_preview import MASKED_PATH,EMPTY_PATH,POST_PROCESS_PATH
-    from jersey_number_uv_poc import _result,_bool_result,_capture_result
+    from number_preview_result import _result,_bool_result,_capture_result
     from grf_ue_bridge.number_uv_contract import DEFAULT_UV_RECT
     session=numbers._ACTIVE
     assert session is not None and session.report['state']=='applied'
@@ -104,7 +104,7 @@ def capture_kit(kit):
     from grf_ue_bridge.number_typography import ink_for_kit
     from jersey_number_uv_build_catalog import DESTINATION
     from jersey_number_uv_build_mask_preview import MASKED_PATH,EMPTY_PATH,POST_PROCESS_PATH
-    from jersey_number_uv_poc import _result,_bool_result,_capture_result
+    from number_preview_result import _result,_bool_result,_capture_result
     session=numbers._ACTIVE
     assert session is not None
     ink_for_kit(kit)

@@ -1,57 +1,38 @@
-# FutsalMOT GRF-UE 数据集代码
+# FutsalMOT数据集Python代码
 
-本目录是FutsalMOT统一仓库中的Python代码目录，Git根为UE项目根、工作分支master；不再使用submodule或嵌套Git。原Python提交历史已保留。
+本目录属于统一UE仓库，Git根为项目根、分支`master`；不初始化submodule或嵌套Git。
 
-## 正式数据
+## 唯一生成管线
 
-8个seed、八天气、32相机序列、原生3840×2160、10FPS，共20,116张RGB和同数mask，含逐帧bbox。每机位连续414–952帧，全部保留原train归属。正式入口：G:/FutsalMOT_Dataset/v1_no_numbers_4k/dataset.json。
+新生成统一采用[单seed配置](configs/single_seed_generation_v1.json)：4K、10 FPS、写出8/8、每机位独立UE，五个必选加随机1–2个局部机位。十五套球衣、号码v2、GreenV2与天气视觉v2使用既有独立seed分配。
 
-每seed单片段，已移除clips/clip_000。直接读取groups/seed_XXXXXXXX/cameras/；保留group.json、clip.json、trajectory.jsonl和checksums.json。消费者按group.json.clips[].path读取，不推断父目录层数。
+从**项目根**使用以下入口，操作步骤及精确参数见[单seed基线](../Docs/production/SINGLE_SEED_BASELINE_V1.md)：
 
-## 环境与入口
+| 阶段 | 入口与作用 |
+| --- | --- |
+| 准备/冻结 | `python/.venv/Scripts/python.exe tools/dataset/single_seed_task.py prepare`或`freeze`，显式指定新`--attempt` |
+| 采集 | `python/.venv/Scripts/python.exe tools/dataset/run_single_seed_partitions.py --attempt <名称>`；短样加`--short` |
+| 导出/验证 | `python/.venv/Scripts/python.exe tools/dataset/single_seed_task.py export`或`verify`，指定相同`--attempt`与短样范围 |
 
-当前新生成使用[单seed冻结配置](configs/single_seed_generation_v1.json)：4K、8/8写出、每机位独立UE、十五套球衣/号码v2、GreenV2和天气视觉v2。准备、冻结、分机位采集及导出步骤见[固化入口](../Docs/production/SINGLE_SEED_BASELINE_V1.md)。六机位180帧短样及标注导出已通过；完整3001帧和总数据集发布尚未执行。下方既有正式数据保持原版本。
+新协议绑定当前源码、配置、轨迹、schema和DLL。修改源码后必须新建协议，不能接跑旧冻结attempt或修改旧成功收据。完整采集必须先满足同attempt的短样门禁；已正常退出的机位可跳过，部分输出不盲目重放。
 
-| 阶段 | 环境 | 入口 |
-| --- | --- | --- |
-| P1轨迹及后处理 | Python3.9固定，.venv | grf-ue task |
-| P2序列与MRQ | UE5.8 Editor Python | ue/run_task.py，由Unreal MCP执行 |
-| 研究训练及评测 | 独立Python3.10环境 | ../experiments/sim2real/pipeline.py |
+**当前用户要求暂不运行完整单seed。** 六机位180帧短样已验证；完整3001帧、总数据集批量发布尚未执行。最新实施状态见[任务状态](../TASK_STATUS_AND_NEXT_STEPS.md)。
 
-P1不导入unreal；UE不导入NumPy/OpenEXR，JSON/JSONL是两环境接口。不要升级P1 Python。
+旧`grf-ue task/production`命令不再执行生成，也不会自动转成新配置；旧smoke、活跃窗口及Pose17生产启动器不再作为新生成入口。`ue/run_task.py`是当前分机位任务的内部实现，不能直接运行任意resolved JSON。
 
-```powershell
-uv sync
-uv run grf-ue task validate configs/weather_seeded_smoke_3frames_4cam.json
-uv run grf-ue task export configs/weather_seeded_smoke_3frames_4cam.json
-uv run grf-ue task ue-command configs/weather_seeded_smoke_3frames_4cam.json
-uv run pytest
-```
+## 环境与输出
 
-本机uv包装器异常时可使用.venv/Scripts/python.exe -m pytest。MRQ异步，提交后保持Editor tick；成功终态后执行P1。通用恢复流程与正式生产持久场景有不同完成契约，不能将retained伪装成restored。
+- P1固定Python3.9，环境`python/.venv`；不要升级到3.10或安装研究Torch依赖。
+- P2仅在真实UE5.8 Editor Python执行，由控制器通过Unreal MCP调用；P1不能替代`import unreal`。
+- P1与UE通过JSON/JSONL及媒体交换数据，UE不导入NumPy/OpenEXR/OpenCV后处理依赖。
+- 研究代码位于`experiments/sim2real`，使用独立Python3.10环境；渲染与GPU训练串行。
 
-## 权威文档
+临时媒体位于`G:/FutsalMOT_Dataset/test/<attempt>/raw`和`export`。项目Saved只保存配置、日志、轨迹/native、协议与收据；媒体、虚拟环境和缓存不入Git。
 
-- [DATA_CONTRACT.md](../Docs/engineering/DATA_CONTRACT.md)：轨迹、相机和标注字段。
-- [VALIDATION_AND_LIMITATIONS.md](../Docs/engineering/VALIDATION_AND_LIMITATIONS.md)：验证与限制。
-- [SEED_DATASET.md](../Docs/production/SEED_DATASET.md)：平铺发布结构和迁移。
-- [PRODUCTION_V1.md](../Docs/production/PRODUCTION_V1.md)：本轮规模、生产优化及来源。
-- [ACTIVE_TRAJECTORY_QC.md](../Docs/production/ACTIVE_TRAJECTORY_QC.md)：连续活跃窗口。
-- [FLOOR_DIVERSITY.md](../Docs/engineering/FLOOR_DIVERSITY.md)：独立seed地板因子与UE资产只读验收入口。
-- [实验协议](../experiments/sim2real/README.md)：真实足球检测和追踪对照。
+权威导出结构为`seed_<8位hex>/seed_manifest.json`、共享`trajectory.jsonl`及各机位的`camera.json`、`annotations.jsonl`、`img1/`、`mask/`、`number_mask/`。每帧保留十人，body12可见性未知为0、号码可读性未经认证为false。历史Pose17数据不重命名成body12；旧成品只按其原manifest读取。
 
-基准full，其余quick/basic如实记录；全部生成mask/bbox不等于全部做像素审计。旧v1正式数据关闭号码和Pose；当前已验号码v2仅进入新的单seed流程。
+## 开发与检查
 
-## Pose研究开发
+先读[组件规则](AGENTS.md)、[数据契约](../Docs/engineering/DATA_CONTRACT.md)、[验证边界](../Docs/engineering/VALIDATION_AND_LIMITATIONS.md)和[存储规则](../Docs/operations/STORAGE_POLICY.md)。
 
-四seed位置试产已完成并独立发布至G:/FutsalMOT_Dataset/v2_pose17_location_pilot_a01：1920对4K RGB/mask、19200逐视角人物Pose，480个源时间样本；采用显式[120帧契约及独立源序列](../Docs/production/POSE17_LOCATION_PILOT_SOURCES.md)。unknown保留，限定位置研究准入不等于正式遮挡标签。已有[真实40图位置损失接入](../Docs/research/POSE17_LOCATION_CPU_CHECK.md)、[严格矩阵SHA离线重建](../Docs/engineering/POSE17_OFFLINE_LBS_DIAGNOSTIC.md)及[十二关节表面支持候选](../Docs/engineering/POSE17_JOINT_SUPPORT_DIAGNOSTIC.md)，不再重复小样或媒体审计。
-
-七模型十实体四机位联合短诊断已完成40张4K RGB/40份EXR/400条采样，完整[诊断导出](../Docs/production/POSE17_DIAGNOSTIC_RELEASE.md)包含实例mask、bbox、Pose2D与逐机位原始world17。见[联合入口](../Docs/engineering/POSE17_JOINT_DIAGNOSTIC.md)和[七角色校准快照](../Docs/engineering/POSE17_HEAD_SURFACE_CALIBRATION.md)。472项针对CPU回归及真实MRQ证据通过；所有visibility仍unknown，输出不是正式训练数据，不能称已证明合成收益。
-
-新Pose17与v1分开，当前尚无正式遮挡Pose批次。原位置对照六臂完整保留；独立[Pose-only v3训练](../Docs/research/POSE_LOCATION_POSEONLY_V3.md)修正COCO sigma、固定共享检测与BN，并由[独立评价器](../Docs/research/POSE_COCO_EVALUATION.md)复用相同官方COCO数值。新实验需新冻结协议，不能混改原结果或把优化更新自动重放。
-
-[真实固定检测入口](../Docs/research/POSE_ASSOCIATION_DEV_CANDIDATE.md)、[Pose附件](../Docs/research/POSE_FIXED_DETECTION_ATTACHMENT.md)、[ByteTrack接入](../Docs/research/POSE_BYTETRACK_CANDIDATE.md)及[完整TrackEval结果](../Docs/research/POSE_ASSOCIATION_TRACKEVAL.md)已接通。预训练Pose在同game9开发片段相对bbox的有限关联收益不等于合成训练收益，下降片段保留；官方det.txt是GT框副本，未作检测器使用。[交互窗口工具](../Docs/research/INTERACTION_WINDOW_CANDIDATE.md)只用GT元数据生成候选，不读媒体或依据模型成败筛选。
-
-unknown可见性与位置有效性分开，全缺点人物仍保留框。P1不安装Torch，研究依赖独立；GPU研究训练与UE渲染串行，最终test116/187封存。
-
-UE与Python在项目根精确暂存，一次提交并push到FutsalMOT_UE；不再更新gitlink或推送旧Python远端。用户已明确要求提交时无需重复确认；无授权不提交。已验号码及单seed依赖可按用户授权提交；无关未验研究WIP保留在工作树。数据、权重、.venv、.external、.futsalmot和Saved等本机产物不入Git。
+针对测试从`python/`目录执行`.venv/Scripts/python.exe -m pytest <相关测试文件>`。默认跳过真实GRF集成；仅在需要且获准时使用`-m grf_integration`。静态检查不代表MRQ动态通过，不重复整套媒体审计或无变化的长渲染。历史研究过程见[训练历史](../Docs/research/TRAINING_HISTORY.md)，不从旧实验手册恢复已退役的生成入口。

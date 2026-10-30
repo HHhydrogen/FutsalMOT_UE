@@ -1,4 +1,4 @@
-"""单seed MRQ入口；复用原run_task事务，元数据采用原生body12 pass。"""
+"""单seed内部场景预检；仅由分机位入口调用，不提供独立采集入口。"""
 import json
 import os
 from pathlib import Path
@@ -57,44 +57,3 @@ def preflight(local):
     dump(local/'ue_preflight.json',report)
     print('SINGLE_SEED_PREFLIGHT',json.dumps(report,ensure_ascii=False))
     return report
-
-
-def submit(local,short=False):
-    import shutil
-    from grf_ue_bridge.single_seed import read
-    from grf_ue_bridge.single_seed_export import assert_bindings
-    local=Path(local);protocol=read(local/'protocol.json')
-    assert_bindings(PROJECT,local,protocol)
-    unit=local/'short' if short else local
-    preflight(local)
-    # 完整采集必须消费本次短样成功收据；不以旧字体/旧机位短样替代。
-    if not short and read(local/'short/verification_complete.json')['status']!='single_seed_check_passed':
-        raise RuntimeError('本轮短样尚未通过')
-    resolved=read(unit/'resolved.json')
-    media=Path(resolved['dataset_root'])/resolved['episode_name']
-    limits=protocol['request']['storage']
-    width,height=protocol['request']['resolution']
-    if [width,height]!=[3840,2160]:
-        raise ValueError('新采集统一4K，不回退1080p')
-    # 按像素估算RGB/EXR/后处理并存峰值，4K不再误用1080p预算。
-    estimated_bytes=resolved['export_profile']['num_steps']*len(protocol['recipe']['components']['cameras']['entries'])*width*height*6
-    if estimated_bytes>limits['stage_limit_bytes'] or shutil.disk_usage('G:/FutsalMOT_Dataset').free<estimated_bytes+limits['min_free_bytes']:
-        raise OSError('本次单seed预计媒体容量超出协议或G盘余量不足')
-    if (media/'render_summary.json').exists():
-        raise FileExistsError('不重复提交既有attempt')
-    previous={key:os.environ.get(key) for key in ('C5_RESOLVED_TASK','C5_RUN_MODE','C5_CAMERA_IDS')}
-    previous_argv=sys.argv
-    try:
-        os.environ['C5_RESOLVED_TASK']=str(unit/'resolved.json');os.environ['C5_RUN_MODE']='full'
-        os.environ.pop('C5_CAMERA_IDS',None)
-        sys.argv=[str(PROJECT/'python/ue/run_task.py')]
-        import run_task
-        result=run_task.main()
-        if result:
-            raise RuntimeError('run_task提交失败: '+str(result))
-    finally:
-        sys.argv=previous_argv
-        for key,value in previous.items():
-            if value is None:os.environ.pop(key,None)
-            else:os.environ[key]=value
-    print('SINGLE_SEED_SUBMITTED',resolved['task_id'])

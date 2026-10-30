@@ -21,6 +21,14 @@ def isolate_runtime_machine_paths(monkeypatch, tmp_path):
     from grf_ue_bridge.config import paths
 
     monkeypatch.setattr(paths, "default_repo_root", lambda: tmp_path / "repo")
+    from grf_ue_bridge import storage_policy
+
+    def temporary_workspace(path):
+        actual = Path(path)
+        assert actual.resolve().is_relative_to(tmp_path.resolve())
+        return actual
+
+    monkeypatch.setattr(storage_policy, "require_dataset_workspace", temporary_workspace)
     for name in ("FUTSALMOT_DATASET_ROOT", "FUTSALMOT_UE_ROOT", "FUTSALMOT_UE_PROJECT_ROOT"):
         monkeypatch.delenv(name, raising=False)
 
@@ -287,31 +295,8 @@ def test_validate_accepts_missing_dataset_root_with_valid_ue(tmp_path):
     assert not resolver.validate_task(task_file)
 
 
-def test_cli_validate_accepts_path_overrides(tmp_path):
-    ue = _make_ue_root(tmp_path)
-    task_file = _make_task(tmp_path, "${MISSING_DATASET}", "${MISSING_UE}")
-    runner = CliRunner()
-
-    result = runner.invoke(app, [
-        "task", "validate", str(task_file),
-        "--dataset-root", str(tmp_path / "cli-data"),
-        "--ue-project-root", str(ue),
-    ])
-
-    assert result.exit_code == 0, result.output
 
 
-def test_cli_resolve_uses_local_config(tmp_path, monkeypatch):
-    ue = _make_ue_root(tmp_path)
-    task_file = _make_task(tmp_path, "legacy-data", str(ue))
-    local_data = tmp_path / "local-data"
-    _write_local(task_file.parent, str(local_data), str(ue))
-    monkeypatch.chdir(task_file.parent)
-
-    result = CliRunner().invoke(app, ["task", "resolve", str(task_file)])
-
-    assert result.exit_code == 0, result.output
-    assert str(local_data.resolve()) in result.output
 
 
 def test_portable_resolved_task_round_trip_keeps_absolute_paths(tmp_path, monkeypatch):
@@ -345,6 +330,8 @@ def test_export_creates_missing_dataset_root(monkeypatch, tmp_path):
     )
 
     class FakeExportConfig:
+        stop_on_done = False
+        target_fps = 10
         seed = 1
         scenario = "5_vs_5"
         num_steps = 1
@@ -399,6 +386,8 @@ def test_export_writes_appearance_manifest_after_provenance(monkeypatch, tmp_pat
     )
 
     class FakeExportConfig:
+        stop_on_done = False
+        target_fps = 10
         seed = 42
         scenario = "5_vs_5"
         num_steps = 1
@@ -469,6 +458,8 @@ def test_export_writes_v2_appearance_manifest_with_number_assignments(monkeypatc
     )
 
     class FakeExportConfig:
+        stop_on_done = False
+        target_fps = 10
         seed = 42
         scenario = "5_vs_5"
         num_steps = 1
@@ -535,6 +526,8 @@ def test_appearance_export_failure_removes_only_appearance_manifest(
     )
 
     class FakeExportConfig:
+        stop_on_done = False
+        target_fps = 10
         seed = 42
         scenario = "5_vs_5"
         num_steps = 1
